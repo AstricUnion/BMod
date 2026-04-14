@@ -45,8 +45,8 @@ if SERVER then
         pr:setPos(pos)
         pr:setAngles(ang)
         pr:setFrozen(freeze)
-        if self.modifyEntity then self:modifyEntity() end
         local obj = setmetatable({ ent = pr }, self)
+        if obj.initialize then obj:initialize() end
         local function init(ply)
             if !pr:isValid() then return end
             net.start("BModInitializeEntity")
@@ -59,7 +59,6 @@ if SERVER then
         hook.add("ClientInitialized", "BModInitializeEntity" .. pr:entIndex(), init)
         init(find.allPlayers())
         ents.inited[pr:entIndex()] = obj
-        -- obj:initHooks()
         return obj
     end
 
@@ -70,10 +69,6 @@ if SERVER then
         ents.inited[self.ent:entIndex()] = nil
         setmetatable(self, nil)
     end
-
-
-    ---[SERVER] On initialize entity
-    function BModEntity:initialize() end
 end
 
 
@@ -86,6 +81,7 @@ if CLIENT then
         ---@param ent Entity
         net.readEntity(function(ent)
             local obj = setmetatable({ ent = ent }, self)
+            if obj.initialize then obj:initialize() end
             ents.inited[ent:entIndex()] = obj
         end)
     end)
@@ -96,6 +92,9 @@ end
 function BModEntity:isValid()
     return self ~= nil and self.ent:isValid()
 end
+
+---[SHARED] On initialize entity
+function BModEntity:initialize() end
 
 
 ents.Base = BModEntity
@@ -112,12 +111,14 @@ function ents.register(class)
         if !hooks then
             -- This is a system for adding optimized hooks
             -- For all entities we have only one hook
-            -- It makes optimization to ~10%, tested with
-            -- RenderOffscreen hook
+            -- It makes optimization to ~20% on every entity with client Render hooks
             hook.add(name, hookId, function(...)
                 local thisHook = ents.hooks[name]
                 for _, v in pairs(ents.inited) do
-                    thisHook[v.Identifier](...)
+                    local currentHook = thisHook[v.Identifier]
+                    if !currentHook then goto cont end
+                    currentHook(v, ...)
+                    ::cont::
                 end
             end)
             ents.hooks[name] = {}
