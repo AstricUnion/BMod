@@ -8,27 +8,8 @@
 local resource = {}
 resource.inited = {}
 resource.registered = {}
+resource.props = {}
 
----[SHARED] Register new resource to use it after
----@param class Resource
-function resource.register(class)
-    if CLIENT then class:initNet() end
-    resource.registered[class.Identifier] = class
-end
-
-
-if SERVER then
-    ---[SERVER] Create new resource
-    ---@param identifier string Identifier of resource to create
-    ---@param pos Vector Init position of resource
-    ---@param ang Angle Init angles of resource
-    ---@param count number Count of resource in this block
-    ---@param freeze boolean Freeze resource entity
-    ---@return Resource
-    function resource.create(identifier, pos, ang, count, freeze)
-        return resource.registered[identifier]:new(pos, ang, count, freeze)
-    end
-end
 
 ---@class ResourceSounds
 ---@field Merge string
@@ -60,6 +41,7 @@ Resource.Sounds = {
     Split = "items/ammocrate_open.wav"
 }
 
+local maxResource = 100
 
 if SERVER then
     ---[SERVER] Create new resource entity
@@ -71,7 +53,7 @@ if SERVER then
     function Resource:new(pos, ang, count, freeze)
         local obj = setmetatable(
             {
-                count = math.clamp(count, 1, 128),
+                count = math.clamp(count, 1, maxResource),
                 ent = nil,
                 pickedUpBy = nil
             },
@@ -81,7 +63,8 @@ if SERVER then
         local pr = prop.create(pos, ang, self.Model, freeze)
         pr:setMass(30)
         pr:setUnbreakable(true)
-        pr.BModResource = true
+        -- To easy identificate prop
+        pr.BModResource = self.Identifier
         if obj.modifyEntity then obj.modifyEntity(pr) end
         ---Collision listener to merge resources
         ---@param colData CollisionData
@@ -89,22 +72,29 @@ if SERVER then
             if !isValid(obj) then return end
             local ow = pr:getOwner()
             if !isValid(ow) or obj.pickedUpBy ~= ow then return end
+            if colData.HitSpeed:getLength() < 500 then return end
             local ent = colData.HitEntity
-            if !ent.BModResource then return end
-            ---@type Resource
-            local res = resource.inited[ent:entIndex()]
-            if res.Identifier ~= obj.Identifier then return end
-            if res.count == 128 and obj.count == 128 then return end
-            if colData.HitSpeed:getLength() < 600 then return end
-            local diff = 128 - res.count
-            if obj.count > diff then
-                res:setCount(128)
-                obj:setCount(obj.count - diff)
-            else
-                obj:remove()
-                res:setCount(res.count + obj.count)
+
+            local function tryToMerge()
+                if !ent.BModResource then return end
+                ---@type Resource
+                local res = resource.inited[ent:entIndex()]
+                if res.Identifier ~= obj.Identifier then return end
+                if res.count == maxResource and obj.count == maxResource then return end
+                local diff = maxResource - res.count
+                if obj.count > diff then
+                    res:setCount(self)
+                    obj:setCount(obj.count - diff)
+                else
+                    obj:remove()
+                    res:setCount(res.count + obj.count)
+                end
+                res.ent:emitSound(self.Sounds.Merge)
+                return true
             end
-            res.ent:emitSound(self.Sounds.Merge)
+            if !tryToMerge() then
+                hook.run("BModResourceInteracted", obj, ent)
+            end
         end)
         obj.ent = pr
         local function init(ply)
@@ -126,7 +116,7 @@ if SERVER then
     ---[SERVER] Set count of resource
     ---@param count number Count
     function Resource:setCount(count)
-        count = math.clamp(count, 1, 128)
+        count = math.clamp(count, 1, maxResource)
         self.count = count
         net.start("BModCountChanged" .. self.Identifier)
             net.writeUInt(count, 8)
@@ -140,12 +130,6 @@ if SERVER then
         self.ent:remove()
         resource.inited[self.ent:entIndex()] = nil
         setmetatable(self, nil)
-    end
-
-
-    ---[SERVER] Is resource valid
-    function Resource:isValid()
-        return self ~= nil and self.ent:isValid()
     end
 
 
@@ -165,7 +149,7 @@ if SERVER then
             if sprinting and self.count > 1 then
                 local newCount = math.ceil(self.count / 2)
                 local oldCount = self.count - newCount
-                resource.create(self.Identifier, ent:getPos(), ent:getAngles(), newCount, false)
+                resource.create(self.Identifier, ent:getPos(), ent:getAngles(), newCount, false, true)
                 self:setCount(oldCount)
                 self.ent:emitSound(self.Sounds.Split)
                 return
@@ -192,7 +176,7 @@ end
 
 if CLIENT then
     local Ply = player()
-    resource.font = render.createFont("Roboto",64,500,false,false,false,false,0,false,0)
+    resource.font = render.createFont("Roboto",48,500,false,false,false,false,0,false,0)
 
     ---[CLIENT] Init net messages
     function Resource:initNet()
@@ -201,7 +185,7 @@ if CLIENT then
             local count = net.readUInt(8)
             ---@param ent Entity
             net.readEntity(function(ent)
-                ent.BModResource = true
+                ent.BModResource = self.Identifier
                 local obj = setmetatable(
                     {
                         count = count,
@@ -242,14 +226,132 @@ if CLIENT then
             do
                 render.enableDepth(true)
                 render.setFont(resource.font)
-                render.drawSimpleText(0, -116, self.Name, TEXT_ALIGN.CENTER)
-                render.drawSimpleText(0, -48, string.format("%s units", self.count), TEXT_ALIGN.CENTER)
+                render.drawSimpleText(0, -48, self.Name, TEXT_ALIGN.CENTER)
+                render.drawSimpleText(0, -8, string.format("%s units", self.count), TEXT_ALIGN.CENTER)
             end
             render.popMatrix()
             ::cont::
         end
     end)
 end
+
+---[SHARED] Is resource valid
+function Resource:isValid()
+    return self ~= nil and self.ent:isValid()
+end
+
+
 resource.Resource = Resource
+
+
+---[SHARED] Register new resource to use it after
+---@param class Resource
+function resource.register(class)
+    if CLIENT then class:initNet() end
+    resource.registered[class.Identifier] = class
+end
+
+
+---[SHARED] Fast registration for resource
+---@param name string
+---@param identifier string
+---@param model string
+---@param signOffset Vector
+---@param signAngle Angle?
+---@param mergeSound string?
+---@param splitSound string?
+---@return Resource class Fast created class for this resource
+function resource.fastRegister(name, identifier, model, signOffset, signAngle, mergeSound, splitSound)
+    local class = {}
+    class.__index = class
+    setmetatable(class, Resource)
+    class.Name = name
+    class.Identifier = identifier
+    class.Model = model
+    class.SignOffset = signOffset
+    class.SignAngle = signAngle or Angle()
+    if mergeSound or splitSound then
+        class.Sounds = table.copy(class.Sounds)
+        class.Sounds.Merge = mergeSound or class.Sounds.Merge
+        class.Sounds.Split = splitSound or class.Sounds.Split
+    end
+    resource.register(class)
+    return class
+end
+
+
+---[SHARED] Adds prop as resources
+---@param model string[] Props to resources
+---@param resources table<string, number> Key is resource type, value is amount of this resource
+function resource.addProp(model, resources)
+    for _, v in ipairs(model) do
+        resource.props[v] = resources
+    end
+end
+
+
+---[SHARED] Get player's available resources
+---@param ply Player Player to inspect
+---@param getProps boolean? Take props as a resource
+---@return table<string, number> resources Key is resource type, value is amount of this resource
+function resource.getResources(ply, getProps)
+    local found = find.byClass("prop_physics")
+    local resources = {}
+    local pos = ply:getPos()
+    for _, pr in ipairs(found) do
+        if pr:getPos():getDistance(pos) > 256 then goto cont end
+        if pr.BModResource then
+            local res = resource.inited[pr:entIndex()]
+            if !isValid(res) then goto cont end
+            local id = res.Identifier
+            local current = resources[id] or 0
+            resources[id] = current + res.count
+        elseif getProps then
+            local counts = resource.props[pr:getModel()]
+            if !counts then goto cont end
+            for id, count in pairs(counts) do
+                local current = resources[id] or 0
+                resources[id] = current + count
+            end
+        end
+        ::cont::
+    end
+    return resources
+end
+
+
+if SERVER then
+    ---[SERVER] Create new resource
+    ---@param identifier string Identifier of resource to create
+    ---@param pos Vector Init position of resource
+    ---@param ang Angle Init angles of resource
+    ---@param count number Count of resource in this block
+    ---@param freeze boolean Freeze resource entity
+    ---@param dontStack boolean? Create a new resource without merging with existing one(s)
+    ---@return Resource
+    function resource.create(identifier, pos, ang, count, freeze, dontStack)
+        if !dontStack then
+            local found = find.byClass("prop_physics")
+            local existingResource
+            for _, pr in ipairs(found) do
+                if pr:getPos():getDistance(pos) > 256 then goto cont end
+                if pr.BModResource ~= identifier then goto cont end
+                local res = resource.inited[pr:entIndex()]
+                if res.count == maxResource then goto cont end
+                local diff = maxResource - res.count
+                if count > diff then
+                    res:setCount(maxResource)
+                    count = count - diff
+                else
+                    res:setCount(res.count + count)
+                    existingResource = res
+                end
+                ::cont::
+            end
+            if existingResource then return existingResource end
+        end
+        return resource.registered[identifier]:new(pos, ang, count, freeze)
+    end
+end
 
 return resource

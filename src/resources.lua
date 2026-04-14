@@ -5,52 +5,76 @@ local resource = require("bmod/base/resource.lua")
 ---@class Resource
 local Resource = resource.Resource
 
----@class Wood: Resource
-local Wood = {}
-Wood.__index = Wood
-setmetatable(Wood, Resource)
-Wood.Name = "Wood"
-Wood.Identifier = "wood"
-Wood.Model = "models/props_junk/wood_crate001a.mdl"
-Wood.SignOffset = Vector(21, 0, 0)
-Wood.Sounds = {
-    Merge = "physics/wood/wood_box_break1.wav",
-    Split = "physics/wood/wood_box_impact_hard4.wav",
-}
-resource.register(Wood)
 
+---@class Wood: Resource
+local Wood = resource.fastRegister(
+    "Wood", "wood", "models/props_junk/wood_crate001a.mdl", Vector(21, 0, 0), nil,
+    "physics/wood/wood_box_break1.wav", "physics/wood/wood_box_impact_hard4.wav"
+)
 
 ---@class Paper: Resource
-local Paper = {}
-Paper.__index = Paper
-setmetatable(Paper, Resource)
-Paper.Name = "Paper"
-Paper.Identifier = "paper"
-Paper.Model = "models/props/cs_office/file_box.mdl"
-Paper.SignOffset = Vector(0, 7, 1)
-Paper.SignAngle = Angle(0, 90, 0)
-Paper.Sounds = {
-    Merge = "physics/cardboard/cardboard_box_break2.wav",
-    Split = "physics/cardboard/cardboard_box_impact_hard4.wav"
-}
-resource.register(Paper)
-
+local Paper = resource.fastRegister(
+    "Paper", "paper", "models/props/cs_office/file_box.mdl", Vector(0, 7, 5), Angle(0, 90, 0),
+    "physics/cardboard/cardboard_box_break2.wav", "physics/cardboard/cardboard_box_impact_hard4.wav"
+)
 
 ---@class Water: Resource
-local Water = {}
-Water.__index = Water
-setmetatable(Water, Resource)
-Water.Name = "Water"
-Water.Identifier = "water"
-Water.Model = "models/props_borealis/bluebarrel002.mdl"
-Water.SignOffset = Vector(14, 0, 0)
-Water.Sounds = {
-    Merge = "ambient/water/water_splash1.wav",
-    Split = "player/footsteps/slosh1.wav"
-}
-resource.register(Water)
+local Water = resource.fastRegister(
+    "Water", "water", "models/props_borealis/bluebarrel001.mdl", Vector(14, 0, 0), nil,
+    "ambient/water/water_splash1.wav", "player/footsteps/slosh1.wav"
+)
 
 
+---@class Aluminium: Resource
+local Aluminium = resource.fastRegister(
+    "Aluminium", "aluminium", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
+    "phx/hmetal1.wav", "phx/hmetal3.wav"
+)
+Aluminium.modifyEntity = function(ent)
+    ent:setMaterial("models/xqm/cylinderx1_diffuse")
+end
+
+
+resource.addProp({
+    "models/props_docks/channelmarker_gib01.mdl",
+    "models/props_c17/FurnitureDrawer001a_Shard01.mdl"
+}, { wood = 21 })
+
+resource.addProp({
+    "models/props_c17/furnituredrawer001a_chunk01.mdl",
+    "models/props_c17/furnituredrawer001a_chunk02.mdl",
+    "models/props_c17/furnituredrawer001a_chunk03.mdl",
+    "models/props_c17/furnituredrawer002a.mdl"
+}, { wood = 11 })
+
+
+resource.addProp({
+    "models/Gibs/wood_gib01a.mdl",
+    "models/Gibs/wood_gib01b.mdl",
+    "models/Gibs/wood_gib01c.mdl",
+    "models/Gibs/wood_gib01d.mdl",
+    "models/Gibs/wood_gib01e.mdl",
+}, { wood = 11 })
+
+resource.addProp({
+    "models/props_c17/streetsign001c.mdl",
+    "models/props_c17/streetsign002b.mdl",
+    "models/props_c17/streetsign003b.mdl",
+    "models/props_c17/streetsign004f.mdl",
+    "models/props_c17/streetsign005b.mdl",
+    "models/props_c17/streetsign005c.mdl",
+    "models/props_c17/streetsign005d.mdl"
+}, { aluminium = 8, steel = 6 })
+
+resource.addProp({
+    "models/props_junk/terracotta01.mdl"
+}, { ceramic = 2 })
+
+resource.addProp({
+    "models/props_c17/lamp001a.mdl"
+}, { ceramic = 6 })
+
+--[[
 ---@class Oil: Resource
 local Oil = {}
 Oil.__index = Oil
@@ -217,7 +241,7 @@ BasicParts.__index = BasicParts
 setmetatable(BasicParts, Resource)
 BasicParts.Name = "Basic parts"
 BasicParts.Identifier = "basicParts"
-BasicParts.Model = "models/props_junk/cardboard_box001a.mdl"
+BasicParts.Model = "models/Items/item_item_crate.mdl"
 BasicParts.SignOffset = Vector(17, 0, 2)
 BasicParts.Sounds = {
     Merge = "physics/wood/wood_box_break1.wav",
@@ -243,9 +267,25 @@ Coolant.Sounds = {
 }
 resource.register(Coolant)
 
+
+---@class Ammo: Resource
+local Ammo = {}
+Ammo.__index = Ammo
+setmetatable(Ammo, Resource)
+Ammo.Name = "Ammo"
+Ammo.Identifier = "ammo"
+Ammo.Model = "models/Items/BoxSRounds.mdl"
+Ammo.SignOffset = Vector(4, 0, 0)
+Ammo.Sounds = {
+    Merge = "BaseCombatCharacter.AmmoPickup",
+    Split = "player/pl_shell1.wav"
+}
+resource.register(Ammo)
+]]--
+
 if SERVER then
-    resource.create("coolant", chip():getPos() + Vector(0, 50, 16), Angle(), 128, false)
-    resource.create("basicParts", chip():getPos() + Vector(0, -50, 16), Angle(), 128, false)
+    resource.create("aluminium", chip():getPos() + Vector(0, 50, 16), Angle(), 100, false)
+    resource.create("paper", chip():getPos() + Vector(0, -50, 16), Angle(), 20, false)
 else
     enableHud(nil, true)
 end
