@@ -1,6 +1,10 @@
 ---@name BMod Resource Base
 ---@author AstricUnion
 ---@shared
+---@include bmod/base/entity.lua
+
+---@class ents
+local ents = require("bmod/base/entity.lua")
 
 
 ---Class for resource manipulations
@@ -17,22 +21,19 @@ resource.props = {}
 
 
 ---Base class for resources
----@class Resource
+---@class Resource: BModEntity
 -- Public fields
----@field Identifier string Identifier of a resource
----@field Name string Pretty name of a resource
----@field Model string Model of a resource
 ---@field SignOffset Vector Offset of a sign with resource info
 ---@field SignAngle Angle Angle of a sign with resource info
 ---@field Sounds ResourceSounds Angle of a sign with resource info
 -- Private fields
 ---@field count number Count of resource in this block. Maximum is 1024 resource
----@field ent Entity Prop with hooks for interactions. Can be nil on client
 ---@field pickedUpBy Player [SERVER] Player, that's picked up this resource
 local Resource = {}
 Resource.__index = Resource
+setmetatable(Resource, ents.Base)
 Resource.Name = "Base"
-Resource.Identifier = "base"
+Resource.Identifier = "base_resource"
 Resource.Model = "models/hunter/blocks/cube05x05x05.mdl"
 Resource.SignOffset = Vector(12, 0, 0)
 Resource.SignAngle = Angle()
@@ -66,36 +67,7 @@ if SERVER then
         -- To easy identificate prop
         pr.BModResource = self.Identifier
         if obj.modifyEntity then obj.modifyEntity(pr) end
-        ---Collision listener to merge resources
-        ---@param colData CollisionData
-        pr:addCollisionListener(function(colData)
-            if !isValid(obj) then return end
-            local ow = pr:getOwner()
-            if !isValid(ow) or obj.pickedUpBy ~= ow then return end
-            if colData.HitSpeed:getLength() < 500 then return end
-            local ent = colData.HitEntity
-
-            local function tryToMerge()
-                if !ent.BModResource then return end
-                ---@type Resource
-                local res = resource.inited[ent:entIndex()]
-                if res.Identifier ~= obj.Identifier then return end
-                if res.count == maxResource and obj.count == maxResource then return end
-                local diff = maxResource - res.count
-                if obj.count > diff then
-                    res:setCount(self)
-                    obj:setCount(obj.count - diff)
-                else
-                    obj:remove()
-                    res:setCount(res.count + obj.count)
-                end
-                res.ent:emitSound(self.Sounds.Merge)
-                return true
-            end
-            if !tryToMerge() then
-                hook.run("BModResourceInteracted", obj, ent)
-            end
-        end)
+        
         obj.ent = pr
         local function init(ply)
             if !pr:isValid() then return end
@@ -112,6 +84,41 @@ if SERVER then
         -- obj:initHooks()
         return obj
     end
+
+    function Resource:initialize()
+        local pr = self.ent
+        pr.BModResource = self.Identifier
+        self.count = 1
+        ---Collision listener to merge resources
+        ---@param colData CollisionData
+        pr:addCollisionListener(function(colData)
+            if !isValid(self) then return end
+            local ow = pr:getOwner()
+            if !isValid(ow) or self.pickedUpBy ~= ow then return end
+            if colData.HitSpeed:getLength() < 500 then return end
+            local ent = colData.HitEntity
+
+            local function tryToMerge()
+                if !ent.BModResource then return end
+                ---@type Resource
+                local res = resource.inited[ent:entIndex()]
+                if res.Identifier ~= self.Identifier then return end
+                if res.count == maxResource and self.count == maxResource then return end
+                local diff = maxResource - res.count
+                if self.count > diff then
+                    res:setCount(self)
+                    self:setCount(self.count - diff)
+                else
+                    self:remove()
+                    res:setCount(res.count + self.count)
+                end
+                res.ent:emitSound(self.Sounds.Merge)
+                return true
+            end
+            if !tryToMerge() then
+                hook.run("BModResourceInteracted", self, ent)
+            end
+        end)
 
     ---[SERVER] Set count of resource
     ---@param count number Count
