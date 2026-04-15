@@ -284,8 +284,10 @@ resource.register(Ammo)
 ]]--
 
 if SERVER then
-    resource.create("aluminium", chip():getPos() + Vector(0, 50, 16), Angle(), 100, false)
-    resource.create("paper", chip():getPos() + Vector(0, -50, 16), Angle(), 20, false)
+    timer.simple(0.5, function()
+        resource.create("aluminium", chip():getPos() + Vector(0, 50, 16), Angle(), 100, false)
+        resource.create("paper", chip():getPos() + Vector(0, -50, 16), Angle(), 20, false)
+    end)
 else
     enableHud(nil, true)
 end

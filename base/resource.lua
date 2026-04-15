@@ -10,7 +10,7 @@ local ents = require("bmod/base/entity.lua")
 ---Class for resource manipulations
 ---@class resource
 local resource = {}
-resource.registered = {}
+ents.registered = {}
 resource.props = {}
 
 
@@ -34,7 +34,6 @@ Resource.__index = Resource
 setmetatable(Resource, ents.Base)
 Resource.Identifier = "base_resource"
 Resource.Name = "Base"
-Resource.Resource = "base"
 Resource.Model = "models/hunter/blocks/cube05x05x05.mdl"
 Resource.SignOffset = Vector(12, 0, 0)
 Resource.SignAngle = Angle()
@@ -50,7 +49,8 @@ if SERVER then
         local pr = self.ent
         pr:setMass(30)
         pr:setUnbreakable(true)
-        pr.BModResource = self.Resource
+        self.modifyEntity(pr)
+        pr.BModResource = self.Identifier
         ---Collision listener to merge resources
         ---@param colData CollisionData
         pr:addCollisionListener(function(colData)
@@ -64,7 +64,7 @@ if SERVER then
                 if !ent.BModResource then return end
                 ---@type Resource
                 local res = ents.inited[ent:entIndex()]
-                if res.Resource ~= self.Resource then return end
+                if res.Identifier ~= self.Identifier then return end
                 if res.count == maxResource and self.count == maxResource then return end
                 local diff = maxResource - res.count
                 if self.count > diff then
@@ -82,6 +82,11 @@ if SERVER then
             end
         end)
     end
+
+
+    ---[SERVER] Modify resource entity
+    ---@param pr Entity
+    function Resource.modifyEntity(pr) end
 
     ---[SERVER] Set count of resource
     ---@param count number Count
@@ -106,7 +111,7 @@ if SERVER then
         if sprinting and self.count > 1 then
             local newCount = math.ceil(self.count / 2)
             local oldCount = self.count - newCount
-            resource.create(self.Resource, ent:getPos(), ent:getAngles(), newCount, false, true)
+            resource.create(self.Identifier, ent:getPos(), ent:getAngles(), newCount, false, true)
             self:setCount(oldCount)
             self.ent:emitSound(self.Sounds.Split)
         end
@@ -121,6 +126,16 @@ if SERVER then
         if self.ent ~= ent then return end
         self.pickedUpBy = nil
     end
+
+    ---[SERVER] ClientInitialized hook
+    ---@param self Resource
+    ---@param ply Player
+    function Resource.hooks.ClientInitialized(self, ply)
+        net.start("BModResourceCountChanged")
+            net.writeUInt(self.count, 8)
+            net.writeEntity(self.ent)
+        net.send(ply)
+    end
 end
 
 
@@ -130,8 +145,7 @@ if CLIENT then
 
     function Resource:initialize()
         local pr = self.ent
-        pr.BModResource = self.Resource
-        self.count = 1
+        pr.BModResource = self.Identifier
     end
 
     -- Change resource count
@@ -148,7 +162,7 @@ if CLIENT then
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self Resource
     function Resource.hooks.PostDrawTranslucentRenderables(self)
-        -- local resData = resource.registered[self.Resource]
+        -- local resData = ents.registered[self.Identifier]
         local pos = Ply:getPos()
         if !isValid(self.ent) then return end
         if self.ent:getPos():getDistance(pos) > 256 then return end
@@ -170,14 +184,7 @@ end
 ents.register(Resource)
 
 
-resource.Resource = Resource
-
-
----[SHARED] Register new resource to use it after
----@param class Resource
-function resource.register(class)
-    resource.registered[class.Resource] = class
-end
+resource.Base = Resource
 
 
 ---[SHARED] Fast registration for resource
@@ -194,7 +201,7 @@ function resource.fastRegister(name, identifier, model, signOffset, signAngle, m
     class.__index = class
     setmetatable(class, Resource)
     class.Name = name
-    class.Resource = identifier
+    class.Identifier = identifier
     class.Model = model
     class.SignOffset = signOffset
     class.SignAngle = signAngle or Angle()
@@ -203,7 +210,7 @@ function resource.fastRegister(name, identifier, model, signOffset, signAngle, m
         class.Sounds.Merge = mergeSound or class.Sounds.Merge
         class.Sounds.Split = splitSound or class.Sounds.Split
     end
-    resource.register(class)
+    ents.register(class)
     return class
 end
 
@@ -232,7 +239,7 @@ function resource.getResources(ply, getProps)
             local res = ents.inited[pr:entIndex()]
             ---@cast res Resource
             if !isValid(res) then goto cont end
-            local id = res.Resource
+            local id = res.Identifier
             local current = resources[id] or 0
             resources[id] = current + res.count
         elseif getProps then
@@ -280,8 +287,9 @@ if SERVER then
             end
             if existingResource then return existingResource end
         end
-        local newRes = resource.registered[identifier]:new(pos, ang, freeze)
+        local newRes = ents.registered[identifier]:new(pos, ang, freeze)
         newRes:setCount(count)
+        return newRes
     end
 end
 
