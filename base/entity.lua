@@ -26,6 +26,7 @@ ents.hooks = {}
 ---@field hooks table<string, function> Hooks to initialize on this entity
 -- Private fields
 ---@field ent Entity Prop or entity with hooks for interactions. Can be nil on client
+---@field networkedVariables table<string, any> Networked variables, to network it
 local BModEntity = {}
 BModEntity.__index = BModEntity
 BModEntity.Name = "Base"
@@ -34,32 +35,41 @@ BModEntity.Model = "models/hunter/blocks/cube05x05x05.mdl"
 BModEntity.hooks = {}
 
 if SERVER then
-    ---[SERVER] Create new resource entity
-    ---@param pos Vector Position of resource
-    ---@param ang Angle Angle of resource
-    ---@param freeze boolean Freeze a resource
+    ---[SERVER] Create new entity object
     ---@return BModEntity
-    function BModEntity:new(pos, ang, freeze)
+    function BModEntity:new()
+        local obj = setmetatable({ networkedVariables = {} }, self)
+        return obj
+    end
+
+
+    ---@param pos Vector Position of an entity
+    ---@param ang Angle Angle of an entity
+    ---@param freeze boolean Freeze an entity
+    function BModEntity:spawn(pos, ang, freeze)
         -- This prop will be like entity for this resource
         local pr = isstring(self.Model) and prop.create(Vector(), Angle(), self.Model, true) or self.Model()
         pr:setPos(pos)
         pr:setAngles(ang)
         pr:setFrozen(freeze)
-        local obj = setmetatable({ ent = pr }, self)
-        if obj.initialize then obj:initialize() end
+        pr.BModEntity = self.Identifier
+        self.ent = pr
         local function init(ply)
             if !pr:isValid() then return end
             net.start("BModInitializeEntity")
-                net.writeString(obj.Identifier)
-                net.writeEntity(obj.ent)
+                net.writeString(self.Identifier)
+                net.writeTable(self.networkedVariables)
+                net.writeEntity(self.ent)
             net.send(ply)
         end
         -- This hook should initialize resource to new players and
         -- delay it, if creating in same tick with chip
         hook.add("ClientInitialized", "BModInitializeEntity" .. pr:entIndex(), init)
         init(find.allPlayers())
-        ents.inited[pr:entIndex()] = obj
-        return obj
+        ents.inited[pr:entIndex()] = self
+        -- And finally, initialize this entity
+        if self.initialize then self:initialize() end
+        return self
     end
 
 
@@ -68,6 +78,19 @@ if SERVER then
         self.ent:remove()
         ents.inited[self.ent:entIndex()] = nil
         setmetatable(self, nil)
+    end
+
+    ---[SERVER] Set networked variable to entity
+    ---@param key string Key of a variable
+    ---@param value any Value to network
+    function BModEntity:setNWVar(key, value)
+        self.networkedVariables[key] = value
+        if isValid(self.ent) then
+            net.start("BModUpdateNWEntity")
+                net.writeTable(self.networkedVariables)
+                net.writeEntity(self.ent)
+            net.send(find.allPlayers())
+        end
     end
 end
 
@@ -78,11 +101,23 @@ if CLIENT then
         local identifier = net.readString()
         local self = ents.registered[identifier]
         if !self then return end
+        local nwVars = net.readTable()
         ---@param ent Entity
         net.readEntity(function(ent)
-            local obj = setmetatable({ ent = ent }, self)
+            local obj = setmetatable({ ent = ent, networkedVariables = nwVars }, self)
             if obj.initialize then obj:initialize() end
             ents.inited[ent:entIndex()] = obj
+        end)
+    end)
+
+    -- Initialize entity on client
+    net.receive("BModUpdateNWEntity", function()
+        local nwVars = net.readTable()
+        ---@param ent Entity
+        net.readEntity(function(ent)
+            local bent = ents.inited[ent:entIndex()]
+            if !isValid(bent) then return end
+            bent.networkedVariables = nwVars
         end)
     end)
 end
@@ -90,11 +125,19 @@ end
 
 ---[SHARED] Is entity valid
 function BModEntity:isValid()
-    return self ~= nil and self.ent:isValid()
+    return self ~= nil and isValid(self.ent)
 end
 
 ---[SHARED] On initialize entity
 function BModEntity:initialize() end
+
+---[SHARED] Get networked variable or give default
+---@param name string Name of variable
+---@param default any Default variable
+---@return any
+function BModEntity:getNWVar(name, default)
+    return self.networkedVariables[name] or default
+end
 
 
 ents.Base = BModEntity
@@ -115,6 +158,7 @@ function ents.register(class)
             hook.add(name, hookId, function(...)
                 local thisHook = ents.hooks[name]
                 for _, v in pairs(ents.inited) do
+                    if !isValid(v.ent) then goto cont end
                     local currentHook = thisHook[v.Identifier]
                     if !currentHook then goto cont end
                     currentHook(v, ...)
@@ -131,13 +175,10 @@ end
 
 if SERVER then
     ---[SERVER] Create new entity
-    ---@param pos Vector Init position of resource
-    ---@param ang Angle Init angles of resource
     ---@param identifier string Identifier of resource to create
-    ---@param freeze boolean Freeze resource entity
     ---@return BModEntity
-    function ents.create(pos, ang, identifier, freeze)
-        return ents.registered[identifier]:new(pos, ang, freeze)
+    function ents.create(identifier)
+        return ents.registered[identifier]:new()
     end
 end
 
