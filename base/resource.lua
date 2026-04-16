@@ -109,7 +109,9 @@ if SERVER then
         if sprinting and count > 1 then
             local newCount = math.ceil(count / 2)
             local oldCount = count - newCount
-            resource.create(self.Identifier, ent:getPos(), ent:getAngles(), newCount, false, true)
+            timer.simple(0, function()
+                resource.create(self.Identifier, ent:getPos(), ent:getAngles(), newCount, false, true)
+            end)
             self:setCount(oldCount)
             self.ent:emitSound(self.Sounds.Split)
         end
@@ -221,7 +223,7 @@ function resource.getResources(ply, getProps)
             if !isValid(res) then goto cont end
             local id = res.Identifier
             local current = resources[id] or 0
-            resources[id] = current + res.count
+            resources[id] = current + res:getCount()
         elseif getProps then
             local counts = resource.props[pr:getModel()]
             if !counts then goto cont end
@@ -276,6 +278,7 @@ if SERVER then
         ---@cast newRes Resource
         newRes:setCount(count)
         newRes:spawn(pos, ang, freeze)
+        return newRes
     end
 end
 
@@ -329,6 +332,9 @@ local Ceramic = resource.fastRegister(
     "Ceramic", "ceramic", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
     "physics/glass/glass_strain2.wav", "physics/glass/glass_sheet_impact_hard3.wav"
 )
+Ceramic.modifyEntity = function(ent)
+    ent:setMaterial("models/props_building_details/courtyard_template001c_bars")
+end
 
 --[[
 ---@class Oil: Resource
