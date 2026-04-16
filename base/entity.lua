@@ -2,7 +2,7 @@
 ---@author AstricUnion
 ---@shared
 
--- TODO make more cool system for nets
+-- TODO make more cool system for nets (almost done)
 -- TODO OOO: optimize, optimize and again optimize
 
 ---Class for entities manipulations
@@ -152,11 +152,12 @@ function ents.register(class)
     for name, func in pairs(class.hooks) do
         local hooks = ents.hooks[name]
         if !hooks then
+            ents.hooks[name] = {}
+            local thisHook = ents.hooks[name]
             -- This is a system for adding optimized hooks
             -- For all entities we have only one hook
             -- It makes optimization to ~20% on every entity with client Render hooks
             hook.add(name, hookId, function(...)
-                local thisHook = ents.hooks[name]
                 for _, v in pairs(ents.inited) do
                     if !isValid(v.ent) then goto cont end
                     local currentHook = thisHook[v.Identifier]
@@ -165,7 +166,6 @@ function ents.register(class)
                     ::cont::
                 end
             end)
-            ents.hooks[name] = {}
         end
         ents.hooks[name][id] = func
     end
