@@ -201,9 +201,12 @@ local BDOCK = {
 ---@field minH number Panel minimum height
 ---@field docktype BDOCK height (GLua tall)
 ---@field visible boolean Is this panel visible
----@field bgcolor Color Background color of this panel
 ---@field zPos number Number which determinates rendering order
 ---@field mouseInput boolean Get mouse input
+---@field font string Font for panel
+---@field text string Text for panel
+---@field fgcolor Color Foreground color of this panel
+---@field bgcolor Color Background color of this panel
 local BUIPanel = {}
 BUIPanel.__index = BUIPanel
 
@@ -224,7 +227,8 @@ function BUIPanel:new(parent)
         dockPaddings = {left = 0, top = 0, right = 0, bottom = 0},
         minW = 0, minH = 0, docktype = 0, visible = true, zPos = index,
         mouseInput = true,
-        bgcolor = Color(200, 200, 200)
+        font = "Default", text = "Label",
+        bgcolor = Color(200, 200, 200), fgcolor = Color(0, 0, 0)
     }, self)
     if parent then
         parent.children[index] = obj
@@ -290,6 +294,69 @@ end
 ---@return boolean
 function BUIPanel:isVisible()
     return self.visible
+end
+
+
+---Sets the font of the label
+---@param font string The name of the font
+function BUIPanel:setFont(font)
+    self.font = font
+end
+
+---Returns the current font of the label
+---@return string font The name of the current font
+function BUIPanel:getFont()
+    return self.font
+end
+
+---Sets the text value of a panel
+---@param text string The text value to set
+function BUIPanel:setText(text)
+    self.text = text
+end
+
+---Returns the panel's text
+---@return string text The panel's text
+function BUIPanel:getText()
+    return self.text
+end
+
+---Sets the foreground color of a panel
+---@param fgcolor Color 
+function BUIPanel:setFGColor(fgcolor)
+    self.fgcolor = fgcolor
+end
+
+---Returns the panel's foreground color
+---@return Color fgcolor
+function BUIPanel:getFGColor()
+    return self.fgcolor
+end
+
+---Set Z position
+---@param pos number
+function BUIPanel:setZPos(pos)
+    pos = math.clamp(pos, -32768, 32768)
+    self.zPos = pos
+end
+
+---Get Z position
+---@return number
+function BUIPanel:getZPos()
+    return self.zPos
+end
+
+
+---Enable mouse input. If false, will not be clickable
+---@param state boolean
+function BUIPanel:setMouseInputEnabled(state)
+    self.mouseInput = state
+end
+
+---Get mouse input enabled
+---@return boolean state
+function BUIPanel:isMouseInputEnabled()
+    return self.mouseInput
 end
 
 
@@ -433,38 +500,6 @@ function BUIPanel:testHover(x, y)
 end
 
 
----Set Z position
----@param pos number
-function BUIPanel:setZPos(pos)
-    pos = math.clamp(pos, -32768, 32768)
-    self.zPos = pos
-end
-
----Get Z position
----@return number
-function BUIPanel:getZPos()
-    return self.zPos
-end
-
-
----Enable mouse input. If false, will not be clickable
----@param state boolean
-function BUIPanel:setMouseInputEnabled(state)
-    self.mouseInput = state
-end
-
----Get mouse input enabled
----@return boolean state
-function BUIPanel:isMouseInputEnabled()
-    return self.mouseInput
-end
-
----Get Z position
----@return number
-function BUIPanel:getZPos()
-    return self.zPos
-end
-
 ---Is focused
 ---@return boolean
 function BUIPanel:hasFocus()
@@ -540,62 +575,14 @@ bgui.focus = canvas
 
 ---Label class
 ---@class BUILabel: BUIPanel
----@field font string
----@field text string
----@field fgcolor Color
 local BUILabel = setmetatable({}, BUIPanel)
 BUILabel.__index = BUILabel
-
-
-function BUILabel:init()
-    self.font = "Default"
-    self.text = "Label"
-    self.fgcolor = Color(0, 0, 0)
-end
-
----Sets the font of the label
----@param font string The name of the font
-function BUILabel:setFont(font)
-    self.font = font
-end
-
----Returns the current font of the label
----@return string font The name of the current font
-function BUILabel:getFont()
-    return self.font
-end
-
----Sets the text value of a panel
----@param text string The text value to set
-function BUILabel:setText(text)
-    self.text = text
-end
-
----Returns the panel's text
----@return string text The panel's text
-function BUILabel:getText()
-    return self.text
-end
-
----Sets the foreground color of a panel
----@param fgcolor Color 
-function BUILabel:setFGColor(fgcolor)
-    self.fgcolor = fgcolor
-end
-
----Returns the panel's foreground color
----@return Color fgcolor
-function BUILabel:getFGColor()
-    return self.fgcolor
-end
-
 
 function BUILabel:paint(x, y)
     render.setFont(self.font)
     render.setColor(self.fgcolor)
     render.drawSimpleText(x, y, self.text)
 end
-
 
 function BUILabel:onMouseReleased(key)
     if !self:testHover(bgui.cursorX, bgui.cursorY) then return end
@@ -608,35 +595,56 @@ function BUILabel:onMouseReleased(key)
     if func then func(self) end
 end
 
-
 function BUILabel:doClick() end
 function BUILabel:doMiddleClick() end
 function BUILabel:doRightClick() end
 
-
 bgui.register("BUILabel", BUILabel)
 
 
---[[test example
+---Button class
+---@class BUIButton: BUILabel
+local BUIButton = setmetatable({}, BUILabel)
+BUIButton.__index = BUIButton
+
+function BUIButton:paint(x, y, w, h)
+    render.setFont(self.font)
+    local multiplier = self:hasFocus() and 1.5 or 2
+    render.setColor(Color(
+        self.bgcolor.r / multiplier,
+        self.bgcolor.g / multiplier,
+        self.bgcolor.b / multiplier
+    ))
+    render.drawRect(x, y, w, h)
+    local isHover = self:testHover(bgui.cursorX, bgui.cursorY)
+    render.setColor(self.bgcolor * (isHover and 1.2 or 1))
+    render.drawRect(x + 2, y + 2, w - 4, h - 4)
+    render.setColor(self.fgcolor)
+    render.drawSimpleText(x + w / 2, y + h / 2, self.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+end
+
+bgui.register("BUIButton", BUIButton)
+
+
+--[[test example]]
 local pnl = bgui.create("BUIPanel")
 pnl:setSize(256, 256)
 pnl:dockPadding(10, 10, 10, 10)
+
 local pnl2 = bgui.create("BUIPanel", pnl)
 pnl2.bgcolor = Color(50, 50, 50)
 pnl2:dockMargin(20, 20, 20, 20)
-local pnl3 = bgui.create("BUILabel", pnl2)
-pnl3.bgcolor = Color(150, 0, 0)
+
+local pnl3 = bgui.create("BUIButton", pnl2)
 pnl3.doClick = function()
     print("yee")
 end
+
 timer.simple(1, function()
     pnl:center()
     pnl2:dock(BDOCK.FILL)
-    pnl3:dock(BDOCK.LEFT)
-    timer.simple(2, function()
-        pnl3:remove()
-    end)
+    pnl3:center()
 end)
+
 enableHud(nil, true)
 input.enableCursor(true)
-]]
