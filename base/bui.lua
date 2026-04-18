@@ -15,7 +15,7 @@
 ---@field cursorX number Current screen width
 ---@field cursorY number Current screen height
 ---@field cursorEnabled boolean Is cursor enabled now
----@field canvas BUIPanel? Canvas (sized to screen)
+---@field canvas BUIPanel? Canvas (default sized to screen)
 local bgui = {}
 bgui.inited = {}
 bgui.registered = {}
@@ -94,7 +94,7 @@ hook.add("DrawHUD", "BUIPaint", function()
         if !v.visible then goto cont end
         local x, y = v:getPos()
         local w, h = v:getSize()
-        render.enableScissorRect(x, y, x + w, y + h)
+        render.enableScissorRect(v.boundX, v.boundY, v.boundX1, v.boundY2)
         v:paint(x, y, w, h)
         render.disableScissorRect()
         render.setColor(Color(255, 255, 255, 255))
@@ -197,8 +197,12 @@ local BDOCK = {
 ---@field dockH number Panel height on dock
 ---@field dockMargins Margins Margins on dock
 ---@field dockPaddings Margins Padding on dock
----@field minW number Panel minimum width
----@field minH number Panel minimum height
+---@field minW number Panel minimal width
+---@field minH number Panel minimal height
+---@field boundX number Panel render bounds minimum X
+---@field boundY number Panel render bounds minimum Y
+---@field boundX2 number Panel render bounds maximum X
+---@field boundY2 number Panel render bounds maximum Y
 ---@field docktype BDOCK height (GLua tall)
 ---@field visible boolean Is this panel visible
 ---@field zPos number Number which determinates rendering order
@@ -262,6 +266,7 @@ end
 function BUIPanel:setPos(x, y)
     self.x = x
     self.y = y
+    self:invalidateLayout()
 end
 
 ---Get size of this panel. Use this to draw
@@ -359,12 +364,21 @@ function BUIPanel:isMouseInputEnabled()
     return self.mouseInput
 end
 
+---Focuses the panel and enables it to receive input
+function BUIPanel:makePopup()
+    self.mouseInput = true
+    bgui.focus = self
+end
+
 
 ---Invalidate layout. Will call hook performLayout
 function BUIPanel:invalidateLayout()
+    local x, y = self:getPos()
     local w, h = self:getSize()
     local pad = self.dockPaddings
+    -- b - bounds, rb - render bounds
     local bX, bY, bW, bH = pad.left, pad.top, w - pad.right - pad.left, h - pad.bottom - pad.top
+    local rbX, rbY, rbX2, rbY2 = x + bX, y + bY, x + bW, y + bH
     for _, v in pairs(self.children) do
         if v.docktype == 0 then goto cont end
         v.dockX = bX + v.dockMargins.left
@@ -386,6 +400,7 @@ function BUIPanel:invalidateLayout()
             v.dockH = v.h
             bH = bH - v.h
         end
+        v.boundX, v.boundY, v.boundX2, v.boundY2 = rbX, rbY, rbX2, rbY2
         v:invalidateLayout()
         ::cont::
     end
@@ -490,6 +505,11 @@ end
 
 ---Remove panel
 function BUIPanel:remove()
+    for _, v in pairs(self.children) do
+        if !isValid(v) then goto cont end
+        v:remove()
+        ::cont::
+    end
     bgui.inited[self.index] = nil
     setmetatable(self, nil)
 end
@@ -649,3 +669,5 @@ end
 
 enableHud(nil, true)
 input.enableCursor(true)
+
+return bgui
