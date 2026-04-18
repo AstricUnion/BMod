@@ -364,22 +364,27 @@ end
 function BUIPanel:invalidateLayout()
     local w, h = self:getSize()
     local pad = self.dockPaddings
+    local bX, bY, bW, bH = pad.left, pad.top, w - pad.right - pad.left, h - pad.bottom - pad.top
     for _, v in pairs(self.children) do
         if v.docktype == 0 then goto cont end
-        v.dockX = v.dockMargins.left + pad.left
-        v.dockY = v.dockMargins.top + pad.top
-        v.dockW = (w - v.dockMargins.right * 2 - pad.right * 2)
-        v.dockH = (h - v.dockMargins.bottom * 2 - pad.bottom * 2)
+        v.dockX = bX + v.dockMargins.left
+        v.dockY = bY + v.dockMargins.top
+        v.dockW = bW - v.dockMargins.right * 2
+        v.dockH = bH - v.dockMargins.bottom * 2
         if v.docktype == BDOCK.LEFT then
             v.dockW = v.w
+            bX = bX + v.w
         elseif v.docktype == BDOCK.RIGHT then
             v.dockX = v.dockW - v.w + v.dockMargins.right + pad.right
             v.dockW = v.w
+            bW = bW - v.w
         elseif v.docktype == BDOCK.TOP then
             v.dockH = v.h
+            bY = bY + v.h
         elseif v.docktype == BDOCK.BOTTOM then
             v.dockY = v.dockH - v.h + v.dockMargins.left + pad.left
             v.dockH = v.h
+            bH = bH - v.h
         end
         v:invalidateLayout()
         ::cont::
@@ -634,17 +639,13 @@ pnl:dockPadding(10, 10, 10, 10)
 local pnl2 = bgui.create("BUIPanel", pnl)
 pnl2.bgcolor = Color(50, 50, 50)
 pnl2:dockMargin(20, 20, 20, 20)
+pnl2:dock(BDOCK.LEFT)
 
-local pnl3 = bgui.create("BUIButton", pnl2)
+local pnl3 = bgui.create("BUIButton", pnl)
+pnl3:dock(BDOCK.LEFT)
 pnl3.doClick = function()
     print("yee")
 end
-
-timer.simple(1, function()
-    pnl:center()
-    pnl2:dock(BDOCK.FILL)
-    pnl3:center()
-end)
 
 enableHud(nil, true)
 input.enableCursor(true)
