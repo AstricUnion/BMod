@@ -1,13 +1,12 @@
 ---@name Crafting table
 ---@author AstricUnion
 ---@shared
----@include bmod/base/entity.lua
----@include bmod/base/resource.lua
 
 ---@class ents
-local ents = require("bmod/base/entity.lua")
+local ents = ents
+
 ---@class resource
-local resource = require("bmod/base/resource.lua")
+local resource = resource
 
 ---Lib from AstricUnion (TODO: remade it)
 ---@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/holos.lua as holos
@@ -189,7 +188,3 @@ end
 
 ents.register(CraftingTable)
 
-
-if SERVER then
-    ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
-end

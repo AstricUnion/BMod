@@ -1,4 +1,4 @@
----@name BUI (BMod User Interface)
+---@name BGUI (BMod Graphical User Interface)
 ---@author AstricUnion
 ---@client
 
@@ -6,16 +6,16 @@
 
 ---Class to manipulate UI
 ---@class bgui
----@field inited table<number, BUIPanel> Inited panels
----@field ordered table<number, BUIPanel> Ordered panels
----@field registered table<string, BUIPanel> Registrated classes
----@field focus BUIPanel? Focused panel
+---@field inited table<number, BPanel> Inited panels
+---@field ordered table<number, BPanel> Ordered panels
+---@field registered table<string, BPanel> Registrated classes
+---@field focus BPanel? Focused panel
 ---@field screenWidth number Current screen width
 ---@field screenHeight number Current screen height
 ---@field cursorX number Current screen width
 ---@field cursorY number Current screen height
 ---@field cursorEnabled boolean Is cursor enabled now
----@field canvas BUIPanel? Canvas (default sized to screen)
+---@field canvas BPanel? Canvas (default sized to screen)
 local bgui = {}
 bgui.inited = {}
 bgui.registered = {}
@@ -23,17 +23,17 @@ bgui.cursorX, bgui.cursorY = input.getCursorPos()
 bgui.cursorEnabled = false
 
 
----Register new BUI element
+---Register new B element
 ---@param classname string Panel class name, to identificate it
----@param panelclass BUIPanel Panel class to create new GUI panel
+---@param panelclass BPanel Panel class to create new GUI panel
 function bgui.register(classname, panelclass)
     bgui.registered[classname] = panelclass
 end
 
----Create new BUI element
----@generic T: BUIPanel
+---Create new B element
+---@generic T: BPanel
 ---@param classname `T` Panel class name, to identificate it
----@param parent BUIPanel? Parent object
+---@param parent BPanel? Parent object
 ---@return T
 function bgui.create(classname, parent)
     return bgui.registered[classname]:new(parent or bgui.canvas)
@@ -68,7 +68,7 @@ input.enableCursor = function(state)
 end
 
 
-hook.add("DrawHUD", "BUIPaint", function()
+hook.add("DrawHUD", "BPaint", function()
     local sw, sh = render.getGameResolution()
     if sw ~= bgui.screenWidth or sh ~= bgui.screenHeight then
         bgui.screenWidth = sw
@@ -90,11 +90,13 @@ hook.add("DrawHUD", "BUIPaint", function()
     end)
     bgui.ordered = ordered
     for _, v in pairs(ordered) do
-        if !isValid(v) then return end
+        if !isValid(v) then goto cont end
         if !v.visible then goto cont end
         local x, y = v:getPos()
         local w, h = v:getSize()
-        render.enableScissorRect(v.boundX, v.boundY, v.boundX1, v.boundY2)
+        if v.parent and v.boundX then
+            render.enableScissorRect(v.boundX, v.boundY, v.boundX2, v.boundY2)
+        end
         v:paint(x, y, w, h)
         render.disableScissorRect()
         render.setColor(Color(255, 255, 255, 255))
@@ -105,7 +107,7 @@ hook.add("DrawHUD", "BUIPaint", function()
 end)
 
 
-hook.add("Think", "BUIThink", function()
+hook.add("Think", "BThink", function()
     for _, v in pairs(bgui.inited) do
         v:think()
     end
@@ -120,7 +122,7 @@ local function isMouse(key)
     return false
 end
 
-hook.add("InputPressed", "BUIInputPressed", function(key)
+hook.add("InputPressed", "BInputPressed", function(key)
     if input.getCursorVisible() then
         if isMouse(key) then
             local x, y = bgui.cursorX, bgui.cursorY
@@ -131,7 +133,7 @@ hook.add("InputPressed", "BUIInputPressed", function(key)
                 if !v.mouseInput then goto cont end
                 if focus == v then
                     if v:onMousePressed(key) then return end
-                elseif v:testHover(x, y) and ((focusHovered and v.zPos > focus.zPos) or (!focusHovered and v.zPos < focus.zPos)) then
+                elseif v:testHover(x, y) then
                     bgui.focus = v
                     v:onMousePressed(key)
                     return
@@ -142,7 +144,7 @@ hook.add("InputPressed", "BUIInputPressed", function(key)
     end
 end)
 
-hook.add("InputReleased", "BUIInputReleased", function(key)
+hook.add("InputReleased", "BInputReleased", function(key)
     if input.getCursorVisible() then
         if isMouse(key) then
             for _, v in pairs(bgui.inited) do
@@ -154,7 +156,7 @@ hook.add("InputReleased", "BUIInputReleased", function(key)
     end
 end)
 
-hook.add("MouseWheeled", "BUIMouseWheeled", function(delta)
+hook.add("MouseWheeled", "BMouseWheeled", function(delta)
     for _, v in pairs(bgui.inited) do
         if !v.mouseInput then goto cont end
         if v:onMouseWheeled(delta) then return end
@@ -174,6 +176,8 @@ local BDOCK = {
     BOTTOM = 5
 }
 
+bgui.DOCK = BDOCK
+
 
 -----[ Base class ]-----
 ---@class Margins
@@ -183,10 +187,10 @@ local BDOCK = {
 ---@field bottom number
 
 ---Base class for UI elements
----@class BUIPanel
+---@class BPanel
 ---@field index number Index of panel
----@field parent BUIPanel? Parent of this panel. If not nil, panel will be relative to it
----@field children BUIPanel[] Children of this panel
+---@field parent BPanel? Parent of this panel. If not nil, panel will be relative to it
+---@field children BPanel[] Children of this panel
 ---@field x number Local panel position by X
 ---@field y number Local panel position by Y
 ---@field w number Panel width
@@ -211,14 +215,14 @@ local BDOCK = {
 ---@field text string Text for panel
 ---@field fgcolor Color Foreground color of this panel
 ---@field bgcolor Color Background color of this panel
-local BUIPanel = {}
-BUIPanel.__index = BUIPanel
+local BPanel = {}
+BPanel.__index = BPanel
 
 
 ---Create new panel
----@param parent BUIPanel? Parent of this panel. If not nil, panel will be relative to it
----@return BUIPanel
-function BUIPanel:new(parent)
+---@param parent BPanel? Parent of this panel. If not nil, panel will be relative to it
+---@return BPanel
+function BPanel:new(parent)
     local x, y, w, h = 0, 0, 128, 128
     local index = #bgui.inited+1
     local obj = setmetatable({
@@ -246,7 +250,7 @@ end
 
 ---Get global position of this panel. Use this to draw
 ---@return number x, number y
-function BUIPanel:getPos()
+function BPanel:getPos()
     local cond = self.docktype > 0
     local selfX = cond and self.dockX or self.x
     local selfY = cond and self.dockY or self.y
@@ -263,7 +267,7 @@ end
 ---Set local position of this panel
 ---@param x number
 ---@param y number
-function BUIPanel:setPos(x, y)
+function BPanel:setPos(x, y)
     self.x = x
     self.y = y
     self:invalidateLayout()
@@ -271,7 +275,7 @@ end
 
 ---Get size of this panel. Use this to draw
 ---@return number w, number h
-function BUIPanel:getSize()
+function BPanel:getSize()
     local cond = self.docktype > 0
     local selfW = cond and self.dockW or self.w
     local selfH = cond and self.dockH or self.h
@@ -282,103 +286,105 @@ end
 ---Set size for this panel
 ---@param w number
 ---@param h number
-function BUIPanel:setSize(w, h)
+function BPanel:setSize(w, h)
     self.w = w
     self.h = h
     self:invalidateLayout()
+    self:onSizeChanged(w, h)
 end
 
 
 ---Set visibility of this panel
 ---@param state boolean
-function BUIPanel:setVisible(state)
+function BPanel:setVisible(state)
     self.visible = state
 end
 
 ---Get visibility of this panel
 ---@return boolean
-function BUIPanel:isVisible()
+function BPanel:isVisible()
     return self.visible
 end
 
 
 ---Sets the font of the label
 ---@param font string The name of the font
-function BUIPanel:setFont(font)
+function BPanel:setFont(font)
     self.font = font
 end
 
 ---Returns the current font of the label
 ---@return string font The name of the current font
-function BUIPanel:getFont()
+function BPanel:getFont()
     return self.font
 end
 
 ---Sets the text value of a panel
 ---@param text string The text value to set
-function BUIPanel:setText(text)
+function BPanel:setText(text)
     self.text = text
 end
 
 ---Returns the panel's text
 ---@return string text The panel's text
-function BUIPanel:getText()
+function BPanel:getText()
     return self.text
 end
 
 ---Sets the foreground color of a panel
 ---@param fgcolor Color 
-function BUIPanel:setFGColor(fgcolor)
+function BPanel:setFGColor(fgcolor)
     self.fgcolor = fgcolor
 end
 
 ---Returns the panel's foreground color
 ---@return Color fgcolor
-function BUIPanel:getFGColor()
+function BPanel:getFGColor()
     return self.fgcolor
 end
 
 ---Set Z position
 ---@param pos number
-function BUIPanel:setZPos(pos)
+function BPanel:setZPos(pos)
     pos = math.clamp(pos, -32768, 32768)
     self.zPos = pos
 end
 
 ---Get Z position
 ---@return number
-function BUIPanel:getZPos()
+function BPanel:getZPos()
     return self.zPos
 end
 
 
 ---Enable mouse input. If false, will not be clickable
 ---@param state boolean
-function BUIPanel:setMouseInputEnabled(state)
+function BPanel:setMouseInputEnabled(state)
     self.mouseInput = state
 end
 
 ---Get mouse input enabled
 ---@return boolean state
-function BUIPanel:isMouseInputEnabled()
+function BPanel:isMouseInputEnabled()
     return self.mouseInput
 end
 
 ---Focuses the panel and enables it to receive input
-function BUIPanel:makePopup()
+function BPanel:makePopup()
     self.mouseInput = true
     bgui.focus = self
 end
 
 
 ---Invalidate layout. Will call hook performLayout
-function BUIPanel:invalidateLayout()
+function BPanel:invalidateLayout()
     local x, y = self:getPos()
     local w, h = self:getSize()
     local pad = self.dockPaddings
     -- b - bounds, rb - render bounds
     local bX, bY, bW, bH = pad.left, pad.top, w - pad.right - pad.left, h - pad.bottom - pad.top
-    local rbX, rbY, rbX2, rbY2 = x + bX, y + bY, x + bW, y + bH
+    local rbX, rbY  = x + bX, y + bY
+    local rbX2, rbY2 = rbX + bW, rbY + bH
     for _, v in pairs(self.children) do
         if v.docktype == 0 then goto cont end
         v.dockX = bX + v.dockMargins.left
@@ -387,18 +393,18 @@ function BUIPanel:invalidateLayout()
         v.dockH = bH - v.dockMargins.bottom * 2
         if v.docktype == BDOCK.LEFT then
             v.dockW = v.w
-            bX = bX + v.w
+            bX = bX + v.w + v.dockMargins.left
         elseif v.docktype == BDOCK.RIGHT then
             v.dockX = v.dockW - v.w + v.dockMargins.right + pad.right
             v.dockW = v.w
-            bW = bW - v.w
+            bW = bW - v.w - v.dockMargins.right
         elseif v.docktype == BDOCK.TOP then
             v.dockH = v.h
-            bY = bY + v.h
+            bY = bY + v.h + v.dockMargins.top + v.dockMargins.bottom
         elseif v.docktype == BDOCK.BOTTOM then
             v.dockY = v.dockH - v.h + v.dockMargins.left + pad.left
             v.dockH = v.h
-            bH = bH - v.h
+            bH = bH - v.h - v.dockMargins.bottom - v.dockMargins.top
         end
         v.boundX, v.boundY, v.boundX2, v.boundY2 = rbX, rbY, rbX2, rbY2
         v:invalidateLayout()
@@ -410,7 +416,7 @@ end
 
 ---Invalidate parent layout. Will call hook performLayout on parent
 ---You can safely call it
-function BUIPanel:invalidateParent()
+function BPanel:invalidateParent()
     if self.parent then
         self.parent:invalidateLayout()
     end
@@ -419,7 +425,7 @@ end
 
 ---Invalidate children layout. Will call hook performLayout on children
 ---@param recursive boolean?
-function BUIPanel:invalidateChildren(recursive)
+function BPanel:invalidateChildren(recursive)
     for _, v in pairs(self.children) do
         v:invalidateLayout()
         if recursive then
@@ -431,7 +437,7 @@ end
 
 ---Dock this panel on parent
 ---@param docktype BDOCK Dock type
-function BUIPanel:dock(docktype)
+function BPanel:dock(docktype)
     self.docktype = docktype
     self:invalidateParent()
 end
@@ -442,7 +448,7 @@ end
 ---@param top number
 ---@param right number
 ---@param bottom number
-function BUIPanel:dockMargin(left, top, right, bottom)
+function BPanel:dockMargin(left, top, right, bottom)
     self.dockMargins = {
         left = left,
         top = top,
@@ -458,7 +464,7 @@ end
 ---@param top number
 ---@param right number
 ---@param bottom number
-function BUIPanel:dockPadding(left, top, right, bottom)
+function BPanel:dockPadding(left, top, right, bottom)
     self.dockPaddings = {
         left = left,
         top = top,
@@ -468,10 +474,17 @@ function BUIPanel:dockPadding(left, top, right, bottom)
     self:invalidateLayout()
 end
 
+---Get docked padding
+---@return number left, number top, number right, number bottom
+function BPanel:getDockPadding()
+    local pad = self.dockPaddings
+    return pad.left, pad.top, pad.right, pad.bottom
+end
+
 
 ---Centers the panel horizontally with specified fraction
 ---@param fraction number? Center fraction. Default 0.5
-function BUIPanel:centerHorizontal(fraction)
+function BPanel:centerHorizontal(fraction)
     if self.docktype > 0 then return end
     fraction = fraction or 0.5
     local _, h = self.parent:getSize()
@@ -481,7 +494,7 @@ end
 
 ---Centers the panel vertically with specified fraction
 ---@param fraction number? Center fraction. Default 0.5
-function BUIPanel:centerVertical(fraction)
+function BPanel:centerVertical(fraction)
     if self.docktype > 0 then return end
     fraction = fraction or 0.5
     local w, _ = self.parent:getSize()
@@ -489,7 +502,7 @@ function BUIPanel:centerVertical(fraction)
 end
 
 ---Centers the panel on its parent.
-function BUIPanel:center()
+function BPanel:center()
     if self.docktype > 0 then return end
     local w, h = self.parent:getSize()
     local selfW, selfH = self:getSize()
@@ -498,19 +511,21 @@ end
 
 
 ---Is panel valid
-function BUIPanel:isValid()
+function BPanel:isValid()
     return self ~= nil
 end
 
 
 ---Remove panel
-function BUIPanel:remove()
+function BPanel:remove()
     for _, v in pairs(self.children) do
         if !isValid(v) then goto cont end
         v:remove()
         ::cont::
     end
+    self:onRemove()
     bgui.inited[self.index] = nil
+    bgui.focus = bgui.canvas
     setmetatable(self, nil)
 end
 
@@ -518,7 +533,7 @@ end
 ---Is position hovering panel
 ---@param x number
 ---@param y number
-function BUIPanel:testHover(x, y)
+function BPanel:testHover(x, y)
     local selfX, selfY = self:getPos()
     local selfW, selfH = self:getSize()
     return (x >= selfX and x < selfX + selfW) and (y >= selfY and y < selfY + selfH)
@@ -527,68 +542,75 @@ end
 
 ---Is focused
 ---@return boolean
-function BUIPanel:hasFocus()
+function BPanel:hasFocus()
     return bgui.focus == self
 end
 
 
 ---On panel initialize
-function BUIPanel:init() end
+function BPanel:init() end
 
 ---Paint in panel
 ---@param x number X position to paint
 ---@param y number Y position to paint
 ---@param w number Width to paint
 ---@param h number Height to paint
-function BUIPanel:paint(x, y, w, h)
-    local multiplier = self:hasFocus() and 1.5 or 2
+function BPanel:paint(x, y, w, h)
+    local multiplier = 1.8
     render.setColor(Color(
         self.bgcolor.r / multiplier,
         self.bgcolor.g / multiplier,
-        self.bgcolor.b / multiplier
+        self.bgcolor.b / multiplier,
+        self.bgcolor.a
     ))
     render.drawRect(x, y, w, h)
     render.setColor(self.bgcolor)
-    render.drawRect(x + 2, y + 2, w - 4, h - 4)
+    render.drawRect(x + 1, y + 1, w - 2, h - 2)
 end
 
 ---Perform layout. Can be called with invalidateLayout
-function BUIPanel:performLayout() end
+function BPanel:performLayout() end
+
+---Called just after the panel size changes.
+function BPanel:onSizeChanged(newWidth, newHeight) end
+
+---Called just after remove panel
+function BPanel:onRemove() end
 
 ---Think hook. To place server tick addicted functions
-function BUIPanel:think() end
+function BPanel:think() end
 
 ---Called whenever mouse button pressed
 ---@param key MOUSE
 ---@return boolean? suppress Return true to suppress default action
-function BUIPanel:onMousePressed(key) end
+function BPanel:onMousePressed(key) end
 
 ---Called whenever mouse button released
 ---@param key MOUSE
 ---@return boolean? suppress Return true to suppress default action
-function BUIPanel:onMouseReleased(key) end
+function BPanel:onMouseReleased(key) end
 
 ---Called whenever the mouse wheel was used
 ---@param delta number Scroll delta
 ---@return boolean? suppress Return true to suppress default action
-function BUIPanel:onMouseWheeled(delta) end
+function BPanel:onMouseWheeled(delta) end
 
 ---Called whenever the cursor entered the panels bounds
-function BUIPanel:onCursorEntered() end
+function BPanel:onCursorEntered() end
 
 ---Called whenever the cursor left the panels bounds.
-function BUIPanel:onCursorExited() end
+function BPanel:onCursorExited() end
 
 ---Called whenever the cursor left the panels bounds.
 ---@param x number X position relative to panel
 ---@param y number Y position relative to panel
-function BUIPanel:onCursorMoved(x, y) end
+function BPanel:onCursorMoved(x, y) end
 
 
-bgui.register("BUIPanel", BUIPanel)
+bgui.register("BPanel", BPanel)
 
 -- Create canvas (our screen)
-local canvas = bgui.create("BUIPanel")
+local canvas = bgui.create("BPanel")
 canvas.visible = false
 canvas.mouseInput = false
 canvas.zPos = -32769
@@ -598,18 +620,19 @@ bgui.focus = canvas
 
 -----[ Other classes ]-----
 
----Label class
----@class BUILabel: BUIPanel
-local BUILabel = setmetatable({}, BUIPanel)
-BUILabel.__index = BUILabel
 
-function BUILabel:paint(x, y)
+---Label class
+---@class BLabel: BPanel
+local BLabel = setmetatable({}, BPanel)
+BLabel.__index = BLabel
+
+function BLabel:paint(x, y)
     render.setFont(self.font)
     render.setColor(self.fgcolor)
     render.drawSimpleText(x, y, self.text)
 end
 
-function BUILabel:onMouseReleased(key)
+function BLabel:onMouseReleased(key)
     if !self:testHover(bgui.cursorX, bgui.cursorY) then return end
     local funcs = {
         [MOUSE.MOUSE1] = self.doClick,
@@ -620,21 +643,21 @@ function BUILabel:onMouseReleased(key)
     if func then func(self) end
 end
 
-function BUILabel:doClick() end
-function BUILabel:doMiddleClick() end
-function BUILabel:doRightClick() end
+function BLabel:doClick() end
+function BLabel:doMiddleClick() end
+function BLabel:doRightClick() end
 
-bgui.register("BUILabel", BUILabel)
+bgui.register("BLabel", BLabel)
 
 
 ---Button class
----@class BUIButton: BUILabel
-local BUIButton = setmetatable({}, BUILabel)
-BUIButton.__index = BUIButton
+---@class BButton: BLabel
+local BButton = setmetatable({}, BLabel)
+BButton.__index = BButton
 
-function BUIButton:paint(x, y, w, h)
+function BButton:paint(x, y, w, h)
     render.setFont(self.font)
-    local multiplier = self:hasFocus() and 1.5 or 2
+    local multiplier = 1.5
     render.setColor(Color(
         self.bgcolor.r / multiplier,
         self.bgcolor.g / multiplier,
@@ -642,32 +665,134 @@ function BUIButton:paint(x, y, w, h)
     ))
     render.drawRect(x, y, w, h)
     local isHover = self:testHover(bgui.cursorX, bgui.cursorY)
-    render.setColor(self.bgcolor * (isHover and 1.2 or 1))
+    render.setColor(self.bgcolor * (isHover and (input.isMouseDown(MOUSE.MOUSE1) and 1.5 or 1.2) or 1))
     render.drawRect(x + 2, y + 2, w - 4, h - 4)
     render.setColor(self.fgcolor)
     render.drawSimpleText(x + w / 2, y + h / 2, self.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
 end
 
-bgui.register("BUIButton", BUIButton)
+bgui.register("BButton", BButton)
 
 
---[[test example]]
-local pnl = bgui.create("BUIPanel")
-pnl:setSize(256, 256)
-pnl:dockPadding(10, 10, 10, 10)
+---Frame class
+---@class BFrame: BPanel
+---@field dragging boolean
+---@field draggingOffsetX number
+---@field draggingOffsetY number
+---@field exitButton BButton
+local BFrame = setmetatable({}, BPanel)
+BFrame.__index = BFrame
 
-local pnl2 = bgui.create("BUIPanel", pnl)
-pnl2.bgcolor = Color(50, 50, 50)
-pnl2:dockMargin(20, 20, 20, 20)
-pnl2:dock(BDOCK.LEFT)
-
-local pnl3 = bgui.create("BUIButton", pnl)
-pnl3:dock(BDOCK.LEFT)
-pnl3.doClick = function()
-    print("yee")
+function BFrame:init()
+    self.bgcolor = Color(120, 120, 120)
+    self.fgcolor = Color(255, 255, 255)
+    self.dragging = false
+    self.exitButton = bgui.create("BButton", self)
+    self.exitButton:setSize(24, 16)
+    self.exitButton:setPos(128 - 30, 6)
+    self.exitButton:setText("x")
+    self.exitButton.doClick = function(btn)
+        self:remove()
+    end
+    self:dockPadding(4, 30, 4, 4)
 end
 
-enableHud(nil, true)
-input.enableCursor(true)
+function BFrame:onSizeChanged(w, _)
+    self.exitButton:setPos(w - 30, 6)
+end
+
+function BFrame:paint(x, y, w, h)
+    render.setColor(self.bgcolor)
+    render.drawRect(x, y, w, h)
+    local multiplier = 1.5
+    render.setColor(Color(
+        self.bgcolor.r / multiplier,
+        self.bgcolor.g / multiplier,
+        self.bgcolor.b / multiplier
+    ))
+    render.drawRect(x + 2, y + 2, w - 4, 24)
+    render.setFont(self.font)
+    render.setColor(self.fgcolor)
+    render.drawSimpleText(x + 8, y + 8, self.text)
+end
+
+function BFrame:onMousePressed(key)
+    local x, y = self:getPos()
+    if key ~= MOUSE.MOUSE1 or !self:testHover(bgui.cursorX, bgui.cursorY) or bgui.cursorY - y > 32 then return end
+    self.dragging = true
+    self.draggingOffsetX, self.draggingOffsetY = bgui.cursorX - x, bgui.cursorY - y
+end
+
+function BFrame:onMouseReleased(key)
+    if self.dragging and key ~= MOUSE.MOUSE1 then return end
+    self.dragging = false
+end
+
+function BFrame:onCursorMoved(x, y)
+    if !self.dragging then return end
+    self:setPos(bgui.cursorX - self.draggingOffsetX, bgui.cursorY - self.draggingOffsetY)
+end
+
+function BFrame:onRemove()
+    local meta = getmetatable(self)
+    for i, v in ipairs(table.reverse(bgui.ordered)) do
+        if v.index == self.index then goto cont end
+        if getmetatable(v) == meta then
+            return
+        end
+        ::cont::
+    end
+    input.enableCursor(false)
+end
+
+bgui.register("BFrame", BFrame)
+
+
+---BModelPanel class
+---@class BModelPanel: BPanel
+---@field entity Hologram
+local BModelPanel = setmetatable({}, BPanel)
+BModelPanel.__index = BModelPanel
+
+function BModelPanel:init()
+    local holo = hologram.create(Vector(), Angle(), "models/holograms/cube.mdl")
+    if !holo then return end
+    holo:setNoDraw(true)
+    self.entity = holo
+end
+
+function BModelPanel:paint(x, y, w, h)
+    ---@type RenderCamData
+    local camData = {
+        type = "3D",
+        x = x, y = y,
+        w = w, h = h, aspect = w / h,
+        fov = 42,
+        origin = Vector(50, 0, 55),
+        angles = Angle(15, 180, 0)
+    }
+    render.pushViewMatrix(camData)
+        self.entity:draw()
+    render.popViewMatrix()
+    render.drawRectOutline(x, y, w, h)
+end
+
+---Set model for this panel
+---@param model string
+function BModelPanel:setModel(model)
+    self.entity:setModel(model)
+end
+
+
+function BModelPanel:onRemove()
+    if isValid(self.entity) then
+        self.entity:remove()
+    end
+end
+
+
+bgui.register("BModelPanel", BModelPanel)
+
+
 
 return bgui

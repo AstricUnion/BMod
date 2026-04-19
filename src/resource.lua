@@ -1,10 +1,9 @@
 ---@name BMod Resource Base
 ---@author AstricUnion
 ---@shared
----@include bmod/base/entity.lua
 
 ---@class ents
-local ents = require("bmod/base/entity.lua")
+local ents = ents
 
 
 ---Class for resource manipulations
@@ -207,29 +206,42 @@ function resource.addProp(model, resources)
 end
 
 
+---@class ResourceInfo
+---@field ent Entity
+---@field count number
+
+---@class FoundResources
+---@field count number
+---@field ents ResourceInfo[]
+
 ---[SHARED] Get player's available resources
 ---@param ply Player Player to inspect
 ---@param getProps boolean? Take props as a resource
----@return table<string, number> resources Key is resource type, value is amount of this resource
+---@return table<string, FoundResources> resources Key is resource type, value is amount of this resource
 function resource.getResources(ply, getProps)
     local found = find.byClass("prop_physics")
     local resources = {}
     local pos = ply:getPos()
     for _, pr in ipairs(found) do
-        if pr:getPos():getDistance(pos) > 256 then goto cont end
+        if pr:getPos():getDistance(pos) > 256 or pr:getOwner() ~= ply then goto cont end
         if pr.BModResource then
             local res = ents.inited[pr:entIndex()]
             ---@cast res Resource
             if !isValid(res) then goto cont end
             local id = res.Identifier
-            local current = resources[id] or 0
-            resources[id] = current + res:getCount()
+            local current = resources[id] or { count = 0, ents = {} }
+            resources[id] = current
+            local count = res:getCount()
+            current.count = current.count + count
+            current.ents[#current.ents+1] = {ent = pr, count = count}
         elseif getProps then
             local counts = resource.props[pr:getModel()]
             if !counts then goto cont end
             for id, count in pairs(counts) do
-                local current = resources[id] or 0
-                resources[id] = current + count
+                local current = resources[id] or { count = 0, ents = {} }
+                resources[id] = current
+                current.count = current.count + count
+                current.ents[#current.ents+1] = {ent = pr, count = count}
             end
         end
         ::cont::
@@ -591,14 +603,5 @@ resource.addProp({
 resource.addProp({
     "models/props_c17/lamp001a.mdl"
 }, { ceramic = 6 })
-
-
-if CLIENT then
-    local function enablehud()
-        if owner() ~= player() then return end
-        enableHud(owner(), true)
-    end
-    enablehud()
-end
 
 return resource
