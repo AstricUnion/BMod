@@ -125,7 +125,7 @@ end
 
 ---[SHARED] Is entity valid
 function BModEntity:isValid()
-    return self ~= nil and isValid(self.ent)
+    return isValid(self.ent)
 end
 
 ---[SHARED] On initialize entity

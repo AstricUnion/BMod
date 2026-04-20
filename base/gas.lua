@@ -13,22 +13,37 @@ gas.inited = {}
 gas.registered = {}
 
 
----Gas particle
+---Gas particle base class
 ---@class GasParticle
 ---Public fields
----@field Identifier string Identifier of an entity
+---@field Identifier string Identifier of an gas
+---@field ThinkRate number Rate for gas update
+---@field MaxVelocity number Particle max velocity
+---@field MaxLife number Particle max lifetime
+---@field Gravity Vector Particle gravity vector
+---@field AirResistance Vector Particle air resistance
+---@field BounceMultiplier number Speed multiplier to bounce
+---@field VelocityMultiplier number Multiply random velocity
 ---Private fields
 ---@field position Vector Position of particle
 ---@field index number Particle index
 ---@field velocity Vector Current velocity of the gas
----@field airResistance number Air resistance of this particle
+---@field nextThink number Next time to think, relative to curtime
 ---@field dieTime number Lifetime, but relative to curtime
+---@field lifeTime number Lifetime in seconds
 ---On client
 ---@field particle Particle Client-side particle for smoke texture
 ---@field visualPosition Vector Visual position of smoke
-local GasParticle = {}
-GasParticle.__index = GasParticle
-GasParticle.Identifier = "base_gas"
+local Gas = {}
+Gas.__index = Gas
+Gas.Identifier = "base_gas"
+Gas.ThinkRate = 1
+Gas.MaxVelocity = 80
+Gas.MaxLife = 100
+Gas.Gravity = Vector(0, 0, -8)
+Gas.AirResistance = Vector(1, 1, 2)
+Gas.BounceMultiplier = 0.8
+Gas.VelocityMultiplier = 6
 
 
 local function randVector(m, n)
@@ -38,50 +53,75 @@ local function randVector(m, n)
 end
 
 if SERVER then
-    function GasParticle:new(pos)
+    function Gas:new(pos)
+        local lifetime = math.random(self.MaxLife * 0.5, self.MaxLife)
+        local cur = timer.curtime()
         local obj = setmetatable({
+            -- save it to initialize on client
+            Identifier = self.Identifier,
             velocity = randVector() * 50,
-            dieTime = timer.curtime() + 60,
-            position = pos
+            lifeTime = lifetime,
+            dieTime = cur + lifetime,
+            position = pos,
+            nextThink = cur
         }, self)
         local index = #gas.inited + 1
         obj.index = index
-        local function init(ply)
-            net.start("BModInitializeGas")
-                net.writeString(self.Identifier)
-                net.writeUInt(index, 32)
-                net.writeUInt(obj.dieTime, 32)
-                net.writeVector(pos)
-            net.send(ply)
-        end
         gas.inited[index] = obj
-        -- This hook should initialize resource to new players and
-        -- delay it, if creating in same tick with chip
-        -- BUG: this method gives hooks limit
-        hook.add("ClientInitialized", "BModInitializeGas" .. index, init)
-        init(find.allPlayers())
+        net.start("BModInitializeGases")
+            net.writeTable({[index] = obj})
+        net.send(find.allPlayers())
     end
 
-    timer.create("BModUpdateGas", 0.5, 0, function()
+
+    ---Remove this particle
+    function Gas:remove()
+        gas.inited[self.index] = nil
+        setmetatable(self, nil)
+        net.start("BModRemoveGas")
+            net.writeUInt(self.index, 32)
+        net.send(find.allPlayers())
+    end
+
+
+    ---This hook should initialize resource to new players and
+    ---delay it, if creating in same tick with chip
+    hook.add("ClientInitialized", "BModInitializeGases", function(ply)
+        net.start("BModInitializeGases")
+            net.writeTable(gas.inited)
+        net.send(ply)
+    end)
+
+    hook.add("Think", "BModUpdateGas", function()
         local allPlayers = find.allPlayers()
         local edits = {}
+        local cur = timer.curtime()
         for _, v in pairs(gas.inited) do
-            local force = randVector(-4, 4) + Vector(0, 0, -8) * 4
-            v.velocity = v.velocity + force
-            v.velocity = v.velocity:getNormalized() * math.min(v.velocity:getLength(), 80)
+            if v.dieTime - cur <= 0 then
+                v:remove()
+                goto cont
+            end
+            if v.nextThink > cur then goto cont end
             local selfPos = v.position
-            local newPos = v.position + v.velocity
+            local rand = randVector() * v.VelocityMultiplier
+            local force = rand / v.AirResistance + v.Gravity
+            v.velocity = v.velocity + force
+            v.velocity = v.velocity:getNormalized() * math.min(v.velocity:getLength(), v.MaxVelocity)
+            local newPos = selfPos + v.velocity
             ---@type TraceResult
             local tr = trace.line(selfPos, newPos, {}, MASK.SOLID + MASK.WATER)
             if !tr.Hit then
-                v.position = newPos
+                selfPos = newPos
             else
-                v.position = tr.HitPos + tr.HitNormal
-                local ang, speed = v.velocity:getAngle(), v.velocity:getLength()
+                selfPos = tr.HitPos + tr.HitNormal * 10
+                local ang, speed = v.velocity:getAngle(), v.velocity:getLength() * v.BounceMultiplier
                 ang:rotateAroundAxis(tr.HitNormal, 180)
                 v.velocity = -(ang:getForward() * speed)
             end
-            edits[v.index] = v.position
+            v.position = selfPos
+            v.nextThink = cur + math.random(1 / v.ThinkRate, 1.5 / v.ThinkRate)
+            edits[v.index] = selfPos
+            ::cont::
         end
         net.start("BModUpdateGas")
             net.writeTable(edits)
@@ -90,61 +130,88 @@ if SERVER then
 end
 
 
-function GasParticle:remove()
-    gas.inited[self.index] = nil
-    setmetatable(self, nil)
-end
-
-
-function GasParticle:isValid()
-    return self ~= nil
+function Gas:isValid()
+    return getmetatable(self) ~= nil
 end
 
 
 if CLIENT then
+    -- yeeeep, i use particles. This is more economic and shared variant, than Render. But, sad, there is limits to particles
     local gasEmmiter = particle.create(Vector(), true)
     local mat = material.load("particle/smokestack")
 
-    -- Initialize entity on client
-    net.receive("BModInitializeGas", function()
-        local identifier = net.readString()
-        local self = gas.registered[identifier]
-        if !self then return end
-        local index = net.readUInt(32)
-        local dieTime = net.readUInt(32)
-        local pos = net.readVector()
+
+    ---@param obj GasParticle
+    local function createParticle(obj)
+        if gasEmmiter:getParticlesLeft() <= 0 then return end
         local size = math.random(50, 150)
-        local particle = gasEmmiter:add(mat, pos, size, size, size, size, 25, 20, math.min(dieTime - timer.curtime(), 60))
-        particle:setColor(Color(120, math.random(120, 150), 75))
-        local obj = setmetatable({
-            index = index,
-            dieTime = dieTime,
-            position = pos,
-            visualPosition = pos,
-            particle = particle
-        }, self)
-        gas.inited[index] = obj
+        local particle = gasEmmiter:add(mat, obj.position, size, size, size, size, 25, 25, math.clamp(obj.dieTime - timer.curtime(), 0, 60))
+        particle:setColor(obj:getColor())
+        obj.particle = particle
+    end
+
+
+    ---[CLIENT] Gets color for particle. You can override it
+    ---@return Color
+    function Gas:getColor()
+        return Color(124, 124, 124)
+    end
+
+
+    -- Initialize entity on client
+    net.receive("BModInitializeGases", function()
+        local inited = net.readTable()
+        for id, objInfo in pairs(inited) do
+            local self = gas.registered[objInfo.Identifier]
+            if !self then goto cont end
+            local obj = setmetatable(objInfo, self)
+            obj.dieTime = timer.curtime() + obj.lifeTime
+            createParticle(obj)
+            -- bruh, just optimization
+            obj.visualPosition = Vector(unpack(obj.position))
+            gas.inited[id] = obj
+            ::cont::
+        end
     end)
 
     net.receive("BModUpdateGas", function()
         local edits = net.readTable()
+        local cur = timer.curtime()
         for index, pos in pairs(edits) do
-            local particle = gas.inited[index]
-            if !particle then return end
-            particle.position = pos
+            local gasParticle = gas.inited[index]
+            if !gasParticle then return end
+            gasParticle.position = pos
+            if gasParticle.dieTime - cur <= 2 then
+                createParticle(gasParticle)
+            end
         end
     end)
 
+    net.receive("BModRemoveGas", function()
+        local index = net.readUInt(32)
+        local obj = gas.inited[index]
+        if isValid(obj) then
+            setmetatable(obj, nil)
+            gas.inited[index] = nil
+        end
+    end)
+
+    local lerpVector = math.lerpVector
+    local tickInterval = game.getTickInterval
+    local getAngles = render.getAngles
+    local subAngs = Angle(180, 0, 0)
     hook.add("RenderOffscreen", "BModGasGraphics", function()
-        local eyePos = render.getEyePos()
+        if cpuAverage() > cpuMax() / 2 then return end
+        local eyeAngles = getAngles() - subAngs
+        local delta = tickInterval()
         for _, v in pairs(gas.inited) do
-            local pos = math.lerpVector(game.getTickInterval() / 3, v.visualPosition, v.position)
-            v.particle:setPos(pos)
-            v.particle:setAngles((pos - eyePos):getAngle() + Angle(180, 0, 0))
+            local pos = lerpVector(delta, v.visualPosition, v.position)
+            local part = v.particle
+            if !part then goto cont end
+            part.setPos(part, pos)
+            part.setAngles(part, eyeAngles)
             v.visualPosition = pos
-            if v.dieTime - timer.curtime() <= 0 then
-                v:remove()
-            end
+            ::cont::
         end
     end)
 end
@@ -156,11 +223,14 @@ function gas.register(class)
     gas.registered[id] = class
 end
 
-gas.register(GasParticle)
+gas.register(Gas)
 
 if SERVER then
-    timer.create("", 1, 0, function()
-        GasParticle:new(chip():getPos())
+    timer.create("", 0.1, 100, function()
+        local posOffset = randVector(-50, 50):setZ(0)
+        local part = Gas:new(chip():getPos() + posOffset + Vector(0, 0, 100))
+        if !part then return end
+        part.velocity = randVector() * math.random(1, 100)
     end)
 end
 
