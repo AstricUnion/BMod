@@ -766,7 +766,7 @@ function BModelPanel:paint(x, y, w, h)
     local camData = {
         type = "3D",
         x = x, y = y,
-        w = w, h = h, aspect = w / h,
+        w = w, h = h, aspect = w / h - 0.0333,
         fov = 42,
         origin = Vector(50, 0, 55),
         angles = Angle(15, 180, 0)

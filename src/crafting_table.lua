@@ -83,11 +83,7 @@ if SERVER then
                 ent:remove()
                 local angs = pr:getAngles()
                 net.start("BModCreateSmoke")
-                    net.writeString("pereplavka")
-                    net.writeFloat(0.2)
-                    net.writeUInt(8, 8)
-                    net.writeVector(Vector(0, -44, 0))
-                    net.writeEntity(pr)
+                    net.writeVector(pr:getPos() + Vector(0, -44, 0))
                 net.send(find.allPlayers())
                 timer.simple(1, function()
                     for id, count in pairs(res) do
@@ -122,39 +118,12 @@ if SERVER then
 end
 
 if CLIENT then
-    ---@type table<string, ParticleEmitter> 
-    local EMMITERS = {}
 
-    local mats = {
-        material.load("particle/particle_smokegrenade1"),
-        material.load("particle/particle_smokegrenade"),
-        material.load("particle/particle_smoke_dust")
-    }
+    ---@class beff
+    local beff = beff
+
     net.receive("BModCreateSmoke", function()
-        -- Time and ID to create particles
-        local id = net.readString()
-        local time = net.readFloat()
-        local repeations = net.readUInt(8)
-        local offset = net.readVector()
-        net.readEntity(function(ent)
-            local emm = EMMITERS[id]
-            if emm then emm:destroy() end
-            emm = particle.create(Vector(), false)
-            EMMITERS[id] = emm
-            local repeation = 0
-            timer.create(id, time, repeations, function()
-                local pos = ent:localToWorld(offset)
-                emm:setPos(pos)
-                local size = math.random() * 20
-                local part = emm:add(mats[math.random(1, 3)], pos - Vector(math.random() * 5, math.random() * 5, 10), 8, 64 + size, 8, 64 + size, 200, 0, 2)
-                part:setVelocity(Vector(0, 0, 60))
-                if repeations ~= 0 then repeation = repeation + 1 end
-                if repeation == repeations then
-                    emm:destroy()
-                    EMMITERS[id] = nil
-                end
-            end)
-        end)
+        beff.craftEffect(net.readVector(), 0.6)
     end)
 
 

@@ -1,6 +1,8 @@
 ---@name BMod - JMod, but implemented in Starfall
 ---@author AstricUnion
 ---@include bmod/base/entity.lua
+---@include bmod/base/bgui.lua
+---@include bmod/base/effects.lua
 ---@include bmod/src/resource.lua
 ---@include bmod/src/crafting_table.lua
 ---@include bmod/src/gui.lua
@@ -10,9 +12,6 @@
 ents = require("bmod/base/entity.lua")
 ---@class resource
 resource = require("bmod/src/resource.lua")
-
--- Initialize entities
-require("bmod/src/crafting_table.lua")
 
 if SERVER then
     require("bmod/src/gui.lua")
@@ -26,6 +25,13 @@ if SERVER then
         end
     end)
 else
+    ---@class bgui
+    bgui = require("bmod/base/bgui.lua")
+
+    ---@class beff
+    beff = require("bmod/base/effects.lua")
+
+
     ---@class bguiElements
     local bguiElements = require("bmod/src/gui.lua")
 
@@ -34,7 +40,5 @@ else
     end)
 end
 
-
-if SERVER then
-    -- ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
-end
+-- Initialize entities
+require("bmod/src/crafting_table.lua")

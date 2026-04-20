@@ -2,7 +2,6 @@
 ---@author AstricUnion
 ---@shared
 ---@owneronly
----@include bmod/base/bgui.lua
 
 ---@class ents
 local ents = ents
@@ -12,7 +11,7 @@ local resource = resource
 
 if CLIENT then
     ---@class bgui
-    local bgui = require("bmod/base/bgui.lua")
+    local bgui = bgui
     local DOCK = bgui.DOCK
     ---@class bguiElements
     local bguiElements = {}
@@ -117,6 +116,7 @@ else
                     info.ent:remove()
                 else
                     local foundRes = ents.inited[info.ent:entIndex()]
+                    if !isValid(foundRes) then return end
                     ---@cast foundRes Resource
                     local count = foundRes:getCount()
                     local diff = count - required
