@@ -3,15 +3,19 @@
 ---@include bmod/base/entity.lua
 ---@include bmod/base/bgui.lua
 ---@include bmod/base/effects.lua
+---@include bmod/base/gas.lua
 ---@include bmod/src/resource.lua
 ---@include bmod/src/crafting_table.lua
 ---@include bmod/src/gui.lua
+---@include bmod/src/gases.lua
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
 ents = require("bmod/base/entity.lua")
 ---@class resource
 resource = require("bmod/src/resource.lua")
+---@class gas
+gas = require("bmod/base/gas.lua")
 
 if SERVER then
     require("bmod/src/gui.lua")
@@ -42,3 +46,6 @@ end
 
 -- Initialize entities
 require("bmod/src/crafting_table.lua")
+
+-- Initialize gases
+require("bmod/src/gases.lua")
