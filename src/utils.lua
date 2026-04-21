@@ -15,7 +15,12 @@ if SERVER then
     ---@param lifeTime number? New turret life time. Default nil, no delete
     function butils.applyDamage(ent, damage, lifeTime)
         local turr = turrets[ent]
-        if turrets[ent] == nil then
+        local valid = isValid(turr)
+        if valid and turr.damage ~= damage then
+            turr:remove()
+            valid = false
+        end
+        if !valid then
             turr = prop.createSent(Vector(), Angle(-90, 0, 0), "gmod_wire_turret", true, {
                 damage = damage,
                 delay = 0,
@@ -28,19 +33,22 @@ if SERVER then
             turrets[ent] = turr
             turr.dieTime = lifeTime and timer.curtime() + lifeTime or nil
         end
+        turr.toFire = true
         wire.triggerInput(turr, "Fire", 1)
     end
 
     hook.add("Think", "BModTurretUpdate", function()
-        local tick = game.getTickInterval()
         local cur = timer.curtime()
         for ply, turr in pairs(turrets) do
             if !isValid(ply) or (turr.dieTime and turr.dieTime < cur) then
                 turr:remove()
                 goto cont
             end
-            -- Applying velocity, or else turret will lag behind player
-            turr:setPos(ply:getPos() + Vector(0, 0, 50) + ply:getVelocity() * tick)
+            if !turr.toFire then goto cont end
+            local pos = ply:getPos()
+            -- PROBLEM: can hit other players, if player moving too fast
+            turr:setAngles((pos - turr:getPos()):getAngle())
+            turr:setPos(pos + Vector(0, 0, 50))
             ::cont::
         end
     end)
@@ -49,10 +57,11 @@ if SERVER then
         for _, turr in pairs(turrets) do
             if turr == ent then
                 wire.triggerInput(ent, "Fire", 0)
+                turr.toFire = false
                 return
             end
         end
     end)
-
-    butils.applyDamage(owner(), 1)
 end
+
+return butils

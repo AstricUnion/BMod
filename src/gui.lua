@@ -1,7 +1,6 @@
 ---@name BMod GUI elements
 ---@author AstricUnion
 ---@shared
----@owneronly
 
 ---@class ents
 local ents = ents
@@ -64,7 +63,9 @@ if CLIENT then
         input.enableCursor(true)
     end
 
-    enableHud(nil, true)
+    if player() == owner() then
+        enableHud(nil, true)
+    end
 
     net.receive("BModCenterError", function()
         local msg = net.readString()

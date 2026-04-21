@@ -1,6 +1,7 @@
 ---@name BGUI (BMod Graphical User Interface)
 ---@author AstricUnion
----@client
+---@shared
+if SERVER then return end
 
 -----[ Prelude ]-----
 
@@ -123,12 +124,12 @@ local function isMouse(key)
 end
 
 hook.add("InputPressed", "BInputPressed", function(key)
+    if !bgui.ordered then return end
     if input.getCursorVisible() then
         if isMouse(key) then
             local x, y = bgui.cursorX, bgui.cursorY
             local focus = bgui.focus
             if !isValid(focus) then return end
-            local focusHovered = focus:testHover(x, y)
             for _, v in pairs(table.reverse(bgui.ordered)) do
                 if !v.mouseInput then goto cont end
                 if focus == v then

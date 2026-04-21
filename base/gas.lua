@@ -92,7 +92,10 @@ Gas.EffectRadius = 300
 Gas.Effects = {}
 
 
-local function randVector(m, n)
+---[SHARED] Get random vector
+---@param m number? Minimum
+---@param n number? Maximum
+function gas.randVector(m, n)
     m = m or -1
     n = n or 1
     return Vector(math.rand(m, n), math.rand(m, n), math.rand(m, n))
@@ -107,17 +110,23 @@ if SERVER then
         local obj = setmetatable({
             -- save it to initialize on client
             Identifier = self.Identifier,
-            velocity = randVector() * 50,
+            velocity = gas.randVector() * 50,
             lifeTime = lifetime,
             dieTime = cur + lifetime,
             position = Vector(),
             nextThink = cur
         }, self)
+        return obj
+    end
+
+
+    ---[SERVER] Spawn particle
+    function Gas:spawn()
         local index = #gas.inited + 1
-        obj.index = index
-        gas.inited[index] = obj
+        self.index = index
+        gas.inited[index] = self
         net.start("BModInitializeGases")
-            net.writeTable({[index] = obj})
+            net.writeTable({[index] = self})
         net.send(find.allPlayers())
     end
 
@@ -146,9 +155,17 @@ if SERVER then
     end
 
 
+    ---[SERVER] Can player see this particle
+    ---@param ply Player
+    function Gas:canSee(ply)
+        return !trace.line(self.position, ply:getPos(), {ply}, MASK.SHOT + MASK.WATER).Hit
+    end
+
+
     ---This hook should initialize resource to new players and
     ---delay it, if creating in same tick with chip
     hook.add("ClientInitialized", "BModInitializeGases", function(ply)
+        if table.isEmpty(gas.inited) then return end
         net.start("BModInitializeGases")
             net.writeTable(gas.inited)
         net.send(ply)
@@ -166,15 +183,16 @@ if SERVER then
             end
             if v.nextThink > cur then goto cont end
             local selfPos = v.position
-            local rand = randVector() * v.VelocityMultiplier
+            local rand = gas.randVector() * v.VelocityMultiplier
             if v.Effect then
                 allPlayers = allPlayers or find.allPlayers()
                 for _, ply in ipairs(allPlayers) do
                     local pos = ply:getPos()
                     local gasPos = v.position
                     if gasPos:getDistance(pos) > v.EffectRadius then goto cont end
+                    if !v:canSee(ply) then goto cont end
                     for _, effect in ipairs(v.Effects) do
-                        effect(v)
+                        effect:effect(ply, v)
                     end
                     ::cont::
                 end
@@ -246,7 +264,7 @@ if CLIENT then
     ---[CLIENT] Gets color for particle. You can override it
     ---@return Color
     function Gas:getColor()
-        return Color(124, 124, 124)
+        return Color(124, 124, 124, 25)
     end
 
 
@@ -328,18 +346,5 @@ if SERVER then
 end
 
 gas.Base = Gas
-
-
-gas.register(Gas)
-
-if SERVER then
-    timer.create("", 0.1, 100, function()
-        local posOffset = randVector(-50, 50):setZ(0)
-        local part = gas.create("base_gas")
-        if !part then return end
-        part:setPos(chip():getPos() + posOffset)
-        part.velocity = randVector() * math.random(1, 100)
-    end)
-end
 
 return gas

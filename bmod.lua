@@ -5,6 +5,7 @@
 ---@include bmod/base/effects.lua
 ---@include bmod/base/gas.lua
 ---@include bmod/src/resource.lua
+---@include bmod/src/utils.lua
 ---@include bmod/src/crafting_table.lua
 ---@include bmod/src/gui.lua
 ---@include bmod/src/gases.lua
@@ -16,6 +17,8 @@ ents = require("bmod/base/entity.lua")
 resource = require("bmod/src/resource.lua")
 ---@class gas
 gas = require("bmod/base/gas.lua")
+---@class butils
+butils = require("bmod/src/utils.lua")
 
 if SERVER then
     require("bmod/src/gui.lua")
