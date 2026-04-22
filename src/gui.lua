@@ -81,60 +81,16 @@ else
         ceramic = 15
     }
     net.receive("BModHandcraft", function(_, ply)
-        ---@cast ply Player
-        local res = resource.getResources(ply, true)
-        local wood = res.wood and res.wood.count or 0
-        local aluminium = res.aluminium and res.aluminium.count or 0
-        local ceramic = res.ceramic and res.ceramic.count or 0
-        local errorMes = "You need"
-        local wDiff = req.wood - wood
-        if wDiff > 0 then
-            errorMes = errorMes .. " " .. wDiff .. " more wood"
-        end
-        local aDiff = req.aluminium - aluminium
-        if aDiff > 0 then
-            errorMes = errorMes .. " " .. aDiff .. " more aluminium"
-        end
-        local cDiff = req.ceramic - ceramic
-        if cDiff > 0 then
-            errorMes = errorMes .. " " .. cDiff .. " more ceramic"
-        end
-        if errorMes ~= "You need" then
+        local errorMes = resource.takeResources(ply, req, true)
+        if errorMes then
             net.start("BModCenterError")
                 net.writeString(errorMes)
             net.send(ply)
             return
         end
-
-        local function takeResources(type, originalTbl)
-            table.sortByMember(originalTbl, "count")
-            local required = req[type]
-            for _, info in ipairs(originalTbl) do
-                if required <= 0 then break end
-                local resType = info.ent.BModResource
-                if !resType then
-                    required = required - info.count
-                    info.ent:remove()
-                else
-                    local foundRes = ents.inited[info.ent:entIndex()]
-                    if !isValid(foundRes) then return end
-                    ---@cast foundRes Resource
-                    local count = foundRes:getCount()
-                    local diff = count - required
-                    res:setCount(diff)
-                    required = math.abs(diff)
-                end
-            end
-            return required
-        end
-
-        takeResources("wood", res.wood.ents)
-        takeResources("aluminium", res.aluminium.ents)
-        takeResources("ceramic", res.ceramic.ents)
-
         local shootPos = ply:getShootPos()
         ---@type TraceResult
-        local tr = trace.line(shootPos, shootPos + ply:getForward() * 256, {ply})
+        local tr = trace.line(shootPos, shootPos + ply:getEyeAngles():getForward() * 256, {ply})
         local ent = ents.create("crafting_table")
         ent:spawn(tr.HitPos + Vector(0, 0, 1), Angle(), false)
     end)

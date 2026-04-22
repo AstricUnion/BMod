@@ -6,6 +6,9 @@ local gas = gas
 ---@class butils
 local butils = butils
 
+---Carbon monooxide gas (CO)
+-- local CarbonMonooxide = setmetatable()
+
 
 -- Gas effects
 if SERVER then
@@ -44,7 +47,7 @@ end
 
 
 gas.register(gas.Base)
-
+--[[
 if SERVER then
     timer.create("", 2, 0, function()
         local posOffset = gas.randVector(-50, 50):setZ(0)
@@ -54,4 +57,4 @@ if SERVER then
         part:spawn()
         part.velocity = gas.randVector() * math.random(1, 100)
     end)
-end
+end]]

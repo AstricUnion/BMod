@@ -3,7 +3,7 @@
 ---@author AstricUnion
 ---@shared
 
--- TODO make "throw()"
+-- TODO make "throw()" on every scenario
 -- TODO OOO: optimize, optimize and again optimize
 
 ---Class for entities manipulations
@@ -60,7 +60,7 @@ if SERVER then
         net.start("BModInitializeEntities")
             net.writeTable({{
                 id = self.Identifier,
-                variables = self.networkedVariables,
+                networkedVariables = self.networkedVariables,
                 ent = self.ent
             }})
         net.send(find.allPlayers())
@@ -76,10 +76,10 @@ if SERVER then
     hook.add("ClientInitialized", "BModInitializeEntities", function(ply)
         if table.isEmpty(ents.inited) then return end
         local toInit = {}
-        for _, v in ents.inited do
+        for _, v in pairs(ents.inited) do
             toInit[#toInit+1] = {
                 id = v.Identifier,
-                variables = v.networkedVariables,
+                networkedVariables = v.networkedVariables,
                 ent = v.ent,
             }
         end
@@ -159,15 +159,31 @@ end
 
 
 ents.Base = BModEntity
+ents.registered["base"] = BModEntity
 
 
 local hookId = "BModEntityHook"
 
 ---[SHARED] Register new entity to use it after
----@param class BModEntity
-function ents.register(class)
+---@param class table Table with info about this entity
+---@param inheritFrom string? Inherit entity from other (by ID)
+function ents.register(class, inheritFrom)
     local id = class.Identifier
-    for name, func in pairs(class.hooks) do
+    if !id then
+        throw("This class has no identifier")
+        return
+    end
+    -- Inherit from other entity
+    inheritFrom = inheritFrom or "base"
+    local inheritClass = ents.registered[inheritFrom] -- base will be main for all
+    if !inheritClass then
+        throw("Can't inherit class \"" .. inheritFrom .. "\": doesn't exist")
+        return
+    end
+    local inheritedClass = setmetatable(class, inheritClass)
+    inheritedClass.__index = class
+
+    for name, func in pairs(inheritedClass.hooks) do
         local hooks = ents.hooks[name]
         if !hooks then
             ents.hooks[name] = {}

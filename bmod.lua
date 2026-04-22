@@ -5,23 +5,31 @@
 ---@include bmod/base/effects.lua
 ---@include bmod/base/gas.lua
 ---@include bmod/base/utils.lua
----@include bmod/src/resource.lua
----@include bmod/src/crafting_table.lua
+---@include bmod/base/resource.lua
+---@include bmod/base/remote.lua
+---@include bmod/base/deposits.lua
 ---@include bmod/src/gui.lua
----@include bmod/src/gases.lua
 
+-- Just to not remove all in one press
+if SERVER then
+    prop.setPropUndo(true)
+end
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
 ents = require("bmod/base/entity.lua")
----@class resource
-resource = require("bmod/src/resource.lua")
 ---@class gas
 gas = require("bmod/base/gas.lua")
+---@class resource
+resource = require("bmod/base/resource.lua")
 ---@class butils
 butils = require("bmod/base/utils.lua")
+---@class deposits
+deposits = require("bmod/base/deposits.lua")
 
 if SERVER then
+    ---@class remote
+    remote = require("bmod/base/remote.lua")
     require("bmod/src/gui.lua")
 
     local ow = owner()
@@ -49,7 +57,9 @@ else
 end
 
 -- Initialize entities
-require("bmod/src/crafting_table.lua")
+---@includedir bmod/entities
+dodir("bmod/entities", {})
 
 -- Initialize gases
-require("bmod/src/gases.lua")
+---@includedir bmod/gases
+dodir("bmod/gases", {})

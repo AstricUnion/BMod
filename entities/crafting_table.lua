@@ -55,8 +55,7 @@ end
 
 ---@class CraftingTable: BModEntity
 ---@field inProcess Entity?
-local CraftingTable = setmetatable({}, {__index = ents.Base})
-CraftingTable.__index = CraftingTable
+local CraftingTable = {}
 CraftingTable.Identifier = "crafting_table"
 CraftingTable.Name = "Crafting table"
 CraftingTable.Model = function()
