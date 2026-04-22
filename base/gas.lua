@@ -162,7 +162,7 @@ if SERVER then
     end
 
 
-    ---This hook should initialize resource to new players and
+    ---This hook should initialize gas to new players and
     ---delay it, if creating in same tick with chip
     hook.add("ClientInitialized", "BModInitializeGases", function(ply)
         if table.isEmpty(gas.inited) then return end

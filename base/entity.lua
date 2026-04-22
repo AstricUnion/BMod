@@ -1,8 +1,9 @@
+---Garry's mod entities, but with Starfall
 ---@name BMod Entity Base
 ---@author AstricUnion
 ---@shared
 
--- TODO make more cool system for nets (almost done)
+-- TODO make "throw()"
 -- TODO OOO: optimize, optimize and again optimize
 
 ---Class for entities manipulations
@@ -52,25 +53,40 @@ if SERVER then
         pr:setPos(pos)
         pr:setAngles(ang)
         pr:setFrozen(freeze)
+        -- Just to identify it, if we have only prop
         pr.BModEntity = self.Identifier
         self.ent = pr
-        local function init(ply)
-            if !pr:isValid() then return end
-            net.start("BModInitializeEntity")
-                net.writeString(self.Identifier)
-                net.writeTable(self.networkedVariables)
-                net.writeEntity(self.ent)
-            net.send(ply)
-        end
-        -- This hook should initialize resource to new players and
-        -- delay it, if creating in same tick with chip
-        hook.add("ClientInitialized", "BModInitializeEntity" .. pr:entIndex(), init)
-        init(find.allPlayers())
-        ents.inited[pr:entIndex()] = self
+        -- Client initialize. Don't look at strange syntax, I will explain it next
+        net.start("BModInitializeEntities")
+            net.writeTable({{
+                id = self.Identifier,
+                variables = self.networkedVariables,
+                ent = self.ent
+            }})
+        net.send(find.allPlayers())
         -- And finally, initialize this entity
+        ents.inited[pr:entIndex()] = self
         if self.initialize then self:initialize() end
+
         return self
     end
+
+    ---This hook should initialize entity to new players and
+    ---delay it, if creating in same tick with chip
+    hook.add("ClientInitialized", "BModInitializeEntities", function(ply)
+        if table.isEmpty(ents.inited) then return end
+        local toInit = {}
+        for _, v in ents.inited do
+            toInit[#toInit+1] = {
+                id = v.Identifier,
+                variables = v.networkedVariables,
+                ent = v.ent,
+            }
+        end
+        net.start("BModInitializeEntities")
+            net.writeTable(toInit)
+        net.send(ply)
+    end)
 
 
     ---[SERVER] Remove entity
@@ -97,20 +113,22 @@ end
 
 if CLIENT then
     -- Initialize entity on client
-    net.receive("BModInitializeEntity", function()
-        local identifier = net.readString()
-        local self = ents.registered[identifier]
-        if !self then return end
-        local nwVars = net.readTable()
-        ---@param ent Entity
-        net.readEntity(function(ent)
-            local obj = setmetatable({ ent = ent, networkedVariables = nwVars }, self)
+    net.receive("BModInitializeEntities", function()
+        local toInit = net.readTable()
+        for _, v in ipairs(toInit) do
+            -- Get type of this entity
+            local self = ents.registered[v.id]
+            if !self then goto cont end
+            local nwVars = v.networkedVariables
+            local obj = setmetatable({ ent = v.ent, networkedVariables = nwVars }, self)
+            -- Finally, last step: initialize it on a client
             if obj.initialize then obj:initialize() end
-            ents.inited[ent:entIndex()] = obj
-        end)
+            ents.inited[v.ent:entIndex()] = obj
+            ::cont::
+        end
     end)
 
-    -- Initialize entity on client
+    -- Get networked variables
     net.receive("BModUpdateNWEntity", function()
         local nwVars = net.readTable()
         ---@param ent Entity
@@ -154,9 +172,9 @@ function ents.register(class)
         if !hooks then
             ents.hooks[name] = {}
             local thisHook = ents.hooks[name]
-            -- This is a system for adding optimized hooks
-            -- For all entities we have only one hook
+            -- This is a system to add one hook for all
             -- It makes optimization to ~20% on every entity with client Render hooks
+            -- and also bypasses a limits
             hook.add(name, hookId, function(...)
                 for _, v in pairs(ents.inited) do
                     if !isValid(v.ent) then goto cont end

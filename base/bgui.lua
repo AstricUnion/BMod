@@ -1,3 +1,4 @@
+---VGUI-like graphical interface for Starfall
 ---@name BGUI (BMod Graphical User Interface)
 ---@author AstricUnion
 ---@shared
