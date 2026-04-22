@@ -24,8 +24,8 @@ gas = require("bmod/base/gas.lua")
 resource = require("bmod/base/resource.lua")
 ---@class butils
 butils = require("bmod/base/utils.lua")
----@class deposits
-deposits = require("bmod/base/deposits.lua")
+---@class deposit
+deposit = require("bmod/base/deposits.lua")
 
 if SERVER then
     ---@class remote
@@ -63,3 +63,14 @@ dodir("bmod/entities", {})
 -- Initialize gases
 ---@includedir bmod/gases
 dodir("bmod/gases", {})
+
+
+if SERVER then
+    local cor = deposit.startGeneration(20, true)
+    if !cor then return end
+    hook.add("Think", "BModDepositGeneration", function()
+        if cor() == true then
+            hook.remove("Think", "BModDepositGeneration")
+        end
+    end)
+end

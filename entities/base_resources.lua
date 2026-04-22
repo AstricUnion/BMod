@@ -1,6 +1,9 @@
 ---@class resource
 local resource = resource
 
+---@class deposit
+local deposit = deposit
+
 ---@class Wood: Resource
 local Wood = resource.fastRegister(
     "Wood", "wood", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
@@ -24,6 +27,7 @@ local Water = resource.fastRegister(
     "Water", "water", "models/props_borealis/bluebarrel001.mdl", Vector(14, 0, 0), nil,
     "ambient/water/water_splash1.wav", "player/footsteps/slosh1.wav"
 )
+deposit.add("water", 400, 10, 0.5, 0, false)
 
 
 ---@class Aluminium: Resource
@@ -65,6 +69,7 @@ local Oil = resource.fastRegister(
 Oil.modifyEntity = function(ent)
     ent:setColor(Color(50, 50, 50))
 end
+deposit.add("oil", 300, 8, nil, 600, true)
 
 
 ---@class Gas: Resource
