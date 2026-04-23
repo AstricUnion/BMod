@@ -81,7 +81,7 @@ else
         ceramic = 15
     }
     net.receive("BModHandcraft", function(_, ply)
-        local errorMes = resource.takeResources(ply, req, true)
+        -- local errorMes = resource.takeResources(ply, req, true)
         if errorMes then
             net.start("BModCenterError")
                 net.writeString(errorMes)

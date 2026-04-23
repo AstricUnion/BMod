@@ -65,6 +65,7 @@ end
 ---@field AirResistance Vector [SERVER] Particle air resistance
 ---@field BounceMultiplier number [SERVER] Speed multiplier to bounce
 ---@field VelocityMultiplier number [SERVER] Multiply random velocity
+---@field AllowUnderwater boolean [SERVER] Allow underwater spawn
 ---@field Effect boolean [SERVER] Effect players
 ---@field EffectRadius number [SERVER] Radius to Effect players and other
 ---@field Effects GasEffect[] [SERVER] Functions to effect
@@ -173,6 +174,7 @@ if SERVER then
 
 
     hook.add("Think", "BModUpdateGas", function()
+        if table.isEmpty(gas.inited) then return end
         local allPlayers
         local edits = {}
         local cur = timer.curtime()
@@ -183,6 +185,10 @@ if SERVER then
             end
             if v.nextThink > cur then goto cont end
             local selfPos = v.position
+            if !v.AllowUnderwater and bit.band(trace.pointContents(v.position), CONTENTS.WATER) then
+                v:remove()
+                goto cont
+            end
             local rand = gas.randVector() * v.VelocityMultiplier
             if v.Effect then
                 allPlayers = allPlayers or find.allPlayers()
@@ -314,7 +320,7 @@ if CLIENT then
     hook.add("RenderOffscreen", "BModGasGraphics", function()
         if cpuAverage() > cpuMax() / 2 then return end
         local eyeAngles = getAngles() - subAngs
-        local delta = tickInterval()
+        local delta = tickInterval() / 3
         for _, v in pairs(gas.inited) do
             local part = v.particle
             if !part then goto cont end
@@ -327,10 +333,26 @@ if CLIENT then
     end)
 end
 
+gas.registered["base"] = Gas
+
 ---[SHARED] Register new gas particle to use it after
----@param class Gas
-function gas.register(class)
+---@param class table Gas class
+---@param inheritFrom string? Identifier to inherit gas from
+function gas.register(class, inheritFrom)
     local id = class.Identifier
+    if !id then
+        throw("This gas class has no identifier")
+        return
+    end
+    -- Inherit from other entity
+    inheritFrom = inheritFrom or "base"
+    local inheritClass = gas.registered[inheritFrom] -- base will be main for all
+    if !inheritClass then
+        throw("Can't inherit gas class \"" .. inheritFrom .. "\": doesn't exist")
+        return
+    end
+    local inheritedClass = setmetatable(class, inheritClass)
+    inheritedClass.__index = class
     gas.registered[id] = class
 end
 

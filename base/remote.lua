@@ -30,8 +30,8 @@ end
 
 
 hook.add("Remote", "BModReceiveRemote", function(sender, owner, payload)
+    if !payload.hookId then return end
     local id = string.lower(payload.hookId)
-    if !id then return end
     payload.id = nil
     local callback = remote.callbacks[id]
     if !callback then return end

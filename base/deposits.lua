@@ -96,7 +96,7 @@ if SERVER then
                 -- For coroutine
                 if multiThread then coroutine.yield() end
                 -- If empty, then we can't place any deposit
-                if table.isEmpty(navAreas) then return end
+                if table.isEmpty(navAreas) then return true end
                 local navarea = table.random(navAreas)
                 if !navarea then goto cont end
                 local point = navarea:getRandomPoint()

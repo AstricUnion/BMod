@@ -6,13 +6,10 @@ local gas = gas
 ---@class butils
 local butils = butils
 
----Carbon monooxide gas (CO)
--- local CarbonMonooxide = setmetatable()
-
 
 -- Gas effects
 if SERVER then
-    ---Poisoning, used for carbon-monooxide (CO). Cough and damage
+    ---Poisoning, used for carbon-monoxide (CO). Cough and damage
     ---@class Poisoning: GasEffect
     ---@field nextCough table<Player, number>
     local Poisoning = setmetatable({}, gas.EffectBase)
@@ -37,21 +34,42 @@ if SERVER then
     gas.registerEffect(Poisoning)
 
     gas.Base.Effect = true
-    gas.Base.Effects = {
-        gas.getEffect("poisoning")
-    }
-    gas.Base.DamageChance = 0.1
-    gas.Base.PoisonDamage = {3, 10}
-    gas.Base.CoughRate = 2.5
 end
 
+---Carbon monoxide gas (CO)
+---@class CarbonMonoxide: Gas
+local CarbonMonoxide = {}
+CarbonMonoxide.Identifier = "gas_carbonmonoxide"
+CarbonMonoxide.ThinkRate = 1
+CarbonMonoxide.MaxVelocity = 80
+CarbonMonoxide.MaxLife = 100
+CarbonMonoxide.Gravity = Vector(0, 0, -8)
+CarbonMonoxide.AirResistance = Vector(1, 1, 2)
+CarbonMonoxide.BounceMultiplier = 0.8
+CarbonMonoxide.VelocityMultiplier = 6
+if SERVER then
+    CarbonMonoxide.Effect = true
+    CarbonMonoxide.EffectRadius = 300
+    CarbonMonoxide.Effects = {
+        gas.getEffect("poisoning")
+    }
+end
+CarbonMonoxide.DamageChance = 0.1
+CarbonMonoxide.PoisonDamage = {3, 10}
+CarbonMonoxide.CoughRate = 2.5
 
-gas.register(gas.Base)
+if CLIENT then
+    function CarbonMonoxide:getColor()
+        return Color(124, 124, 124, 25)
+    end
+end
+
+gas.register(CarbonMonoxide)
 --[[
 if SERVER then
     timer.create("", 2, 0, function()
         local posOffset = gas.randVector(-50, 50):setZ(0)
-        local part = gas.create("base_gas")
+        local part = gas.create("gas_carbonmonoxide")
         if !part then return end
         part:setPos(chip():getPos() + posOffset)
         part:spawn()

@@ -55,6 +55,8 @@ end
 
 ---@class CraftingTable: BModEntity
 ---@field inProcess Entity?
+---@field used boolean
+---@field craftMenu BPanel
 local CraftingTable = {}
 CraftingTable.Identifier = "crafting_table"
 CraftingTable.Name = "Crafting table"
@@ -82,7 +84,7 @@ if SERVER then
                 ent:remove()
                 local angs = pr:getAngles()
                 net.start("BModCreateSmoke")
-                    net.writeVector(pr:getPos() + Vector(0, -44, 0))
+                    net.writeVector(pos)
                 net.send(find.allPlayers())
                 timer.simple(1, function()
                     for id, count in pairs(res) do
@@ -114,15 +116,31 @@ if SERVER then
         fuel = math.clamp(fuel, 0, 100)
         self:setNWVar("fuel", fuel)
     end
+
+
+    ---[SERVER] Open craft menu on click
+    function CraftingTable.hooks.KeyPress(self, ply, key)
+        if key ~= IN_KEY.USE then return end
+        local tr = ply:getEyeTrace()
+        ---@cast tr TraceResult
+        if tr.Entity ~= self.ent then return end
+        if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
+        net.start("BModCraftingTableOpen")
+            net.writeEntity(self.ent)
+        net.send(ply)
+    end
+
 end
 
 if CLIENT then
-
     ---@class beff
     local beff = beff
 
+    ---@class bgui
+    local bgui = bgui
+
     net.receive("BModCreateSmoke", function()
-        beff.craftEffect(net.readVector(), 0.6)
+        beff.craftEffect(net.readVector(), 1)
     end)
 
 
@@ -146,6 +164,27 @@ if CLIENT then
             render.drawSimpleText(0, -8, string.format("Fuel: %s", self:getFuel()), TEXT_ALIGN.CENTER)
         end
         render.popMatrix()
+    end
+
+    net.receive("BModCraftingTableOpen", function()
+        net.readEntity(function(ent)
+            local tbl = ents.inited[ent:entIndex()]
+            ---@cast tbl CraftingTable
+            if !isValid(tbl) then return end
+            if isValid(tbl.craftMenu) then return end
+            local menu = bgui.create("BFrame")
+            menu:setSize(720, 512)
+            menu:center()
+            local tabs = bgui.create("BPropertySheet", menu)
+            tabs:dock(bgui.DOCK.FILL)
+            tabs:addSheet("test", bgui.create("BPanel", tabs))
+            tbl.craftMenu = menu
+            input.enableCursor(true)
+        end)
+    end)
+
+    function CraftingTable:onRemove()
+        if isValid(self.craftMenu) then self.craftMenu:remove() end
     end
 end
 

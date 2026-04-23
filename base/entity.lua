@@ -61,7 +61,7 @@ if SERVER then
             net.writeTable({{
                 id = self.Identifier,
                 networkedVariables = self.networkedVariables,
-                ent = self.ent
+                entId = self.ent:entIndex(),
             }})
         net.send(find.allPlayers())
         -- And finally, initialize this entity
@@ -80,7 +80,7 @@ if SERVER then
             toInit[#toInit+1] = {
                 id = v.Identifier,
                 networkedVariables = v.networkedVariables,
-                ent = v.ent,
+                entId = v.ent:entIndex(),
             }
         end
         net.start("BModInitializeEntities")
@@ -91,10 +91,26 @@ if SERVER then
 
     ---[SERVER] Remove entity
     function BModEntity:remove()
-        self.ent:remove()
+        if isValid(self.ent) then
+            self.ent:remove()
+        end
         ents.inited[self.ent:entIndex()] = nil
+        net.start("BModRemoveEntity")
+            net.writeEntity(self.ent)
+        net.send(find.allPlayers())
+        self:onRemove()
         setmetatable(self, nil)
     end
+
+
+    hook.add("EntityRemoved", "BModRemoveEntity", function(ent)
+        local id = ent:entIndex()
+        local tbl = ents.inited[id]
+        if isValid(tbl) then
+            tbl:remove()
+        end
+    end)
+
 
     ---[SERVER] Set networked variable to entity
     ---@param key string Key of a variable
@@ -112,20 +128,36 @@ end
 
 
 if CLIENT then
+    local toInit = {}
+    local cor = coroutine.wrap(function()
+        while true do
+            coroutine.yield()
+            for _, v in ipairs(toInit) do
+                -- Get type of this entity
+                local self = ents.registered[v.id]
+                if !self then goto cont end
+                local nwVars = v.networkedVariables
+                while !isValid(entity(v.entId)) do coroutine.yield() end
+                local ent = entity(v.entId)
+                local obj = setmetatable({ ent = ent, networkedVariables = nwVars }, self)
+                -- Finally, last step: initialize it on a client
+                if obj.initialize then obj:initialize() end
+                ents.inited[ent:entIndex()] = obj
+                ::cont::
+            end
+            toInit = {}
+        end
+    end)
+
+
+    hook.add("Think", "BModInitializeEntities", function()
+        if table.isEmpty(toInit) then return end
+        cor()
+    end)
+
     -- Initialize entity on client
     net.receive("BModInitializeEntities", function()
-        local toInit = net.readTable()
-        for _, v in ipairs(toInit) do
-            -- Get type of this entity
-            local self = ents.registered[v.id]
-            if !self then goto cont end
-            local nwVars = v.networkedVariables
-            local obj = setmetatable({ ent = v.ent, networkedVariables = nwVars }, self)
-            -- Finally, last step: initialize it on a client
-            if obj.initialize then obj:initialize() end
-            ents.inited[v.ent:entIndex()] = obj
-            ::cont::
-        end
+        toInit = net.readTable()
     end)
 
     -- Get networked variables
@@ -138,6 +170,18 @@ if CLIENT then
             bent.networkedVariables = nwVars
         end)
     end)
+
+    -- Initialize entity on client
+    net.receive("BModRemoveEntity", function()
+        net.readEntity(function(ent)
+            local id = ent:entIndex()
+            local tbl = ents.inited[id]
+            if !isValid(tbl) then return end
+            ents.inited[id] = nil
+            tbl:onRemove()
+            setmetatable(tbl, nil)
+        end)
+    end)
 end
 
 
@@ -148,6 +192,9 @@ end
 
 ---[SHARED] On initialize entity
 function BModEntity:initialize() end
+
+---[SHARED] On remove entity
+function BModEntity:onRemove() end
 
 ---[SHARED] Get networked variable or give default
 ---@param name string Name of variable

@@ -27,9 +27,19 @@ bgui.cursorEnabled = false
 
 ---Register new B element
 ---@param classname string Panel class name, to identificate it
----@param panelclass BPanel Panel class to create new GUI panel
-function bgui.register(classname, panelclass)
-    bgui.registered[classname] = panelclass
+---@param panelclass table Panel class to create new GUI panel
+---@param inheritFrom string Already registered class to inherit it. Default BPanel
+function bgui.register(classname, panelclass, inheritFrom)
+    -- Inherit from other entity
+    inheritFrom = inheritFrom or "BPanel"
+    local inheritClass = bgui.registered[inheritFrom] -- base will be main for all
+    if !inheritClass then
+        throw("Can't inherit panel class \"" .. inheritFrom .. "\": doesn't exist")
+        return
+    end
+    local inheritedClass = setmetatable(panelclass, inheritClass)
+    inheritedClass.__index = panelclass
+    bgui.registered[classname] = inheritedClass
 end
 
 ---Create new B element
@@ -69,8 +79,19 @@ input.enableCursor = function(state)
     bgui.cursorEnabled = state
 end
 
+local function sortByZPos(tbl)
+    for id, v in pairs(tbl) do
+        if !isValid(v) then tbl[id] = nil end
+    end
+    table.sort(tbl, function(a, b)
+        return a.zPos > b.zPos
+    end)
+end
 
 hook.add("DrawHUD", "BPaint", function()
+    local ordered = table.add({}, bgui.inited)
+    sortByZPos(ordered)
+    if table.isEmpty(ordered) then return end
     local sw, sh = render.getGameResolution()
     if sw ~= bgui.screenWidth or sh ~= bgui.screenHeight then
         bgui.screenWidth = sw
@@ -84,14 +105,8 @@ hook.add("DrawHUD", "BPaint", function()
     if !input.getCursorVisible() and bgui.cursorEnabled then
         bgui.oldEnableCursor(true)
     end
-    local ordered = table.add({}, bgui.inited)
-    table.sort(ordered, function(a, b)
-        if !isValid(a) then return false end
-        if !isValid(b) then return true end
-        return a.zPos < b.zPos
-    end)
     bgui.ordered = ordered
-    for _, v in pairs(ordered) do
+    for _, v in pairs(table.reverse(ordered)) do
         if !isValid(v) then goto cont end
         if !v.visible then goto cont end
         local x, y = v:getPos()
@@ -131,7 +146,7 @@ hook.add("InputPressed", "BInputPressed", function(key)
             local x, y = bgui.cursorX, bgui.cursorY
             local focus = bgui.focus
             if !isValid(focus) then return end
-            for _, v in pairs(table.reverse(bgui.ordered)) do
+            for _, v in pairs(bgui.ordered) do
                 if !v.mouseInput then goto cont end
                 if focus == v then
                     if v:onMousePressed(key) then return end
@@ -149,7 +164,7 @@ end)
 hook.add("InputReleased", "BInputReleased", function(key)
     if input.getCursorVisible() then
         if isMouse(key) then
-            for _, v in pairs(bgui.inited) do
+            for _, v in pairs(bgui.ordered) do
                 if !v.mouseInput then goto cont end
                 if bgui.focus == v and v:onMouseReleased(key) then return end
                 ::cont::
@@ -159,7 +174,7 @@ hook.add("InputReleased", "BInputReleased", function(key)
 end)
 
 hook.add("MouseWheeled", "BMouseWheeled", function(delta)
-    for _, v in pairs(bgui.inited) do
+    for _, v in pairs(bgui.ordered) do
         if !v.mouseInput then goto cont end
         if v:onMouseWheeled(delta) then return end
         ::cont::
@@ -203,6 +218,7 @@ bgui.DOCK = BDOCK
 ---@field dockH number Panel height on dock
 ---@field dockMargins Margins Margins on dock
 ---@field dockPaddings Margins Padding on dock
+---@field performsLayout boolean Panel in performLayout now
 ---@field minW number Panel minimal width
 ---@field minH number Panel minimal height
 ---@field boundX number Panel render bounds minimum X
@@ -242,11 +258,29 @@ function BPanel:new(parent)
     }, self)
     if parent then
         parent.children[index] = obj
+        obj.zPos = obj.zPos + parent.zPos
         parent:invalidateLayout()
     end
     bgui.inited[index] = obj
     obj:init()
     return obj
+end
+
+
+---Set parent of this panel
+---@param parent? BPanel
+function BPanel:setParent(parent)
+    if isValid(self.parent) then
+        self.zPos = self.zPos - self.parent.zPos
+        self.parent.children[self.index] = nil
+        self.parent:invalidateLayout()
+        self.parent = nil
+    end
+    if parent and isValid(parent) then
+        parent.children[self.index] = self
+        self.zPos = (self.zPos) + parent.zPos
+        parent:invalidateLayout()
+    end
 end
 
 
@@ -345,19 +379,25 @@ function BPanel:getFGColor()
     return self.fgcolor
 end
 
----Set Z position
+---Set local Z position
 ---@param pos number
 function BPanel:setZPos(pos)
     pos = math.clamp(pos, -32768, 32768)
-    self.zPos = pos
+    local parentZPos = self.parent and self.parent.zPos or 0
+    local lastZPos = self.zPos
+    local zPos = parentZPos + pos
+    for _, child in pairs(self.children) do
+        child.zPos = (child.zPos - lastZPos) + zPos
+    end
+    self.zPos = lastZPos
+    self:invalidateLayout()
 end
 
----Get Z position
+---Get local Z position
 ---@return number
 function BPanel:getZPos()
-    return self.zPos
+    return self.zPos - (self.parent and self.parent.zPos or 0)
 end
-
 
 ---Enable mouse input. If false, will not be clickable
 ---@param state boolean
@@ -387,32 +427,42 @@ function BPanel:invalidateLayout()
     local bX, bY, bW, bH = pad.left, pad.top, w - pad.right - pad.left, h - pad.bottom - pad.top
     local rbX, rbY  = x + bX, y + bY
     local rbX2, rbY2 = rbX + bW, rbY + bH
+    -- sortByZPos(self.children)
     for _, v in pairs(self.children) do
         if v.docktype == 0 then goto cont end
         v.dockX = bX + v.dockMargins.left
         v.dockY = bY + v.dockMargins.top
         v.dockW = bW - v.dockMargins.right * 2
         v.dockH = bH - v.dockMargins.bottom * 2
-        if v.docktype == BDOCK.LEFT then
-            v.dockW = v.w
-            bX = bX + v.w + v.dockMargins.left
-        elseif v.docktype == BDOCK.RIGHT then
-            v.dockX = v.dockW - v.w + v.dockMargins.right + pad.right
-            v.dockW = v.w
-            bW = bW - v.w - v.dockMargins.right
-        elseif v.docktype == BDOCK.TOP then
-            v.dockH = v.h
-            bY = bY + v.h + v.dockMargins.top + v.dockMargins.bottom
-        elseif v.docktype == BDOCK.BOTTOM then
-            v.dockY = v.dockH - v.h + v.dockMargins.left + pad.left
-            v.dockH = v.h
-            bH = bH - v.h - v.dockMargins.bottom - v.dockMargins.top
-        end
+        local funcs = {
+            [BDOCK.LEFT] = function()
+                v.dockW = v.w
+                bX = bX + v.w + v.dockMargins.left
+            end,
+            [BDOCK.RIGHT] = function()
+                v.dockX = v.dockW - v.w + v.dockMargins.right + pad.right
+                v.dockW = v.w
+                bW = bW - v.w - v.dockMargins.right
+            end,
+            [BDOCK.TOP] = function()
+                v.dockH = v.h
+                bY = bY + v.h + v.dockMargins.top + v.dockMargins.bottom
+            end,
+            [BDOCK.BOTTOM] = function()
+                v.dockY = v.dockH - v.h + v.dockMargins.left + pad.left
+                v.dockH = v.h
+                bH = bH - v.h - v.dockMargins.bottom - v.dockMargins.top
+            end,
+            [BDOCK.FILL] = function() end
+        }
+        funcs[v.docktype]()
         v.boundX, v.boundY, v.boundX2, v.boundY2 = rbX, rbY, rbX2, rbY2
         v:invalidateLayout()
         ::cont::
     end
+    self.performsLayout = true
     self:performLayout()
+    self.performsLayout = false
 end
 
 
@@ -609,7 +659,7 @@ function BPanel:onCursorExited() end
 function BPanel:onCursorMoved(x, y) end
 
 
-bgui.register("BPanel", BPanel)
+bgui.registered["BPanel"] = BPanel
 
 -- Create canvas (our screen)
 local canvas = bgui.create("BPanel")
@@ -625,8 +675,7 @@ bgui.focus = canvas
 
 ---Label class
 ---@class BLabel: BPanel
-local BLabel = setmetatable({}, BPanel)
-BLabel.__index = BLabel
+local BLabel = {}
 
 function BLabel:paint(x, y)
     render.setFont(self.font)
@@ -649,13 +698,12 @@ function BLabel:doClick() end
 function BLabel:doMiddleClick() end
 function BLabel:doRightClick() end
 
-bgui.register("BLabel", BLabel)
+bgui.register("BLabel", BLabel, "BPanel")
 
 
 ---Button class
 ---@class BButton: BLabel
-local BButton = setmetatable({}, BLabel)
-BButton.__index = BButton
+local BButton = {}
 
 function BButton:paint(x, y, w, h)
     render.setFont(self.font)
@@ -673,7 +721,7 @@ function BButton:paint(x, y, w, h)
     render.drawSimpleText(x + w / 2, y + h / 2, self.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
 end
 
-bgui.register("BButton", BButton)
+bgui.register("BButton", BButton, "BLabel")
 
 
 ---Frame class
@@ -682,8 +730,7 @@ bgui.register("BButton", BButton)
 ---@field draggingOffsetX number
 ---@field draggingOffsetY number
 ---@field exitButton BButton
-local BFrame = setmetatable({}, BPanel)
-BFrame.__index = BFrame
+local BFrame = {}
 
 function BFrame:init()
     self.bgcolor = Color(120, 120, 120)
@@ -693,7 +740,7 @@ function BFrame:init()
     self.exitButton:setSize(24, 16)
     self.exitButton:setPos(128 - 30, 6)
     self.exitButton:setText("x")
-    self.exitButton.doClick = function(btn)
+    self.exitButton.doClick = function(_)
         self:remove()
     end
     self:dockPadding(4, 30, 4, 4)
@@ -737,7 +784,7 @@ end
 
 function BFrame:onRemove()
     local meta = getmetatable(self)
-    for i, v in ipairs(table.reverse(bgui.ordered)) do
+    for i, v in pairs(table.reverse(bgui.ordered)) do
         if v.index == self.index then goto cont end
         if getmetatable(v) == meta then
             return
@@ -747,14 +794,13 @@ function BFrame:onRemove()
     input.enableCursor(false)
 end
 
-bgui.register("BFrame", BFrame)
+bgui.register("BFrame", BFrame, "BPanel")
 
 
 ---BModelPanel class
 ---@class BModelPanel: BPanel
 ---@field entity Hologram
-local BModelPanel = setmetatable({}, BPanel)
-BModelPanel.__index = BModelPanel
+local BModelPanel = {}
 
 function BModelPanel:init()
     local holo = hologram.create(Vector(), Angle(), "models/holograms/cube.mdl")
@@ -774,6 +820,7 @@ function BModelPanel:paint(x, y, w, h)
         angles = Angle(15, 180, 0)
     }
     render.pushViewMatrix(camData)
+    render.suppressEngineLighting(true)
         self.entity:draw()
     render.popViewMatrix()
     render.drawRectOutline(x, y, w, h)
@@ -785,16 +832,73 @@ function BModelPanel:setModel(model)
     self.entity:setModel(model)
 end
 
-
 function BModelPanel:onRemove()
     if isValid(self.entity) then
         self.entity:remove()
     end
 end
 
+bgui.register("BModelPanel", BModelPanel, "BPanel")
 
-bgui.register("BModelPanel", BModelPanel)
 
+---[INTERNAL] BTab class. Used internally for BPropertySheet
+---@class BTab: BPanel
+---@field panel BPanel Panel for tab
+---@field name string Name for tab
+local BTab = setmetatable({}, BPanel)
+BTab.__index = BTab
+
+function BTab:init()
+    self.name = "Tab" .. self.index
+    self.panel = nil
+end
+
+function BTab:paint(x, y, w, h)
+    local multiplier = 1.8
+    local col = Color(
+        self.bgcolor.r / multiplier,
+        self.bgcolor.g / multiplier,
+        self.bgcolor.b / multiplier,
+        self.bgcolor.a
+    )
+    render.setColor(col)
+    render.drawRect(x, y, 64, 16)
+    render.setColor(self.bgcolor)
+    render.drawRect(x + 1, y + 1, 62, 14)
+    render.setColor(col)
+    render.drawRect(x, y + 16, w, h - 16)
+    render.setColor(self.bgcolor)
+    render.drawRect(x + 1, y + 17, w - 2, h - 18)
+end
+
+bgui.register("BTab", BTab, "BPanel")
+
+---BPropertySheet class
+---@class BPropertySheet: BPanel
+---@field sheets BTab[]
+local BPropertySheet = setmetatable({}, BPanel)
+BPropertySheet.__index = BPropertySheet
+
+function BPropertySheet:init()
+    self.sheets = {}
+end
+
+---Add new sheet
+---@param name string Name of tab
+---@param pnl BPanel Panel in this tab
+function BPropertySheet:addSheet(name, pnl)
+    local tab = bgui.create("BTab", self)
+    tab:dock(BDOCK.FILL)
+    tab.name = name
+    pnl:setParent(tab)
+    self.sheets[#self.sheets+1] = tab
+end
+
+
+function BPropertySheet:paint() end
+
+
+bgui.register("BPropertySheet", BPropertySheet, "BPanel")
 
 
 return bgui
