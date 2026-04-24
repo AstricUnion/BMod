@@ -60,13 +60,13 @@ CarbonMonoxide.CoughRate = 2.5
 
 if CLIENT then
     function CarbonMonoxide:getColor()
-        return Color(124, 124, 124, 25)
+        return Color(120, math.random(120, 150), 75, 25)
     end
 end
 
 gas.register(CarbonMonoxide)
---[[
 if SERVER then
+    --[[
     timer.create("", 2, 0, function()
         local posOffset = gas.randVector(-50, 50):setZ(0)
         local part = gas.create("gas_carbonmonoxide")
@@ -74,5 +74,5 @@ if SERVER then
         part:setPos(chip():getPos() + posOffset)
         part:spawn()
         part.velocity = gas.randVector() * math.random(1, 100)
-    end)
-end]]
+    end)]]
+end
