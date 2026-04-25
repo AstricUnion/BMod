@@ -41,6 +41,7 @@ function bgui.register(classname, panelclass, inheritFrom)
     local inheritedClass = setmetatable(panelclass, inheritClass)
     inheritedClass.__index = panelclass
     inheritedClass.__name = classname
+    inheritedClass.__tostring = inheritClass.__tostring
     bgui.registered[classname] = inheritedClass
 end
 
@@ -88,7 +89,8 @@ local function sortByZPos(tbl)
     table.sort(tbl, function(a, b)
         if !a.parent then return false end
         if !b.parent then return true end
-        return a.parent == b or a.parent == b.parent and a.zPos > b.zPos -- a.parent ~= b or (a.parent == b.parent and a.zPos > b.zPos) or (a.parent ~= b.parent and a.parent.zPos > b.parent.zPos)
+        local sameParent = a.parent == b.parent
+        return a.parent == b or (sameParent and a.zPos > b.zPos) or (!sameParent and a.parent.zPos > b.parent.zPos)
     end)
 end
 
@@ -120,6 +122,11 @@ hook.add("DrawHUD", "BPaint", function()
         end
         v:paint(x, y, w, h)
         render.disableScissorRect()
+        if v.parent and v.boundX then
+            render.setColor(Color(255, 0, 0, 255))
+            render.drawRectOutline(v.boundX, v.boundY, v.boundX2 - v.boundX, v.boundY2 - v.boundY)
+            render.setColor(Color(255, 255, 255, 255))
+        end
         render.setColor(Color(255, 255, 255, 255))
         render.setFont("Default")
         render.setMaterial()
@@ -266,14 +273,16 @@ function BPanel:new(parent)
         dockX = y, dockY = x,
         dockMargins = {left = 0, top = 0, right = 0, bottom = 0},
         dockPaddings = {left = 0, top = 0, right = 0, bottom = 0},
-        minW = 0, minH = 0, docktype = 0, visible = true, zPos = 1,
+        minW = 0, minH = 0, docktype = 0, visible = true, zPos = 0,
         mouseInput = true,
         font = "Default", text = "Label",
         bgcolor = Color(200, 200, 200), fgcolor = Color(0, 0, 0)
     }, self)
     if parent then
         parent.children[index] = obj
-        parent:invalidateLayout()
+        timer.simple(0, function()
+            parent:invalidateLayout()
+        end)
     end
     bgui.inited[index] = obj
     obj:init()
@@ -399,7 +408,7 @@ end
 ---Set local Z position
 ---@param pos number
 function BPanel:setZPos(pos)
-    pos = math.clamp(pos, -32768, 32768)
+    self.zPos = math.clamp(pos, -32768, 32768)
     self:invalidateLayout()
 end
 
@@ -436,8 +445,14 @@ function BPanel:invalidateLayout()
     local pad = self.dockPaddings
     -- b - bounds, rb - render bounds
     local bX, bY, bW, bH = pad.left, pad.top, w - pad.right - pad.left, h - pad.bottom - pad.top
-    local rbX, rbY  = x + bX, y + bY
-    local rbX2, rbY2 = rbX + bW, rbY + bH
+    local rbX, rbY, rbX2, rbY2
+    if self.parent and self.parent.boundX then
+        rbX, rbY  = math.max(x + bX, self.parent.boundX), math.max(y + bY, self.parent.boundY)
+        rbX2, rbY2 = math.min(rbX + bW, self.parent.boundX2), math.min(rbY + bH, self.parent.boundX2)
+    else
+        rbX, rbY  = x + bX, y + bY
+        rbX2, rbY2 = rbX + bW, rbY + bH
+    end
     for _, v in pairs(self.children) do
         if v.docktype == 0 then goto cont end
         v.dockX = bX + v.dockMargins.left
@@ -471,7 +486,7 @@ function BPanel:invalidateLayout()
         ::cont::
     end
     self.performsLayout = true
-    self:performLayout()
+    self:performLayout(w, h)
     self.performsLayout = false
 end
 
@@ -518,6 +533,14 @@ function BPanel:dockMargin(left, top, right, bottom)
         bottom = bottom
     }
     self:invalidateParent()
+end
+
+
+---Get docked padding
+---@return number left, number top, number right, number bottom
+function BPanel:getDockMargin()
+    local mar = self.dockMargins
+    return mar.left, mar.top, mar.right, mar.bottom
 end
 
 
@@ -631,7 +654,9 @@ function BPanel:paint(x, y, w, h)
 end
 
 ---Perform layout. Can be called with invalidateLayout
-function BPanel:performLayout() end
+---@param w number Width
+---@param h number Height
+function BPanel:performLayout(w, h) end
 
 ---Called just after the panel size changes.
 function BPanel:onSizeChanged(newWidth, newHeight) end
@@ -672,12 +697,14 @@ function BPanel:onCursorMoved(x, y) end
 bgui.registered["BPanel"] = BPanel
 
 -- Create canvas (our screen)
-local canvas = bgui.create("BPanel")
-canvas.visible = false
-canvas.mouseInput = false
-canvas.zPos = 1
-bgui.canvas = canvas
-bgui.focus = canvas
+do
+    local canvas = bgui.create("BPanel")
+    canvas.visible = false
+    canvas.mouseInput = false
+    canvas.zPos = -1
+    bgui.canvas = canvas
+    bgui.focus = canvas
+end
 
 
 -----[ Other classes ]-----
@@ -850,46 +877,6 @@ end
 
 bgui.register("BModelPanel", BModelPanel, "BPanel")
 
-
----[INTERNAL] BTab class. Used internally for BPropertySheet
----@class BTab: BPanel
----@field panel BPanel Panel for tab
----@field name string Name for tab
----@field tabId number Tab index
-local BTab = setmetatable({}, BPanel)
-BTab.__index = BTab
-
-function BTab:init()
-    self.name = "Tab" .. self.index
-    self.panel = nil
-    self.tabId = 0
-    self:dockPadding(0, 24, 0, 0)
-end
-
-function BTab:setIndex(tabId)
-    self.tabId = tabId - 1
-end
-
-function BTab:paint(x, y, w, h)
-    local multiplier = 1.8
-    local col = Color(
-        self.bgcolor.r / multiplier,
-        self.bgcolor.g / multiplier,
-        self.bgcolor.b / multiplier,
-        self.bgcolor.a
-    )
-    local tabW = 64
-    local tabH = 24
-    render.setColor(col)
-    render.drawRect(x + (self.tabId * tabW), y, tabW, tabH)
-    render.drawRect(x, y + tabH, w, h - tabH)
-    render.setColor(self.bgcolor)
-    render.drawRect(x + (self.tabId * tabW) + 1, y + 1, tabW - 2, tabH - 2)
-    render.drawRect(x + 1, y + tabH + 1, w - 2, h - tabH - 2)
-end
-
-bgui.register("BTab", BTab, "BPanel")
-
 ---@private
 ---@class Tab
 ---@field button BButton
@@ -900,8 +887,7 @@ bgui.register("BTab", BTab, "BPanel")
 ---@field tabs BPanel
 ---@field canvas BPanel
 ---@field sheets Tab[]
-local BPropertySheet = setmetatable({}, BPanel)
-BPropertySheet.__index = BPropertySheet
+local BPropertySheet = {}
 
 function BPropertySheet:init()
     local tabs = bgui.create("BPanel", self)
@@ -923,7 +909,7 @@ function BPropertySheet:addSheet(name, pnl)
     local tab = bgui.create("BButton", self.tabs)
     function tab.doClick()
         for _, v in ipairs(self.sheets) do
-            v.panel:setZPos(v == pnl and 3 or 0)
+            v.panel:setZPos(v.panel == pnl and 0 or -1)
         end
     end
     tab:dock(BDOCK.LEFT)
@@ -937,11 +923,42 @@ function BPropertySheet:addSheet(name, pnl)
     }
 end
 
-
 function BPropertySheet:paint() end
 
-
 bgui.register("BPropertySheet", BPropertySheet, "BPanel")
+
+
+
+---BPropertySheet class
+---@class BScrollPanel: BPanel
+---@field canvas BPanel
+local BScrollPanel = {}
+
+function BScrollPanel:init()
+    local contentCanvas = bgui.create("BPanel", self)
+    self.canvas = contentCanvas
+end
+
+function BScrollPanel:performLayout(w, h)
+    local _, pTop, _, pBottom = self:getDockPadding()
+    local height = pTop + pBottom
+    for _, v in pairs(self.canvas.children) do
+        local _, chH = v:getSize()
+        local _, mTop, _, mBottom = v:getDockMargin()
+        height = height + chH + mTop + mBottom
+    end
+    self.canvas:setPos(0, self.canvas.y - 3)
+    self.canvas:setSize(w, height)
+end
+
+---Add new child to scroll panel
+---@param child BPanel
+function BScrollPanel:addItem(child)
+    child:setParent(self.canvas)
+    child:dock(BDOCK.TOP)
+end
+
+bgui.register("BScrollPanel", BScrollPanel, "BPanel")
 
 
 return bgui

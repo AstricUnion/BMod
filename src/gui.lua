@@ -50,14 +50,12 @@ if CLIENT then
             btn:setText(name)
             btn:dock(DOCK.TOP)
             btn.doClick = func
-            print(btn.zPos)
             buttons[#buttons+1] = btn
         end
 
         local pnl3 = bgui.create("BModelPanel", pnl)
         pnl3:dock(DOCK.LEFT)
         pnl3:dockPadding(4, 4, 4, 4)
-        print(pnl3.zPos)
         timer.simple(0.1, function()
             pnl3:setModel(player():getModel())
             pnl3.entity:setAnimation(2)
