@@ -29,6 +29,7 @@ if CLIENT then
         -- pnl2.bgcolor = Color(0, 0, 0, 0)
         pnl2:dock(DOCK.RIGHT)
         pnl2:dockPadding(4, 4, 4, 4)
+        pnl2.bgcolor = bgui.COLORS.bg2
 
         local buttons = {}
         local buttonsInfo = {
@@ -58,7 +59,7 @@ if CLIENT then
         pnl3:dockPadding(4, 4, 4, 4)
         timer.simple(0.1, function()
             pnl3:setModel(player():getModel())
-            pnl3.entity:setAnimation(2)
+            pnl3.entity:setAnimation(3)
         end)
         input.enableCursor(true)
     end

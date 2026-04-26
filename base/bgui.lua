@@ -18,6 +18,7 @@ if SERVER then return end
 ---@field cursorY number Current screen height
 ---@field cursorEnabled boolean Is cursor enabled now
 ---@field canvas BPanel? Canvas (default sized to screen)
+---@field debug boolean Enable debug mode
 local bgui = {}
 bgui.inited = {}
 bgui.ordered = {}
@@ -59,7 +60,8 @@ local function mouseMoved(x, y)
     bgui.cursorX = x
     bgui.cursorY = y
     if !input.getCursorVisible() then return end
-    for _, v in pairs(bgui.inited) do
+    for _, v in ipairs(bgui.ordered) do
+        if !isValid(v) or !v.visible then goto cont end
         if !v.mouseInput then goto cont end
         local isOldHover = v:testHover(oldX, oldY)
         local isNewHover = v:testHover(x, y)
@@ -83,21 +85,26 @@ input.enableCursor = function(state)
 end
 
 local function sortByZPos(tbl)
+    local sorted = {}
     for id, v in pairs(tbl) do
-        if !isValid(v) then tbl[id] = nil end
+        if !isValid(v) then
+            tbl[id] = nil
+            goto cont
+        end
+        sorted[#sorted+1] = v
+        ::cont::
     end
-    table.sort(tbl, function(a, b)
+    table.sort(sorted, function(a, b)
+        if !isValid(a) then return false end
+        if !isValid(b) then return true end
         if !a.parent then return false end
         if !b.parent then return true end
-        local sameParent = a.parent == b.parent
-        return a.parent == b or (sameParent and a.zPos > b.zPos) or (!sameParent and a.parent.zPos > b.parent.zPos)
+        return a.parent == b or a.zPos > b.zPos or (a.zPos == b.zPos and a.index > b.index)
     end)
+    return sorted
 end
 
-hook.add("DrawHUD", "BPaint", function()
-    local ordered = table.add({}, bgui.inited)
-    sortByZPos(ordered)
-    if table.isEmpty(ordered) then return end
+hook.add("PostDrawHUD", "BPaint", function()
     local sw, sh = render.getGameResolution()
     if sw ~= bgui.screenWidth or sh ~= bgui.screenHeight then
         bgui.screenWidth = sw
@@ -111,8 +118,9 @@ hook.add("DrawHUD", "BPaint", function()
     if !input.getCursorVisible() and bgui.cursorEnabled then
         bgui.oldEnableCursor(true)
     end
-    bgui.ordered = ordered
-    for _, v in pairs(table.reverse(ordered)) do
+    local ordered = bgui.ordered
+    for i=#ordered, 1, -1 do
+        local v = ordered[i]
         if !isValid(v) then goto cont end
         if !v.visible then goto cont end
         local x, y = v:getPos()
@@ -122,10 +130,9 @@ hook.add("DrawHUD", "BPaint", function()
         end
         v:paint(x, y, w, h)
         render.disableScissorRect()
-        if v.parent and v.boundX then
-            render.setColor(Color(255, 0, 0, 255))
+        if bgui.debug and v.parent and v.boundX then
+            render.setColor(Color(bgui.focus == v and 255 or 150, 0, 0, 255))
             render.drawRectOutline(v.boundX, v.boundY, v.boundX2 - v.boundX, v.boundY2 - v.boundY)
-            render.setColor(Color(255, 255, 255, 255))
         end
         render.setColor(Color(255, 255, 255, 255))
         render.setFont("Default")
@@ -136,9 +143,11 @@ end)
 
 
 hook.add("Think", "BThink", function()
-    if table.isEmpty(bgui.inited) then return end
-    for _, v in pairs(bgui.inited) do
+    if table.isEmpty(bgui.ordered) then return end
+    for _, v in ipairs(bgui.ordered) do
+        if !isValid(v) or !v.visible then goto cont end
         v:think()
+        ::cont::
     end
 end)
 
@@ -158,7 +167,8 @@ hook.add("InputPressed", "BInputPressed", function(key)
             local x, y = bgui.cursorX, bgui.cursorY
             local focus = bgui.focus
             if !isValid(focus) then return end
-            for _, v in pairs(bgui.ordered) do
+            for _, v in ipairs(bgui.ordered) do
+                if !isValid(v) or !v.visible then goto cont end
                 if !v.mouseInput then goto cont end
                 if focus == v then
                     if v:onMousePressed(key) then return end
@@ -177,7 +187,8 @@ hook.add("InputReleased", "BInputReleased", function(key)
     if table.isEmpty(bgui.ordered) then return end
     if input.getCursorVisible() then
         if isMouse(key) then
-            for _, v in pairs(bgui.ordered) do
+            for _, v in ipairs(bgui.ordered) do
+                if !isValid(v) or !v.visible then goto cont end
                 if !v.mouseInput then goto cont end
                 if bgui.focus == v and v:onMouseReleased(key) then return end
                 ::cont::
@@ -188,7 +199,8 @@ end)
 
 hook.add("MouseWheeled", "BMouseWheeled", function(delta)
     if table.isEmpty(bgui.ordered) then return end
-    for _, v in pairs(bgui.ordered) do
+    for _, v in ipairs(bgui.ordered) do
+        if !isValid(v) or !v.visible then goto cont end
         if !v.mouseInput then goto cont end
         if v:onMouseWheeled(delta) then return end
         ::cont::
@@ -273,10 +285,10 @@ function BPanel:new(parent)
         dockX = y, dockY = x,
         dockMargins = {left = 0, top = 0, right = 0, bottom = 0},
         dockPaddings = {left = 0, top = 0, right = 0, bottom = 0},
-        minW = 0, minH = 0, docktype = 0, visible = true, zPos = 0,
+        minW = 0, minH = 0, docktype = 0, visible = true, zPos = 1,
         mouseInput = true,
         font = "Default", text = "Label",
-        bgcolor = Color(200, 200, 200), fgcolor = Color(0, 0, 0)
+        bgcolor = Color(255, 255, 255), fgcolor = Color(0, 0, 0)
     }, self)
     if parent then
         parent.children[index] = obj
@@ -285,6 +297,7 @@ function BPanel:new(parent)
         end)
     end
     bgui.inited[index] = obj
+    bgui.ordered = sortByZPos(bgui.inited)
     obj:init()
     return obj
 end
@@ -359,7 +372,13 @@ end
 ---Set visibility of this panel
 ---@param state boolean
 function BPanel:setVisible(state)
+    if self.parent and !self.parent.visible then state = false end
     self.visible = state
+    for _, v in pairs(self.children) do
+        if !isValid(v) then goto cont end
+        v:setVisible(state)
+        ::cont::
+    end
 end
 
 ---Get visibility of this panel
@@ -440,48 +459,55 @@ end
 ---Invalidate layout. Will call hook performLayout
 function BPanel:invalidateLayout()
     if self.performsLayout then return end
+    bgui.ordered = sortByZPos(bgui.inited)
     local x, y = self:getPos()
     local w, h = self:getSize()
+    -- wtf what i did there
     local pad = self.dockPaddings
     -- b - bounds, rb - render bounds
-    local bX, bY, bW, bH = pad.left, pad.top, w - pad.right - pad.left, h - pad.bottom - pad.top
+    local bX, bY, bW, bH = pad.left, pad.top, w - pad.right, h - pad.bottom
     local rbX, rbY, rbX2, rbY2
     if self.parent and self.parent.boundX then
-        rbX, rbY  = math.max(x + bX, self.parent.boundX), math.max(y + bY, self.parent.boundY)
-        rbX2, rbY2 = math.min(rbX + bW, self.parent.boundX2), math.min(rbY + bH, self.parent.boundX2)
+        rbX, rbY  = math.max(x, self.parent.boundX), math.max(y, self.parent.boundY)
+        rbX2, rbY2 = math.min(rbX + w, self.parent.boundX2), math.min(rbY + h, self.parent.boundY2)
     else
-        rbX, rbY  = x + bX, y + bY
-        rbX2, rbY2 = rbX + bW, rbY + bH
+        rbX, rbY  = x, y
+        rbX2, rbY2 = rbX + w, rbY + h
     end
-    for _, v in pairs(self.children) do
+    local sortedChildren = sortByZPos(self.children)
+    for _, v in ipairs(sortedChildren) do
+        if !isValid(v) or !v.visible then goto cont end
+        local vX, vY = self:getPos()
+        local vW, vH = self:getSize()
+        v.boundX, v.boundY, v.boundX2, v.boundY2 = math.max(rbX, vX), math.max(rbY, vY), math.min(rbX2, vX + vW), math.min(rbY2, vY + vH)
         if v.docktype == 0 then goto cont end
-        v.dockX = bX + v.dockMargins.left
-        v.dockY = bY + v.dockMargins.top
-        v.dockW = bW - v.dockMargins.right * 2
-        v.dockH = bH - v.dockMargins.bottom * 2
+        local vMargins = v.dockMargins
+        v.dockX = bX + vMargins.left
+        v.dockY = bY + vMargins.top
+        v.dockW = bW - vMargins.right - bX
+        v.dockH = bH - vMargins.bottom - bY
         local funcs = {
             [BDOCK.LEFT] = function()
                 v.dockW = v.w
-                bX = bX + v.w + v.dockMargins.left
+                bX = bX + v.w + vMargins.left
             end,
             [BDOCK.RIGHT] = function()
-                v.dockX = v.dockW - v.w + v.dockMargins.right + pad.right
+                v.dockX = v.dockW + vMargins.right + pad.right
                 v.dockW = v.w
-                bW = bW - v.w - v.dockMargins.right
+                bW = bW - v.w - vMargins.right
             end,
             [BDOCK.TOP] = function()
                 v.dockH = v.h
-                bY = bY + v.h + v.dockMargins.top + v.dockMargins.bottom
+                bY = bY + v.h + vMargins.top + vMargins.bottom
             end,
             [BDOCK.BOTTOM] = function()
-                v.dockY = v.dockH - v.h + v.dockMargins.left + pad.left
+                v.dockY = v.dockH + vMargins.left + pad.left
                 v.dockH = v.h
-                bH = bH - v.h - v.dockMargins.bottom - v.dockMargins.top
+                bH = bH - v.h - vMargins.bottom - vMargins.top
             end,
             [BDOCK.FILL] = function() end
         }
         funcs[v.docktype]()
-        v.boundX, v.boundY, v.boundX2, v.boundY2 = rbX, rbY, rbX2, rbY2
         v:invalidateLayout()
         ::cont::
     end
@@ -494,9 +520,8 @@ end
 ---Invalidate parent layout. Will call hook performLayout on parent
 ---You can safely call it
 function BPanel:invalidateParent()
-    if self.parent then
-        self.parent:invalidateLayout()
-    end
+    if !self.parent then return end
+    self.parent:invalidateLayout()
 end
 
 
@@ -504,10 +529,12 @@ end
 ---@param recursive boolean?
 function BPanel:invalidateChildren(recursive)
     for _, v in pairs(self.children) do
+        if !isValid(v) or !v.visible then goto cont end
         v:invalidateLayout()
         if recursive then
             v:invalidateChildren(true)
         end
+        ::cont::
     end
 end
 
@@ -610,6 +637,7 @@ function BPanel:remove()
     end
     self:onRemove()
     bgui.inited[self.index] = nil
+    bgui.ordered = sortByZPos(bgui.inited)
     bgui.focus = bgui.canvas
     setmetatable(self, nil)
 end
@@ -619,9 +647,12 @@ end
 ---@param x number
 ---@param y number
 function BPanel:testHover(x, y)
+    if !self.boundX then return end
     local selfX, selfY = self:getPos()
     local selfW, selfH = self:getSize()
-    return (x >= selfX and x < selfX + selfW) and (y >= selfY and y < selfY + selfH)
+    local bX, bY = math.max(self.boundX, selfX), math.max(selfY, self.boundY)
+    local bX2, bY2 = math.min(self.boundX2, selfX + selfW), math.min(self.boundY2, selfY + selfH)
+    return (x >= bX and x < bX2) and (y >= bY and y < bY2)
 end
 
 
@@ -635,22 +666,24 @@ end
 ---On panel initialize
 function BPanel:init() end
 
+local gradient_up = material.load("vgui/gradient_up")
+local gradient_down = material.load("vgui/gradient_down")
+local gradient_center = material.load("gui/center_gradient")
 ---Paint in panel
 ---@param x number X position to paint
 ---@param y number Y position to paint
 ---@param w number Width to paint
 ---@param h number Height to paint
 function BPanel:paint(x, y, w, h)
-    local multiplier = 1.8
-    render.setColor(Color(
-        self.bgcolor.r / multiplier,
-        self.bgcolor.g / multiplier,
-        self.bgcolor.b / multiplier,
-        self.bgcolor.a
-    ))
-    render.drawRect(x, y, w, h)
+    render.setColor((self.bgcolor / 1.5):setA(255))
+    render.drawRoundedBox(4, x, y, w, h)
     render.setColor(self.bgcolor)
-    render.drawRect(x + 1, y + 1, w - 2, h - 2)
+    render.drawRoundedBox(4, x + 2, y + 2, w - 4, h - 4)
+    render.setColor((self.bgcolor / 1.2):setA(255))
+    render.setMaterial(gradient_up)
+    render.drawTexturedRect(x + 1, y + 1, w - 2, h - 2)
+    render.setMaterial(gradient_down)
+    render.drawTexturedRect(x + 1, y + 1, w - 2, h - 2)
 end
 
 ---Perform layout. Can be called with invalidateLayout
@@ -709,6 +742,20 @@ end
 
 -----[ Other classes ]-----
 
+---@enum COLORS
+local C = {
+    blue = Color(20, 200, 250),
+    fg1 = Color(255, 255, 255),
+    fg = Color(225, 225, 225),
+    overlay = Color(156, 156, 156, 156),
+    bg3 = Color(154, 157, 162),
+    bg2 = Color(138, 138, 138),
+    bg1 = Color(128, 128, 128),
+    bg = Color(101, 104, 106),
+    black = Color(20, 20, 20)
+}
+bgui.COLORS = C
+
 
 ---Label class
 ---@class BLabel: BPanel
@@ -742,19 +789,29 @@ bgui.register("BLabel", BLabel, "BPanel")
 ---@class BButton: BLabel
 local BButton = {}
 
+function BButton:init()
+    self.bgcolor = C.fg
+    self.hoverbgcolor = C.fg1
+    self.framecolor = C.bg1
+    self.hoverfgcolor = C.blue
+end
+
 function BButton:paint(x, y, w, h)
-    render.setFont(self.font)
-    local multiplier = 1.5
-    render.setColor(Color(
-        self.bgcolor.r / multiplier,
-        self.bgcolor.g / multiplier,
-        self.bgcolor.b / multiplier
-    ))
-    render.drawRect(x, y, w, h)
     local isHover = self:testHover(bgui.cursorX, bgui.cursorY)
-    render.setColor(self.bgcolor * (isHover and (input.isMouseDown(MOUSE.MOUSE1) and 1.5 or 1.2) or 1))
-    render.drawRect(x + 2, y + 2, w - 4, h - 4)
-    render.setColor(self.fgcolor)
+    local isDown = input.isMouseDown(MOUSE.MOUSE1)
+    local col = (isHover and !isDown and C.fg1) or (isHover and isDown and C.blue) or C.fg
+    local fgCol = (isHover and !isDown and C.blue) or (isHover and isDown and C.fg) or C.black
+    render.setColor(C.bg)
+    render.drawRoundedBox(4, x, y, w, h)
+    render.setColor(col)
+    render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
+    render.setColor(C.overlay)
+    render.setMaterial(gradient_up)
+    render.drawTexturedRect(x + 1, y + 17, w - 2, h - 16)
+    render.setMaterial(gradient_down)
+    render.drawTexturedRect(x + 1, y + 1, w - 2, h - 16)
+    render.setColor(fgCol)
+    render.setFont("Default")
     render.drawSimpleText(x + w / 2, y + h / 2, self.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
 end
 
@@ -770,36 +827,50 @@ bgui.register("BButton", BButton, "BLabel")
 local BFrame = {}
 
 function BFrame:init()
-    self.bgcolor = Color(120, 120, 120)
+    self.framecolor = Color(121, 124, 126)
+    self.bgcolor = Color(108, 111, 114)
     self.fgcolor = Color(255, 255, 255)
     self.dragging = false
     self.exitButton = bgui.create("BButton", self)
-    self.exitButton:setSize(24, 16)
-    self.exitButton:setPos(128 - 30, 6)
-    self.exitButton:setText("x")
+    self.exitButton:setSize(32, 18)
+    self.exitButton.font = "Marlett"
+    self.exitButton.paint = function(btn, x, y, w, h)
+        local col = C.fg
+        if btn:testHover(bgui.cursorX, bgui.cursorY) then
+            render.setColor(Color(0, 0, 0, 0))
+            col = C.fg1
+        else
+            render.setColor(C.black)
+        end
+        render.drawRoundedBox(4, x, y, w, h)
+        render.setColor(col)
+        render.drawRoundedBox(4, x, y, w, h - 1)
+        render.setColor(C.bg1)
+        render.setFont("Marlett")
+        render.drawSimpleText(x + w / 2, y + h / 2, "r", TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+    end
     self.exitButton.doClick = function(_)
         self:remove()
     end
-    self:dockPadding(4, 30, 4, 4)
+    self:dockPadding(4, 29, 4, 4)
 end
 
 function BFrame:onSizeChanged(w, _)
-    self.exitButton:setPos(w - 30, 6)
+    self.exitButton:setPos(w - 38, 5)
 end
 
 function BFrame:paint(x, y, w, h)
-    render.setColor(self.bgcolor)
-    render.drawRect(x, y, w, h)
-    local multiplier = 1.5
-    render.setColor(Color(
-        self.bgcolor.r / multiplier,
-        self.bgcolor.g / multiplier,
-        self.bgcolor.b / multiplier
-    ))
-    render.drawRect(x + 2, y + 2, w - 4, 24)
-    render.setFont(self.font)
-    render.setColor(self.fgcolor)
-    render.drawSimpleText(x + 8, y + 8, self.text)
+    render.setColor(C.black)
+    render.drawRoundedBox(4, x, y, w, h)
+    render.setColor(C.bg2)
+    render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
+    render.setColor(C.bg1)
+    render.drawRoundedBox(4, x + 2, y + 2, w - 4, h - 4)
+    render.setColor(C.bg)
+    render.drawRect(x + 2, y + 25, w - 4, h - 27)
+    render.setColor(C.fg1)
+    render.setFont("DermaDefault")
+    render.drawSimpleText(x + 8, y + 6, self.text)
 end
 
 function BFrame:onMousePressed(key)
@@ -821,7 +892,10 @@ end
 
 function BFrame:onRemove()
     local meta = getmetatable(self)
-    for i, v in pairs(table.reverse(bgui.ordered)) do
+    -- To disable cursor
+    local ordered = bgui.ordered
+    for i=#ordered, 1, -1 do
+        local v = ordered[i]
         if v.index == self.index then goto cont end
         if getmetatable(v) == meta then
             return
@@ -860,7 +934,6 @@ function BModelPanel:paint(x, y, w, h)
     render.suppressEngineLighting(true)
         self.entity:draw()
     render.popViewMatrix()
-    render.drawRectOutline(x, y, w, h)
 end
 
 ---Set model for this panel
@@ -890,16 +963,18 @@ bgui.register("BModelPanel", BModelPanel, "BPanel")
 local BPropertySheet = {}
 
 function BPropertySheet:init()
+    local contentCanvas = bgui.create("BPanel", self)
+    contentCanvas:dock(BDOCK.FILL)
+    self.canvas = contentCanvas
     local tabs = bgui.create("BPanel", self)
     tabs.paint = function() end
     tabs:dock(BDOCK.TOP)
     tabs:setSize(0, 24)
     self.tabs = tabs
-    local contentCanvas = bgui.create("BPanel", self)
-    contentCanvas:dock(BDOCK.FILL)
-    self.canvas = contentCanvas
     self.sheets = {}
     self.activeSheet = 1
+    self.bgcolor = Color(154, 157, 162)
+    self.fgcolor = Color(225, 225, 225)
 end
 
 ---Add new sheet
@@ -909,18 +984,37 @@ function BPropertySheet:addSheet(name, pnl)
     local tab = bgui.create("BButton", self.tabs)
     function tab.doClick()
         for _, v in ipairs(self.sheets) do
-            v.panel:setZPos(v.panel == pnl and 0 or -1)
+            v.panel:setVisible(v.panel == pnl and true or false)
         end
+        self:invalidateLayout()
+    end
+    function tab.paint(btn, x, y, w, h)
+        render.setColor(C.black)
+        render.drawRoundedBox(4, x, y, w, h)
+        render.setColor(C.bg3)
+        render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
+        render.setColor(C.fg)
+        render.setFont("DermaDefault")
+        render.drawSimpleText(x + 8, y + 6, btn.text)
     end
     tab:dock(BDOCK.LEFT)
     tab:setText(name)
     pnl:setParent(self.canvas)
     pnl:dock(BDOCK.FILL)
     local sheetId = #self.sheets+1
+    pnl:setVisible(sheetId == 1)
     self.sheets[sheetId] = {
         button = tab,
         panel = pnl
     }
+end
+
+function BPropertySheet:performLayout()
+    if !self.sheets then return end
+    local len = #self.sheets
+    for id, v in ipairs(self.sheets) do
+        v.button:setZPos(len - id + 1)
+    end
 end
 
 function BPropertySheet:paint() end
@@ -928,15 +1022,57 @@ function BPropertySheet:paint() end
 bgui.register("BPropertySheet", BPropertySheet, "BPanel")
 
 
+---[INTERNAL] BScrollBar class
+---@class BScrollBar: BPanel
+---@field pos number Position of a scrollbar
+---@field height number Height of a scrolled space
+---@field ratio number Ratio of a scrollbar height and canvas height
+local BScrollBar = {}
 
----BPropertySheet class
+function BScrollBar:init()
+    self.pos = 0
+    self.height = 0
+    self.ratio = 0
+    self.scrollPanel = nil
+end
+
+function BScrollBar:paint(x, y, w, h)
+    render.setColor(Color(255, 255, 255))
+    render.drawRect(x + 3, y - (self.ratio * self.pos), w - 6, self.ratio * h)
+end
+
+function BScrollBar:performLayout(w, h)
+    self.ratio = (h + 4) / self.height
+end
+
+function BScrollBar:onCursorMoved(x, y)
+    if input.isMouseDown(MOUSE.MOUSE1) then
+        self.pos = (-y + self.ratio * self.h / 2) / self.ratio
+        self.scrollPanel.pos = self.pos
+        self.scrollPanel:invalidateLayout()
+    end
+end
+
+bgui.register("BScrollBar", BScrollBar, "BPanel")
+
+
+
+---BScrollPanel class
 ---@class BScrollPanel: BPanel
 ---@field canvas BPanel
+---@field pos number
+---@field scrollbar BScrollBar
 local BScrollPanel = {}
 
 function BScrollPanel:init()
     local contentCanvas = bgui.create("BPanel", self)
+    contentCanvas:dockPadding(0, 0, 16, 0)
+    contentCanvas.paint = function() end
     self.canvas = contentCanvas
+    local scrollbar = bgui.create("BScrollBar", self)
+    scrollbar.scrollPanel = self
+    self.scrollbar = scrollbar
+    self.pos = 0
 end
 
 function BScrollPanel:performLayout(w, h)
@@ -947,8 +1083,13 @@ function BScrollPanel:performLayout(w, h)
         local _, mTop, _, mBottom = v:getDockMargin()
         height = height + chH + mTop + mBottom
     end
-    self.canvas:setPos(0, self.canvas.y - 3)
+    self.pos = math.clamp(self.pos, -height + h, 0)
+    self.scrollbar:setPos(w - 16, 0)
+    self.scrollbar:setSize(16, h)
+    self.scrollbar.pos = self.pos
+    self.canvas:setPos(0, self.pos)
     self.canvas:setSize(w, height)
+    self.scrollbar.height = height
 end
 
 ---Add new child to scroll panel
@@ -956,6 +1097,13 @@ end
 function BScrollPanel:addItem(child)
     child:setParent(self.canvas)
     child:dock(BDOCK.TOP)
+end
+
+
+function BScrollPanel:onMouseWheeled(delta)
+    self.pos = self.pos + delta * 8
+    self:invalidateLayout()
+    return true
 end
 
 bgui.register("BScrollPanel", BScrollPanel, "BPanel")
