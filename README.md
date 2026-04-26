@@ -11,9 +11,16 @@
     - [x] Make entity lib
     - [x] Make gases lib
     - [x] Make resource lib
+    - [ ] Make WireMod integration
+    - [ ] Make interfaces for connecting machines
 - [ ] Make wiki about libraries
 - [ ] Make toolbox, bucket, axe, pickaxe
+    - [ ] Make system for crowbar, to replace toolbox with it
+    - [ ] Make bucket, axe, pickaxe entities
 - [ ] Multiplayer
+    - [ ] Make shared HUD
+    - [ ] Make chip ID and remoting
+    - [ ] Make headphones for local chatting (can't make voice, so I should make PR to Starfall with PlayerCanHearVoice hook)
 - [ ] Deposits
     - [ ] Deposits without navmesh
     - [ ] Master-chip for deposits
