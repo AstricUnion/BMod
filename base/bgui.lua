@@ -130,10 +130,6 @@ hook.add("PostDrawHUD", "BPaint", function()
         end
         v:paint(x, y, w, h)
         render.disableScissorRect()
-        if bgui.debug and v.parent and v.boundX then
-            render.setColor(Color(bgui.focus == v and 255 or 150, 0, 0, 255))
-            render.drawRectOutline(v.boundX, v.boundY, v.boundX2 - v.boundX, v.boundY2 - v.boundY)
-        end
         render.setColor(Color(255, 255, 255, 255))
         render.setFont("Default")
         render.setMaterial()
@@ -234,6 +230,7 @@ bgui.DOCK = BDOCK
 ---@field index number Index of panel
 ---@field parent BPanel? Parent of this panel. If not nil, panel will be relative to it
 ---@field children BPanel[] Children of this panel
+---@field sortedChildren BPanel[] Children, but sorted by ZPos
 ---@field x number Local panel position by X
 ---@field y number Local panel position by Y
 ---@field w number Panel width
@@ -281,6 +278,7 @@ function BPanel:new(parent)
         index = index,
         parent = parent,
         children = {},
+        sortedChildren = {},
         x = y, y = x, w = w, h = h,
         dockX = y, dockY = x,
         dockMargins = {left = 0, top = 0, right = 0, bottom = 0},
@@ -292,6 +290,7 @@ function BPanel:new(parent)
     }, self)
     if parent then
         parent.children[index] = obj
+        parent.sortedChildren = sortByZPos(parent.children)
         timer.simple(0, function()
             parent:invalidateLayout()
         end)
@@ -309,17 +308,21 @@ function BPanel:setParent(parent)
     local changed = false
     if isValid(self.parent) then
         self.parent.children[self.index] = nil
+        self.parent.sortedChildren = sortByZPos(self.parent.children)
         self.parent:invalidateLayout()
         self.parent = nil
         changed = true
     end
     if parent and isValid(parent) then
         parent.children[self.index] = self
+        parent.sortedChildren = sortByZPos(parent.children)
         parent:invalidateLayout()
         self.parent = parent
         changed = true
     end
-    if changed then self:invalidateLayout() end
+    if changed then
+        bgui.ordered = sortByZPos(bgui.inited)
+    end
 end
 
 
@@ -374,7 +377,7 @@ end
 function BPanel:setVisible(state)
     if self.parent and !self.parent.visible then state = false end
     self.visible = state
-    for _, v in pairs(self.children) do
+    for _, v in ipairs(self.sortedChildren) do
         if !isValid(v) then goto cont end
         v:setVisible(state)
         ::cont::
@@ -428,6 +431,8 @@ end
 ---@param pos number
 function BPanel:setZPos(pos)
     self.zPos = math.clamp(pos, -32768, 32768)
+    bgui.ordered = sortByZPos(bgui.inited)
+    self.sortedChildren = sortByZPos(self.children)
     self:invalidateLayout()
 end
 
@@ -459,7 +464,7 @@ end
 ---Invalidate layout. Will call hook performLayout
 function BPanel:invalidateLayout()
     if self.performsLayout then return end
-    bgui.ordered = sortByZPos(bgui.inited)
+    self.performsLayout = true
     local x, y = self:getPos()
     local w, h = self:getSize()
     -- wtf what i did there
@@ -474,12 +479,9 @@ function BPanel:invalidateLayout()
         rbX, rbY  = x, y
         rbX2, rbY2 = rbX + w, rbY + h
     end
-    local sortedChildren = sortByZPos(self.children)
-    for _, v in ipairs(sortedChildren) do
+    for _, v in ipairs(self.sortedChildren) do
         if !isValid(v) or !v.visible then goto cont end
-        local vX, vY = self:getPos()
-        local vW, vH = self:getSize()
-        v.boundX, v.boundY, v.boundX2, v.boundY2 = math.max(rbX, vX), math.max(rbY, vY), math.min(rbX2, vX + vW), math.min(rbY2, vY + vH)
+        v.boundX, v.boundY, v.boundX2, v.boundY2 = rbX, rbY, rbX2, rbY2
         if v.docktype == 0 then goto cont end
         local vMargins = v.dockMargins
         v.dockX = bX + vMargins.left
@@ -511,7 +513,6 @@ function BPanel:invalidateLayout()
         v:invalidateLayout()
         ::cont::
     end
-    self.performsLayout = true
     self:performLayout(w, h)
     self.performsLayout = false
 end
@@ -528,7 +529,7 @@ end
 ---Invalidate children layout. Will call hook performLayout on children
 ---@param recursive boolean?
 function BPanel:invalidateChildren(recursive)
-    for _, v in pairs(self.children) do
+    for _, v in ipairs(self.sortedChildren) do
         if !isValid(v) or !v.visible then goto cont end
         v:invalidateLayout()
         if recursive then
@@ -630,7 +631,7 @@ end
 
 ---Remove panel
 function BPanel:remove()
-    for _, v in pairs(self.children) do
+    for _, v in ipairs(self.sortedChildren) do
         if !isValid(v) then goto cont end
         v:remove()
         ::cont::
@@ -807,9 +808,10 @@ function BButton:paint(x, y, w, h)
     render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
     render.setColor(C.overlay)
     render.setMaterial(gradient_up)
-    render.drawTexturedRect(x + 1, y + 17, w - 2, h - 16)
+    local height = h * 0.2
+    render.drawTexturedRect(x + 1, y + 1 + (h - height), w - 2, height)
     render.setMaterial(gradient_down)
-    render.drawTexturedRect(x + 1, y + 1, w - 2, h - 16)
+    render.drawTexturedRect(x + 1, y + 1, w - 2, height)
     render.setColor(fgCol)
     render.setFont("Default")
     render.drawSimpleText(x + w / 2, y + h / 2, self.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
@@ -1078,7 +1080,7 @@ end
 function BScrollPanel:performLayout(w, h)
     local _, pTop, _, pBottom = self:getDockPadding()
     local height = pTop + pBottom
-    for _, v in pairs(self.canvas.children) do
+    for _, v in ipairs(self.canvas.sortedChildren) do
         local _, chH = v:getSize()
         local _, mTop, _, mBottom = v:getDockMargin()
         height = height + chH + mTop + mBottom
