@@ -5,6 +5,13 @@
 if SERVER then return end
 
 -----[ Prelude ]-----
+local render = render
+local ipairs = ipairs
+local pairs = pairs
+local throw = throw
+local input = input
+local isValid = isValid
+local table = table
 
 ---Class to manipulate UI
 ---@class bgui
@@ -60,18 +67,25 @@ local function mouseMoved(x, y)
     bgui.cursorX = x
     bgui.cursorY = y
     if !input.getCursorVisible() then return end
-    for _, v in ipairs(bgui.ordered) do
-        if !isValid(v) or !v.visible then goto cont end
-        if !v.mouseInput then goto cont end
-        local isOldHover = v:testHover(oldX, oldY)
-        local isNewHover = v:testHover(x, y)
-        if isNewHover and !isOldHover then
-            v:onCursorEntered()
+    local ordered = bgui.ordered
+    local isPressed = input.isMouseDown(MOUSE.MOUSE1)
+    for i=1, #ordered do
+        -- this is soooo small optimizations
+        local v = ordered[i]
+        if !isValid(v) or !v.visible or !v.mouseInput then goto cont end
+        local isOldHover = v.testHover(v, oldX, oldY, true)
+        local isNewHover = v.testHover(v, x, y, true)
+        if !isPressed and isNewHover and !isOldHover then
+            v.onCursorEntered(v)
+            bgui.focus = v
+            v.hovered = true
         elseif !isNewHover and isOldHover then
-            v:onCursorExited()
-        elseif isNewHover and isOldHover then
-            local selfX, selfY = v:getPos()
-            v:onCursorMoved(x - selfX, y - selfY)
+            v.onCursorExited(v)
+            v.hovered = false
+        elseif bgui.focus == v then
+            v.onCursorMoved(v, x - v.globalX, y - v.globalY)
+        else
+            v.hovered = false
         end
         ::cont::
     end
@@ -109,7 +123,7 @@ hook.add("PostDrawHUD", "BPaint", function()
     if sw ~= bgui.screenWidth or sh ~= bgui.screenHeight then
         bgui.screenWidth = sw
         bgui.screenHeight = sh
-        bgui.canvas:setSize(sw, sh)
+        bgui.canvas.setSize(bgui.canvas, sw, sh)
     end
     local cX, cY = input.getCursorPos()
     if cX ~= bgui.cursorX or cY ~= bgui.cursorY then
@@ -121,14 +135,13 @@ hook.add("PostDrawHUD", "BPaint", function()
     local ordered = bgui.ordered
     for i=#ordered, 1, -1 do
         local v = ordered[i]
-        if !isValid(v) then goto cont end
-        if !v.visible then goto cont end
-        local x, y = v:getPos()
-        local w, h = v:getSize()
-        if v.parent and v.boundX then
-            render.enableScissorRect(v.boundX, v.boundY, v.boundX2, v.boundY2)
+        if !isValid(v) or !v.visible then goto cont end
+        local x, y = v.globalX, v.globalY
+        local w, h = v.globalW, v.globalH
+        if v.parent then
+            render.enableScissorRect(v.bounds.l, v.bounds.t, v.bounds.r, v.bounds.b)
         end
-        v:paint(x, y, w, h)
+        v.paint(v, x, y, w, h)
         render.disableScissorRect()
         render.setColor(Color(255, 255, 255, 255))
         render.setFont("Default")
@@ -139,8 +152,10 @@ end)
 
 
 hook.add("Think", "BThink", function()
-    if table.isEmpty(bgui.ordered) then return end
-    for _, v in ipairs(bgui.ordered) do
+    if next(bgui.ordered) == nil then return end
+    local ordered = bgui.ordered
+    for i=1, #ordered do
+        local v = ordered[i]
         if !isValid(v) or !v.visible then goto cont end
         v:think()
         ::cont::
@@ -157,7 +172,7 @@ local function isMouse(key)
 end
 
 hook.add("InputPressed", "BInputPressed", function(key)
-    if table.isEmpty(bgui.ordered) then return end
+    if next(bgui.ordered) == nil then return end
     if input.getCursorVisible() then
         if isMouse(key) then
             local x, y = bgui.cursorX, bgui.cursorY
@@ -180,12 +195,11 @@ hook.add("InputPressed", "BInputPressed", function(key)
 end)
 
 hook.add("InputReleased", "BInputReleased", function(key)
-    if table.isEmpty(bgui.ordered) then return end
+    if next(bgui.ordered) == nil then return end
     if input.getCursorVisible() then
         if isMouse(key) then
             for _, v in ipairs(bgui.ordered) do
-                if !isValid(v) or !v.visible then goto cont end
-                if !v.mouseInput then goto cont end
+                if !v.mouseInput or !isValid(v) or !v.visible then goto cont end
                 if bgui.focus == v and v:onMouseReleased(key) then return end
                 ::cont::
             end
@@ -194,10 +208,9 @@ hook.add("InputReleased", "BInputReleased", function(key)
 end)
 
 hook.add("MouseWheeled", "BMouseWheeled", function(delta)
-    if table.isEmpty(bgui.ordered) then return end
+    if next(bgui.ordered) == nil then return end
     for _, v in ipairs(bgui.ordered) do
-        if !isValid(v) or !v.visible then goto cont end
-        if !v.mouseInput then goto cont end
+        if !isValid(v) or !v.visible or !v.mouseInput then goto cont end
         if v:onMouseWheeled(delta) then return end
         ::cont::
     end
@@ -220,10 +233,10 @@ bgui.DOCK = BDOCK
 
 -----[ Base class ]-----
 ---@class Margins
----@field left number
----@field top number
----@field right number
----@field bottom number
+---@field l number
+---@field t number
+---@field r number
+---@field b number
 
 ---Base class for UI elements
 ---@class BPanel
@@ -235,23 +248,22 @@ bgui.DOCK = BDOCK
 ---@field y number Local panel position by Y
 ---@field w number Panel width
 ---@field h number Panel height
----@field dockX number Local panel position by X on dock
----@field dockY number Local panel position by Y on dock
----@field dockW number Panel width on dock
----@field dockH number Panel height on dock
+---@field globalX number Local panel position by X on dock
+---@field globalY number Local panel position by Y on dock
+---@field globalW number Panel width on dock
+---@field globalH number Panel height on dock
 ---@field dockMargins Margins Margins on dock
 ---@field dockPaddings Margins Padding on dock
+---@field dockBounds Margins Padding on dock
 ---@field performsLayout boolean Panel in performLayout now
 ---@field minW number Panel minimal width
 ---@field minH number Panel minimal height
----@field boundX number Panel render bounds minimum X
----@field boundY number Panel render bounds minimum Y
----@field boundX2 number Panel render bounds maximum X
----@field boundY2 number Panel render bounds maximum Y
+---@field bounds Margins Panel render bounds minimum X
 ---@field docktype BDOCK height (GLua tall)
 ---@field visible boolean Is this panel visible
 ---@field zPos number Number which determinates rendering order
 ---@field mouseInput boolean Get mouse input
+---@field hovered boolean Is panel hovered (from hook)
 ---@field font string Font for panel
 ---@field text string Text for panel
 ---@field fgcolor Color Foreground color of this panel
@@ -279,10 +291,13 @@ function BPanel:new(parent)
         parent = parent,
         children = {},
         sortedChildren = {},
-        x = y, y = x, w = w, h = h,
-        dockX = y, dockY = x,
-        dockMargins = {left = 0, top = 0, right = 0, bottom = 0},
-        dockPaddings = {left = 0, top = 0, right = 0, bottom = 0},
+        x = x, y = y, w = w, h = h,
+        globalX = x, globalY = y, globalW = w, globalH = h,
+        dockMargins = {l = 0, t = 0, r = 0, b = 0},
+        dockPaddings = {l = 0, t = 0, r = 0, b = 0},
+        dockBounds = {l = 0, t = 0, r = 0, b = 0},
+        bounds = {l = x, t = y, r = x + w, b = y + h},
+        performsLayout = true,
         minW = 0, minH = 0, docktype = 0, visible = true, zPos = 1,
         mouseInput = true,
         font = "Default", text = "Label",
@@ -291,10 +306,11 @@ function BPanel:new(parent)
     if parent then
         parent.children[index] = obj
         parent.sortedChildren = sortByZPos(parent.children)
-        timer.simple(0, function()
-            parent:invalidateLayout()
-        end)
     end
+    timer.simple(0, function()
+        obj.performsLayout = false
+        obj:invalidateLayout()
+    end)
     bgui.inited[index] = obj
     bgui.ordered = sortByZPos(bgui.inited)
     obj:init()
@@ -329,17 +345,7 @@ end
 ---Get global position of this panel. Use this to draw
 ---@return number x, number y
 function BPanel:getPos()
-    local cond = self.docktype > 0
-    local selfX = cond and self.dockX or self.x
-    local selfY = cond and self.dockY or self.y
-    local x, y
-    if self.parent then
-        local pX, pY = self.parent:getPos()
-        x, y = pX + selfX, pY + selfY
-    else
-        x, y = selfX, selfY
-    end
-    return x, y
+    return self.globalX, self.globalY
 end
 
 ---Set local position of this panel
@@ -354,11 +360,7 @@ end
 ---Get size of this panel. Use this to draw
 ---@return number w, number h
 function BPanel:getSize()
-    local cond = self.docktype > 0
-    local selfW = cond and self.dockW or self.w
-    local selfH = cond and self.dockH or self.h
-    local w, h = math.max(selfW, self.minW), math.max(selfH, self.minH)
-    return w, h
+    return self.globalW, self.globalH
 end
 
 ---Set size for this panel
@@ -432,8 +434,10 @@ end
 function BPanel:setZPos(pos)
     self.zPos = math.clamp(pos, -32768, 32768)
     bgui.ordered = sortByZPos(bgui.inited)
-    self.sortedChildren = sortByZPos(self.children)
-    self:invalidateLayout()
+    if self.parent then
+        self.parent.sortedChildren = sortByZPos(self.parent.children)
+    end
+    -- self:invalidateLayout()
 end
 
 ---Get local Z position
@@ -465,55 +469,60 @@ end
 function BPanel:invalidateLayout()
     if self.performsLayout then return end
     self.performsLayout = true
-    local x, y = self:getPos()
-    local w, h = self:getSize()
-    -- wtf what i did there
-    local pad = self.dockPaddings
-    -- b - bounds, rb - render bounds
-    local bX, bY, bW, bH = pad.left, pad.top, w - pad.right, h - pad.bottom
-    local rbX, rbY, rbX2, rbY2
-    if self.parent and self.parent.boundX then
-        rbX, rbY  = math.max(x, self.parent.boundX), math.max(y, self.parent.boundY)
-        rbX2, rbY2 = math.min(rbX + w, self.parent.boundX2), math.min(rbY + h, self.parent.boundY2)
-    else
-        rbX, rbY  = x, y
-        rbX2, rbY2 = rbX + w, rbY + h
-    end
-    for _, v in ipairs(self.sortedChildren) do
-        if !isValid(v) or !v.visible then goto cont end
-        v.boundX, v.boundY, v.boundX2, v.boundY2 = rbX, rbY, rbX2, rbY2
-        if v.docktype == 0 then goto cont end
-        local vMargins = v.dockMargins
-        v.dockX = bX + vMargins.left
-        v.dockY = bY + vMargins.top
-        v.dockW = bW - vMargins.right - bX
-        v.dockH = bH - vMargins.bottom - bY
+    local x, y, w, h
+    local boundX, boundY, boundX2, boundY2 = 0, 0, 0, 0
+    local par = self.parent
+    local min, max = math.min, math.max
+    if par and self.docktype > 0 then
+        local pX, pY = par.globalX, par.globalY
+        local dockB = par.dockBounds
+        local mar = self.dockMargins
+        x = pX + dockB.l + mar.l
+        y = pY + dockB.t + mar.t
+        w = dockB.r - dockB.l - mar.r - mar.l
+        h = dockB.b - dockB.t - mar.b - mar.t
         local funcs = {
             [BDOCK.LEFT] = function()
-                v.dockW = v.w
-                bX = bX + v.w + vMargins.left
+                w = self.w
+                dockB.l = dockB.l + w + mar.l + mar.r
             end,
             [BDOCK.RIGHT] = function()
-                v.dockX = v.dockW + vMargins.right + pad.right
-                v.dockW = v.w
-                bW = bW - v.w - vMargins.right
+                x = (x + w) - self.w
+                w = self.w
+                dockB.r = dockB.r - w - mar.l - mar.r
             end,
             [BDOCK.TOP] = function()
-                v.dockH = v.h
-                bY = bY + v.h + vMargins.top + vMargins.bottom
+                h = self.h
+                dockB.t = dockB.t + h + mar.t + mar.b
             end,
             [BDOCK.BOTTOM] = function()
-                v.dockY = v.dockH + vMargins.left + pad.left
-                v.dockH = v.h
-                bH = bH - v.h - vMargins.bottom - vMargins.top
+                y = (y + h) - self.h
+                h = self.h
+                dockB.b = dockB.b - h - mar.t - mar.b
             end,
             [BDOCK.FILL] = function() end
         }
-        funcs[v.docktype]()
-        v:invalidateLayout()
-        ::cont::
+        funcs[self.docktype]()
+        boundX, boundY, boundX2, boundY2 = max(x, par.bounds.l), max(y, par.bounds.t), min(x + w, par.bounds.r), min(y + h, par.bounds.b)
+    elseif par then
+        local pX, pY = par.globalX, par.globalY
+        x, y, w, h = pX + self.x, pY + self.y, max(self.w, self.minW), max(self.h, self.minH)
+        boundX, boundY, boundX2, boundY2 = max(x, par.bounds.l), max(y, par.bounds.t), min(x + w, par.bounds.r), min(y + h, par.bounds.b)
+    else
+        x, y, w, h = self.x, self.y, self.w, self.h
+        boundX, boundY, boundX2, boundY2 = x, y, x + w, y + h
     end
-    self:performLayout(w, h)
+    self.globalX, self.globalY, self.globalW, self.globalH = x, y, w, h
+    local pad = self.dockPaddings
+    self.dockBounds = {
+        l = pad.l, t = pad.t,
+        b = self.globalH - pad.b, r = self.globalW - pad.r
+    }
+    self.bounds = {
+        l = boundX, t = boundY, r = boundX2, b = boundY2
+    }
+    self:invalidateChildren()
+    self:performLayout(x, y, w, h)
     self.performsLayout = false
 end
 
@@ -527,14 +536,12 @@ end
 
 
 ---Invalidate children layout. Will call hook performLayout on children
----@param recursive boolean?
-function BPanel:invalidateChildren(recursive)
-    for _, v in ipairs(self.sortedChildren) do
+function BPanel:invalidateChildren()
+    local sorted = self.sortedChildren
+    for i=#sorted, 1, -1 do
+        local v = sorted[i]
         if !isValid(v) or !v.visible then goto cont end
         v:invalidateLayout()
-        if recursive then
-            v:invalidateChildren(true)
-        end
         ::cont::
     end
 end
@@ -555,10 +562,10 @@ end
 ---@param bottom number
 function BPanel:dockMargin(left, top, right, bottom)
     self.dockMargins = {
-        left = left,
-        top = top,
-        right = right,
-        bottom = bottom
+        l = left,
+        t = top,
+        r = right,
+        b = bottom
     }
     self:invalidateParent()
 end
@@ -568,7 +575,7 @@ end
 ---@return number left, number top, number right, number bottom
 function BPanel:getDockMargin()
     local mar = self.dockMargins
-    return mar.left, mar.top, mar.right, mar.bottom
+    return mar.l, mar.t, mar.r, mar.b
 end
 
 
@@ -579,10 +586,10 @@ end
 ---@param bottom number
 function BPanel:dockPadding(left, top, right, bottom)
     self.dockPaddings = {
-        left = left,
-        top = top,
-        right = right,
-        bottom = bottom
+        l = left,
+        t = top,
+        r = right,
+        b = bottom
     }
     self:invalidateLayout()
 end
@@ -591,7 +598,7 @@ end
 ---@return number left, number top, number right, number bottom
 function BPanel:getDockPadding()
     local pad = self.dockPaddings
-    return pad.left, pad.top, pad.right, pad.bottom
+    return pad.l, pad.t, pad.r, pad.b
 end
 
 
@@ -617,8 +624,8 @@ end
 ---Centers the panel on its parent.
 function BPanel:center()
     if self.docktype > 0 then return end
-    local w, h = self.parent:getSize()
-    local selfW, selfH = self:getSize()
+    local w, h = self.parent.globalW, self.parent.globalH
+    local selfW, selfH = self.globalW, self.globalH
     self:setPos(w / 2 - selfW / 2, h / 2 - selfH / 2)
 end
 
@@ -632,9 +639,9 @@ end
 ---Remove panel
 function BPanel:remove()
     for _, v in ipairs(self.sortedChildren) do
-        if !isValid(v) then goto cont end
-        v:remove()
-        ::cont::
+        if isValid(v) then
+            v:remove()
+        end
     end
     self:onRemove()
     bgui.inited[self.index] = nil
@@ -647,13 +654,15 @@ end
 ---Is position hovering panel
 ---@param x number
 ---@param y number
-function BPanel:testHover(x, y)
-    if !self.boundX then return end
-    local selfX, selfY = self:getPos()
-    local selfW, selfH = self:getSize()
-    local bX, bY = math.max(self.boundX, selfX), math.max(selfY, self.boundY)
-    local bX2, bY2 = math.min(self.boundX2, selfX + selfW), math.min(self.boundY2, selfY + selfH)
-    return (x >= bX and x < bX2) and (y >= bY and y < bY2)
+---@param raw boolean? Get raw data, without hooks
+---@return boolean
+function BPanel:testHover(x, y, raw)
+    if raw then
+        local bX, bY = self.bounds.l, self.bounds.t
+        local bX2, bY2 = self.bounds.r, self.bounds.b
+        return (x >= bX and x < bX2) and (y >= bY and y < bY2)
+    end
+    return self.hovered
 end
 
 
@@ -688,9 +697,11 @@ function BPanel:paint(x, y, w, h)
 end
 
 ---Perform layout. Can be called with invalidateLayout
+---@param x number X position
+---@param y number Y position
 ---@param w number Width
 ---@param h number Height
-function BPanel:performLayout(w, h) end
+function BPanel:performLayout(x, y, w, h) end
 
 ---Called just after the panel size changes.
 function BPanel:onSizeChanged(newWidth, newHeight) end
@@ -736,6 +747,7 @@ do
     canvas.visible = false
     canvas.mouseInput = false
     canvas.zPos = -1
+    canvas:invalidateLayout()
     bgui.canvas = canvas
     bgui.focus = canvas
 end
@@ -748,7 +760,8 @@ local C = {
     blue = Color(20, 200, 250),
     fg1 = Color(255, 255, 255),
     fg = Color(225, 225, 225),
-    overlay = Color(156, 156, 156, 156),
+    fgMin = Color(200, 200, 200),
+    overlay = Color(166, 166, 166, 106),
     bg3 = Color(154, 157, 162),
     bg2 = Color(138, 138, 138),
     bg1 = Color(128, 128, 128),
@@ -808,10 +821,9 @@ function BButton:paint(x, y, w, h)
     render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
     render.setColor(C.overlay)
     render.setMaterial(gradient_up)
-    local height = h * 0.2
-    render.drawTexturedRect(x + 1, y + 1 + (h - height), w - 2, height)
-    render.setMaterial(gradient_down)
-    render.drawTexturedRect(x + 1, y + 1, w - 2, height)
+    local height, grHeight = h * 0.4, h * 0.1
+    render.drawTexturedRect(x + 2, y - 2 + (h - grHeight - height), w - 3, grHeight)
+    render.drawRect(x + 2, y - 2 + (h - height), w - 3, height)
     render.setColor(fgCol)
     render.setFont("Default")
     render.drawSimpleText(x + w / 2, y + h / 2, self.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
@@ -965,14 +977,22 @@ bgui.register("BModelPanel", BModelPanel, "BPanel")
 local BPropertySheet = {}
 
 function BPropertySheet:init()
-    local contentCanvas = bgui.create("BPanel", self)
-    contentCanvas:dock(BDOCK.FILL)
-    self.canvas = contentCanvas
     local tabs = bgui.create("BPanel", self)
     tabs.paint = function() end
     tabs:dock(BDOCK.TOP)
-    tabs:setSize(0, 24)
+    tabs:setSize(0, 20)
     self.tabs = tabs
+    local contentCanvas = bgui.create("BPanel", self)
+    contentCanvas:dock(BDOCK.FILL)
+    contentCanvas.paint = function(pnl, x, y, w, h)
+        render.setColor(C.black)
+        render.drawRoundedBox(4, x, y, w, h)
+        render.setColor(C.bg3)
+        render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
+        render.setColor(C.bg2)
+        render.drawRoundedBox(4, x + 2, y + 2, w - 4, h - 4)
+    end
+    self.canvas = contentCanvas
     self.sheets = {}
     self.activeSheet = 1
     self.bgcolor = Color(154, 157, 162)
@@ -984,26 +1004,35 @@ end
 ---@param pnl BPanel Panel in this tab
 function BPropertySheet:addSheet(name, pnl)
     local tab = bgui.create("BButton", self.tabs)
-    function tab.doClick()
+    local sheetId = #self.sheets+1
+    function tab.doClick(btn)
         for _, v in ipairs(self.sheets) do
-            v.panel:setVisible(v.panel == pnl and true or false)
+            v.panel:setVisible(v.panel == pnl)
+            v.button.active = false
         end
+        self.activeSheet = sheetId
+        btn.active = true
         self:invalidateLayout()
     end
     function tab.paint(btn, x, y, w, h)
+        local active = btn.active
+        local isHover = btn:testHover(bgui.cursorX, bgui.cursorY)
         render.setColor(C.black)
-        render.drawRoundedBox(4, x, y, w, h)
-        render.setColor(C.bg3)
-        render.drawRoundedBox(4, x + 1, y + 1, w - 2, h - 2)
-        render.setColor(C.fg)
+        render.drawRoundedBox(active and 4 or 2, x, y + (active and 0 or 1), w + 1, h + 2)
+        render.setColor(active and C.bg3 or C.bg1)
+        render.drawRoundedBox(active and 4 or 2, x + 1, y + 1 + (active and 0 or 1), w - 1, h + 2)
+        render.setColor(active and C.fg1 or (isHover and C.fg or C.fgMin))
         render.setFont("DermaDefault")
-        render.drawSimpleText(x + 8, y + 6, btn.text)
+        render.drawSimpleText(x + w / 2, y + h / 2, btn.text, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
     end
     tab:dock(BDOCK.LEFT)
+    render.setFont("DermaDefault")
+    local textW, _ = render.getTextSize(name)
+    tab:setSize(textW + 16, 0)
     tab:setText(name)
+    tab.active = sheetId == 1
     pnl:setParent(self.canvas)
     pnl:dock(BDOCK.FILL)
-    local sheetId = #self.sheets+1
     pnl:setVisible(sheetId == 1)
     self.sheets[sheetId] = {
         button = tab,
@@ -1015,7 +1044,7 @@ function BPropertySheet:performLayout()
     if !self.sheets then return end
     local len = #self.sheets
     for id, v in ipairs(self.sheets) do
-        v.button:setZPos(len - id + 1)
+        v.button:setZPos(id + 1)
     end
 end
 
@@ -1039,15 +1068,20 @@ function BScrollBar:init()
 end
 
 function BScrollBar:paint(x, y, w, h)
-    render.setColor(Color(255, 255, 255))
-    render.drawRect(x + 3, y - (self.ratio * self.pos), w - 6, self.ratio * h)
+    local yOffset, height = (self.ratio * self.pos), self.ratio * h
+    render.setColor(C.bg)
+    render.drawRoundedBox(4, x, y - yOffset, w, height)
+    render.setColor(C.fg1)
+    render.drawRoundedBox(4, x + 1, y + 1 - yOffset, w - 2, height - 2)
+    render.setColor(C.fg)
+    render.drawRoundedBox(4, x + 2, y + 2 - yOffset, w - 4, height - 4)
 end
 
-function BScrollBar:performLayout(w, h)
-    self.ratio = (h + 4) / self.height
+function BScrollBar:performLayout(_, _, _, h)
+    self.ratio = h / self.height
 end
 
-function BScrollBar:onCursorMoved(x, y)
+function BScrollBar:onCursorMoved(_, y)
     if input.isMouseDown(MOUSE.MOUSE1) then
         self.pos = (-y + self.ratio * self.h / 2) / self.ratio
         self.scrollPanel.pos = self.pos
@@ -1068,7 +1102,6 @@ local BScrollPanel = {}
 
 function BScrollPanel:init()
     local contentCanvas = bgui.create("BPanel", self)
-    contentCanvas:dockPadding(0, 0, 16, 0)
     contentCanvas.paint = function() end
     self.canvas = contentCanvas
     local scrollbar = bgui.create("BScrollBar", self)
@@ -1077,7 +1110,7 @@ function BScrollPanel:init()
     self.pos = 0
 end
 
-function BScrollPanel:performLayout(w, h)
+function BScrollPanel:performLayout(_, _, w, h)
     local _, pTop, _, pBottom = self:getDockPadding()
     local height = pTop + pBottom
     for _, v in ipairs(self.canvas.sortedChildren) do
@@ -1086,9 +1119,15 @@ function BScrollPanel:performLayout(w, h)
         height = height + chH + mTop + mBottom
     end
     self.pos = math.clamp(self.pos, -height + h, 0)
-    self.scrollbar:setPos(w - 16, 0)
-    self.scrollbar:setSize(16, h)
-    self.scrollbar.pos = self.pos
+    if height > h then
+        self.scrollbar:setPos(w - 17, 0)
+        self.scrollbar:setSize(16, h)
+        self.scrollbar.pos = self.pos
+        self.scrollbar:setVisible(true)
+        w = w - 17
+    else
+        self.scrollbar:setVisible(false)
+    end
     self.canvas:setPos(0, self.pos)
     self.canvas:setSize(w, height)
     self.scrollbar.height = height
@@ -1107,6 +1146,8 @@ function BScrollPanel:onMouseWheeled(delta)
     self:invalidateLayout()
     return true
 end
+
+function BScrollPanel:paint() end
 
 bgui.register("BScrollPanel", BScrollPanel, "BPanel")
 

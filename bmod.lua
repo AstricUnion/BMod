@@ -66,7 +66,7 @@ dodir("bmod/gases", {})
 
 
 if SERVER then
-    ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
+    -- ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()
