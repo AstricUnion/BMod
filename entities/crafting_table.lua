@@ -8,6 +8,9 @@ local ents = ents
 ---@class resource
 local resource = resource
 
+---@class bmodConfig
+local cfg = bmodConfig
+
 ---Lib from AstricUnion (TODO: remade it)
 ---@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/holos.lua as holos
 local holos = require("holos")
@@ -174,24 +177,20 @@ if CLIENT then
             if isValid(tbl.craftMenu) then return end
             local menu = bgui.create("BFrame")
             menu:setSize(720, 512)
-            menu:center()
             local tabs = bgui.create("BPropertySheet", menu)
             tabs.canvas:dockPadding(4, 4, 4, 4)
             tabs:dock(bgui.DOCK.FILL)
-            local category = bgui.create("BScrollPanel", tabs)
-            category:addItem(bgui.create("BButton"))
-            category:addItem(bgui.create("BButton"))
-            category:addItem(bgui.create("BButton"))
-            category:addItem(bgui.create("BButton"))
-            category:addItem(bgui.create("BButton"))
-            category:addItem(bgui.create("BButton"))
-            category:addItem(bgui.create("BButton"))
-            tabs:addSheet("test", category)
-            -- local category2 = bgui.create("BScrollPanel", tabs)
-            -- category2:addItem(bgui.create("BButton"))
-            -- category2:addItem(bgui.create("BButton"))
-            -- tabs:addSheet("test2", category2)
+            for category, crafts in pairs(cfg.crafts) do
+                local categoryPanel = bgui.create("BScrollPanel", tabs)
+                for _, craft in ipairs(crafts) do
+                    local butt = bgui.create("BButton")
+                    butt:setText(craft.name)
+                    categoryPanel:addItem(butt)
+                end
+                tabs:addSheet(category, categoryPanel)
+            end
             tbl.craftMenu = menu
+            menu:center()
             input.enableCursor(true)
         end)
     end)

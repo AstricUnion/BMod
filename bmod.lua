@@ -8,6 +8,7 @@
 ---@include bmod/base/resource.lua
 ---@include bmod/base/remote.lua
 ---@include bmod/base/deposits.lua
+---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
 
 -- Just to not remove all in one press
@@ -16,16 +17,24 @@ if SERVER then
 end
 
 -- Firstly, we should include our libraries. It will be shared in all files
+--
 ---@class ents
 ents = require("bmod/base/entity.lua")
+
 ---@class gas
 gas = require("bmod/base/gas.lua")
+
 ---@class resource
 resource = require("bmod/base/resource.lua")
+
 ---@class butils
 butils = require("bmod/base/utils.lua")
+
 ---@class deposit
 deposit = require("bmod/base/deposits.lua")
+
+---@class bmodConfig
+bmodConfig = require("bmod/src/config.lua")
 
 if SERVER then
     ---@class remote

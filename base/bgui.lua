@@ -79,6 +79,7 @@ local function mouseMoved(x, y)
             v.onCursorEntered(v)
             bgui.focus = v
             v.hovered = true
+            return
         elseif !isNewHover and isOldHover then
             v.onCursorExited(v)
             v.hovered = false
@@ -162,13 +163,13 @@ hook.add("Think", "BThink", function()
     end
 end)
 
+local reverseMouse = {}
+for key, id in pairs(MOUSE) do
+    reverseMouse[id] = key
+end
+
 local function isMouse(key)
-    for _, en in pairs(MOUSE) do
-        if key == en then
-            return true
-        end
-    end
-    return false
+    return MOUSE[reverseMouse[key] or 0] ~= nil
 end
 
 hook.add("InputPressed", "BInputPressed", function(key)

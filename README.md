@@ -3,10 +3,13 @@
 **Why it needed?** It needed, because not all servers have the JMod, but it addictive to a roleplay or an event. Or just to have a fun with your friends :)
 
 ## TODO:
-- [ ] Optimize BGUI library (idk how to write gui libraries, this is my first attempt)
+- [x] Optimize BGUI library (idk how to write gui libraries, this is my first attempt)
+    - [ ] Fix bugs with focus
 - [x] BGUI redesign
     - [ ] Make skins system like Derma
+    - [ ] Fix small bugs in skins
 - [ ] Remove hardcode
+- [ ] Make config splitted between client and server
 - [ ] Make more machines, gases, resources
     - [x] Make entity lib
     - [x] Make gases lib
