@@ -25,6 +25,7 @@ resource.props = {}
 ---@field SignAngle Angle Angle of a sign with resource info
 ---@field Sounds ResourceSounds Angle of a sign with resource info
 ---@field FuelInUnit number How many fuel this 
+---@field Icon fun(x: number, y: number, w: number, h: number) Icon paint function
 -- Private fields
 ---@field pickedUpBy Player [SERVER] Player, that's picked up this resource
 local Resource = {}
@@ -33,6 +34,7 @@ Resource.Name = "Base"
 Resource.Model = "models/hunter/blocks/cube05x05x05.mdl"
 Resource.SignOffset = Vector(12, 0, 0)
 Resource.SignAngle = Angle()
+Resource.Icon = function() end
 Resource.Sounds = {
     Merge = "items/ammocrate_close.wav",
     Split = "items/ammocrate_open.wav"
@@ -154,6 +156,7 @@ if CLIENT then
             render.setFont(resource.font)
             render.drawSimpleText(0, -32, self.Name, TEXT_ALIGN.CENTER)
             render.drawSimpleText(0, 0, string.format("%s units", self:getCount()), TEXT_ALIGN.CENTER)
+            self.Icon(32, 32, 32, 32)
         end
         render.popMatrix()
     end

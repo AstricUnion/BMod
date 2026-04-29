@@ -4,11 +4,21 @@ local resource = resource
 ---@class deposit
 local deposit = deposit
 
+local icons
+if CLIENT then
+    icons = material.create("gmodscreenspace")
+    icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
+end
+
 ---@class Wood: Resource
 local Wood = resource.fastRegister(
     "Wood", "wood", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
     "physics/wood/wood_box_break1.wav", "physics/wood/wood_box_impact_hard4.wav"
 )
+Wood.Icon = function(x, y, w, h)
+    render.setMaterial(icons)
+    render.drawTexturedRectUVFast(x, y, w, h, 0.1, 0.1, 0.2, 0.2, true)
+end
 Wood.modifyEntity = function(ent)
     ent:setMaterial("phoenix_storms/wood")
 end
