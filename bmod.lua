@@ -5,9 +5,10 @@
 ---@include bmod/base/effects.lua
 ---@include bmod/base/gas.lua
 ---@include bmod/base/utils.lua
----@include bmod/base/resource.lua
 ---@include bmod/base/remote.lua
 ---@include bmod/base/deposits.lua
+---@include bmod/base/icons.lua
+---@include bmod/src/resource.lua
 ---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
 
@@ -24,17 +25,21 @@ ents = require("bmod/base/entity.lua")
 ---@class gas
 gas = require("bmod/base/gas.lua")
 
----@class resource
-resource = require("bmod/base/resource.lua")
-
 ---@class butils
 butils = require("bmod/base/utils.lua")
 
 ---@class deposit
 deposit = require("bmod/base/deposits.lua")
 
+---@class bicons
+bicons = require("bmod/base/icons.lua")
+
 ---@class bmodConfig
 bmodConfig = require("bmod/src/config.lua")
+
+---@class resource
+resource = require("bmod/src/resource.lua")
+
 
 if SERVER then
     ---@class remote
@@ -56,9 +61,12 @@ else
     ---@class beff
     beff = require("bmod/base/effects.lua")
 
-
     ---@class bguiElements
     local bguiElements = require("bmod/src/gui.lua")
+
+    -- Initialize GUI elements
+    ---@includedir bmod/bgui
+    dodir("bmod/bgui", {})
 
     net.receive("BModInventory", function()
         bguiElements.inventory()
@@ -75,8 +83,8 @@ dodir("bmod/gases", {})
 
 
 if SERVER then
-    -- ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
-    resource.create("wood", chip():getPos() + Vector(0, 0, 12), Angle(), 30, true)
+    ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
+    -- resource.create("wood", chip():getPos() + Vector(0, 0, 12), Angle(), 30, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

@@ -6,6 +6,9 @@
 ---@class ents
 local ents = ents
 
+---@class bicons
+local bicons = bicons
+
 
 ---Class for resource manipulations
 ---@class resource
@@ -25,7 +28,7 @@ resource.props = {}
 ---@field SignAngle Angle Angle of a sign with resource info
 ---@field Sounds ResourceSounds Angle of a sign with resource info
 ---@field FuelInUnit number How many fuel this 
----@field Icon fun(x: number, y: number, w: number, h: number) Icon paint function
+---@field Icon string? Icon identifier to bicons. Default will take identifier
 -- Private fields
 ---@field pickedUpBy Player [SERVER] Player, that's picked up this resource
 local Resource = {}
@@ -34,7 +37,7 @@ Resource.Name = "Base"
 Resource.Model = "models/hunter/blocks/cube05x05x05.mdl"
 Resource.SignOffset = Vector(12, 0, 0)
 Resource.SignAngle = Angle()
-Resource.Icon = function() end
+Resource.Icon = nil
 Resource.Sounds = {
     Merge = "items/ammocrate_close.wav",
     Split = "items/ammocrate_open.wav"
@@ -113,6 +116,7 @@ if SERVER then
             local pos = ent:getPos()
             local ang = ent:getAngles()
             timer.simple(0, function()
+                if !isValid(self) then return end
                 resource.create(self.Identifier, pos, ang, newCount, false, true)
             end)
             self:setCount(oldCount)
@@ -135,9 +139,12 @@ if CLIENT then
     local Ply = player()
     resource.font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
 
+    function Resource:iconFunc() end
+
     function Resource:initialize()
         local pr = self.ent
         pr.BModResource = self.Identifier
+        self.iconFunc = bicons.get(self.Icon or self.Identifier) or self.iconFunc
     end
 
     ---[CLIENT] Draw info about this resource within 3D2D
@@ -152,11 +159,12 @@ if CLIENT then
         m:setScale(Vector(0.1, -0.1, 1))
         render.pushMatrix(m)
         do
+            render.setColor(Color():setA(170))
             render.enableDepth(true)
             render.setFont(resource.font)
-            render.drawSimpleText(0, -32, self.Name, TEXT_ALIGN.CENTER)
-            render.drawSimpleText(0, 0, string.format("%s units", self:getCount()), TEXT_ALIGN.CENTER)
-            self.Icon(32, 32, 32, 32)
+            render.drawSimpleText(0, -75, self.Name, TEXT_ALIGN.CENTER)
+            self.iconFunc(-43, -43, 86, 86)
+            render.drawSimpleText(0, 38, string.format("%s units", self:getCount()), TEXT_ALIGN.CENTER)
         end
         render.popMatrix()
     end

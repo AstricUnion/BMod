@@ -12,6 +12,7 @@ local bmodConfig = {}
 ---@class BModCraft
 ---@field name string Name of the craft
 ---@field description string? Description for craft
+---@field icon string Identifier of icon from bicons
 ---@field requires table<string, number> What requires this craft?
 ---@field result fun(pos: Vector, ang: Angle) Result of craft
 ---@field methods string[] Methods to craft. In base version, can be crafting_table
@@ -22,7 +23,10 @@ bmodConfig.crafts = {
         {
             name = "Paper",
             description = "Writing material that can be used for more malicious purposes",
-            methods = {"crafting_table"},
+            icon = "paper",
+            methods = {
+                ["crafting_table"] = true
+            },
             requires = {
                 wood = 39,
                 water = 91

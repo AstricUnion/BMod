@@ -4,21 +4,48 @@ local resource = resource
 ---@class deposit
 local deposit = deposit
 
-local icons
+---@class bicons
+local bicons = bicons
+local iconsU, iconsV, icons
 if CLIENT then
-    icons = material.create("gmodscreenspace")
+    icons = material.create("UnlitGeneric")
     icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
+    icons:setInt("$flags", 256)
+    iconsU = 0.1125
+    iconsV = 0.1125
+
+    ---@param id string
+    ---@param row number
+    ---@param column number
+    local function addIcon(id, row, column)
+        bicons.register(id, icons, iconsU * (column - 1), iconsV * (row - 1), iconsU * column, iconsV * row)
+    end
+
+    addIcon("advanced_parts", 1, 1)
+    addIcon("advanced_textile", 1, 2)
+    addIcon("aluminium_ore", 1, 3)
+    addIcon("aluminium", 1, 4)
+    addIcon("ammo", 1, 5)
+    addIcon("antimatter", 1, 7)
+    addIcon("basic_parts", 1, 8)
+    addIcon("ceramic", 2, 1)
+    addIcon("chemicals", 2, 2)
+    addIcon("cloth", 2, 3)
+    addIcon("coal", 2, 4)
+    addIcon("coolant", 2, 6)
+    addIcon("copper_ore", 2, 7)
+    addIcon("copper", 2, 8)
+    addIcon("paper", 5, 2)
+    addIcon("steel", 6, 5)
+    addIcon("wood", 7, 5)
 end
+
 
 ---@class Wood: Resource
 local Wood = resource.fastRegister(
-    "Wood", "wood", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
+    "Wood", "wood", "models/hunter/blocks/cube05x05x05.mdl", Vector(12, 0, 0), nil,
     "physics/wood/wood_box_break1.wav", "physics/wood/wood_box_impact_hard4.wav"
 )
-Wood.Icon = function(x, y, w, h)
-    render.setMaterial(icons)
-    render.drawTexturedRectUVFast(x, y, w, h, 0.1, 0.1, 0.2, 0.2, true)
-end
 Wood.modifyEntity = function(ent)
     ent:setMaterial("phoenix_storms/wood")
 end
@@ -63,7 +90,7 @@ end
 
 ---@class Ceramic: Resource
 local Ceramic = resource.fastRegister(
-    "Ceramic", "ceramic", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
+    "Ceramic", "ceramic", "models/hunter/blocks/cube05x05x05.mdl", Vector(12, 0, 0), nil,
     "physics/glass/glass_strain2.wav", "physics/glass/glass_sheet_impact_hard3.wav"
 )
 Ceramic.modifyEntity = function(ent)
@@ -108,7 +135,7 @@ local Fuel = resource.fastRegister(
 
 ---@class Plastic: Resource
 local Plastic = resource.fastRegister(
-    "Plastic", "plastic", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
+    "Plastic", "plastic", "models/hunter/blocks/cube05x05x05.mdl", Vector(12, 0, 0), nil,
     "physics/plastic/plastic_barrel_break1.wav", "physics/plastic/plastic_box_impact_hard4.wav"
 )
 
@@ -122,7 +149,7 @@ local Rubber = resource.fastRegister(
 
 ---@class Glass: Resource
 local Glass = resource.fastRegister(
-    "Glass", "glass", "models/hunter/blocks/cube05x05x05.mdl", Vector(14, 0, 2), nil,
+    "Glass", "glass", "models/hunter/blocks/cube05x05x05.mdl", Vector(12, 0, 0), nil,
     "physics/glass/glass_strain2.wav", "physics/glass/glass_sheet_impact_hard3.wav"
 )
 Glass.modifyEntity = function(ent)

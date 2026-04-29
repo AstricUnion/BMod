@@ -309,6 +309,7 @@ function BPanel:new(parent)
         parent.sortedChildren = sortByZPos(parent.children)
     end
     timer.simple(0, function()
+        if !isValid(obj) then return end
         obj.performsLayout = false
         obj:invalidateLayout()
     end)

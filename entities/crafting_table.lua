@@ -11,6 +11,9 @@ local resource = resource
 ---@class bmodConfig
 local cfg = bmodConfig
 
+---@class bicons
+local bicons = bicons
+
 ---Lib from AstricUnion (TODO: remade it)
 ---@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/holos.lua as holos
 local holos = require("holos")
@@ -175,22 +178,9 @@ if CLIENT then
             ---@cast tbl CraftingTable
             if !isValid(tbl) then return end
             if isValid(tbl.craftMenu) then return end
-            local menu = bgui.create("BFrame")
-            menu:setSize(720, 512)
-            local tabs = bgui.create("BPropertySheet", menu)
-            tabs.canvas:dockPadding(4, 4, 4, 4)
-            tabs:dock(bgui.DOCK.FILL)
-            for category, crafts in pairs(cfg.crafts) do
-                local categoryPanel = bgui.create("BScrollPanel", tabs)
-                for _, craft in ipairs(crafts) do
-                    local butt = bgui.create("BButton")
-                    butt:setText(craft.name)
-                    categoryPanel:addItem(butt)
-                end
-                tabs:addSheet(category, categoryPanel)
-            end
-            tbl.craftMenu = menu
-            menu:center()
+            tbl.craftMenu = bgui.create("CraftMenu")
+            tbl.craftMenu:setType("crafting_table")
+            tbl.craftMenu:center()
             input.enableCursor(true)
         end)
     end)
