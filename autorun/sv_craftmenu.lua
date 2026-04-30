@@ -16,9 +16,14 @@ net.receive("BModMakeCraft", function()
         end
     end
     if !item then return end
+    ---@cast item BModCraft
     -- REPEAT CODE FROM bgui/craftmenu.lua
-    local resources = resource.getResources(player(), false)
-    for id, count in pairs(item.requires) do
-        if resources[id].count < count then return end
+    local errorMes = resource.takeResources(player(), item.requires, false)
+    if errorMes then
+        print(errorMes)
+        return
     end
+    local ent = net.readEntity()
+    local pos = ent:getPos() + Vector(0, 0, 50)
+    item.result(pos, ent:getAngles())
 end)

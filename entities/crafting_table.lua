@@ -179,6 +179,7 @@ if CLIENT then
             if !isValid(tbl) then return end
             if isValid(tbl.craftMenu) then return end
             tbl.craftMenu = bgui.create("CraftMenu")
+            tbl.craftMenu:setTable(ent)
             tbl.craftMenu:setType("crafting_table")
             tbl.craftMenu:center()
             input.enableCursor(true)

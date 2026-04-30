@@ -9,13 +9,22 @@ local CraftRow = {}
 function CraftRow:init()
     self:setSize(128, 64)
     self.craft = nil
+    self.category = nil
+    self.craftTable = nil
+    self.canMake = false
 end
 
 ---@param craft BModCraft
 ---@param resources table<string, number>
-function CraftRow:setCraft(craft, resources)
+function CraftRow:setCraft(category, craft, resources)
     self.craft = craft
+    self.category = category
     self.canMake = self:canByResources(resources)
+end
+
+---@param ent Entity
+function CraftRow:setTable(ent)
+    self.craftTable = ent
 end
 
 function CraftRow:paint(x, y, w, h)
@@ -58,7 +67,13 @@ end
 function CraftRow:doClick()
     if !self.canMake then
         notification.addLegacy("You can't make this craft!", NOTIFY.ERROR, 3)
+        return
     end
+    net.start("BModMakeCraft")
+        net.writeString(self.category)
+        net.writeString(self.craft.name)
+        net.writeEntity(self.craftTable)
+    net.send()
 end
 
 bgui.register("CraftRow", CraftRow, "BLabel")
@@ -79,6 +94,12 @@ function CraftMenu:init()
         formattedRes[res] = v.count
     end
     self.resources = formattedRes
+    self.craftTable = nil
+end
+
+---@param ent Entity
+function CraftMenu:setTable(ent)
+    self.craftTable = ent
 end
 
 function CraftMenu:setType(type)
@@ -93,7 +114,8 @@ function CraftMenu:setType(type)
             if !craft.methods[type] then goto cont end
             local butt = bgui.create("CraftRow")
             butt:setText(craft.name)
-            butt:setCraft(craft, self.resources)
+            butt:setCraft(category, craft, self.resources)
+            butt:setTable(self.craftTable)
             categoryPanel:addItem(butt)
             craftsAdded[#craftsAdded+1] = craft
             ::cont::
