@@ -11,8 +11,10 @@ if CLIENT then
     icons = material.create("UnlitGeneric")
     icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
     icons:setInt("$flags", 256)
-    iconsU = 0.1125
-    iconsV = 0.1125
+    -- iconsU = 0.1125
+    -- iconsV = 0.1125
+    iconsU = 0.125
+    iconsV = 0.125
 
     ---@param id string
     ---@param row number

@@ -11,10 +11,19 @@ function CraftRow:init()
     self.craft = nil
 end
 
+---@param craft BModCraft
+---@param resources table<string, number>
+function CraftRow:setCraft(craft, resources)
+    self.craft = craft
+    self.canMake = self:canByResources(resources)
+end
+
 function CraftRow:paint(x, y, w, h)
-    render.setColor(Color(0, 0, 0, 200))
-    render.drawRect(x, y, w, h)
-    render.setColor(Color())
+    if self.canMake then
+        render.setColor(Color(0, 0, 0, 200))
+        render.drawRect(x, y, w, h)
+        render.setColor(Color())
+    end
     local paintY = y + h / 2
     render.drawSimpleText(x + 48, paintY, self.text, TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
     local iconSize = 32
@@ -25,12 +34,30 @@ function CraftRow:paint(x, y, w, h)
     for id, count in pairs(self.craft.requires) do
         local icon = bicons.get(id)
         if icon then
-            icon(x + w - offset - iconSize, paintY - iconSize / 2, iconSize, iconSize)
+            icon(x + w - offset - iconSize, paintY - iconSize / 2 - 8, iconSize, iconSize)
         else
-            render.drawSimpleText(x + w - offset - iconSize / 2, paintY, id, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+            render.drawSimpleText(x + w - offset - iconSize / 2, paintY - 8, id, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
         end
-        render.drawSimpleText(x + w - offset - iconSize / 2, paintY + 24, "x" .. count, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+        render.drawSimpleText(x + w - offset - iconSize / 2, paintY + 16, "x" .. count, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
         offset = offset - iconSize - 8
+    end
+    if !self.canMake then
+        render.setColor(Color(0, 0, 0, 200))
+        render.drawRect(x, y, w, h)
+    end
+end
+
+-- REPEAT CODE FROM autorun/sv_craftmenu.lua
+function CraftRow:canByResources(resources)
+    for id, count in pairs(self.craft.requires) do
+        if resources[id] < count then return false end
+    end
+    return true
+end
+
+function CraftRow:doClick()
+    if !self.canMake then
+        notification.addLegacy("You can't make this craft!", NOTIFY.ERROR, 3)
     end
 end
 
@@ -38,6 +65,7 @@ bgui.register("CraftRow", CraftRow, "BLabel")
 
 
 ---@class CraftMenu: BFrame
+---@field resources table<string, number>
 local CraftMenu = {}
 
 local oldInit = bgui.registered["BFrame"].init
@@ -45,6 +73,12 @@ function CraftMenu:init()
     oldInit(self)
     self:setSize(720, 512)
     self.tabs = nil
+    local resources = resource.getResources(player(), false)
+    local formattedRes = {}
+    for res, v in pairs(resources) do
+        formattedRes[res] = v.count
+    end
+    self.resources = formattedRes
 end
 
 function CraftMenu:setType(type)
@@ -59,7 +93,7 @@ function CraftMenu:setType(type)
             if !craft.methods[type] then goto cont end
             local butt = bgui.create("CraftRow")
             butt:setText(craft.name)
-            butt.craft = craft
+            butt:setCraft(craft, self.resources)
             categoryPanel:addItem(butt)
             craftsAdded[#craftsAdded+1] = craft
             ::cont::

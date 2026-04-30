@@ -81,10 +81,15 @@ dodir("bmod/entities", {})
 ---@includedir bmod/gases
 dodir("bmod/gases", {})
 
+-- Aaaand autorun scripts
+---@includedir bmod/autorun
+dodir("bmod/autorun", {})
+
 
 if SERVER then
-    ents.create("crafting_table"):spawn(chip():getPos(), Angle(), true)
-    -- resource.create("wood", chip():getPos() + Vector(0, 0, 12), Angle(), 30, true)
+    ents.create("crafting_table"):spawn(chip():getPos() + Vector(50, 0, 0), Angle(), true)
+    resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
+    resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

@@ -343,6 +343,11 @@ function BPanel:setParent(parent)
     end
 end
 
+---Get parent of this panel
+---@return BPanel?
+function BPanel:getParent()
+    return self.parent
+end
 
 ---Get global position of this panel. Use this to draw
 ---@return number x, number y
