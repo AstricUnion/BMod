@@ -2,6 +2,10 @@
 ---@author AstricUnion
 ---@shared
 
+
+---@class beff
+local beff = beff
+
 ---@class ents
 local ents = ents
 
@@ -89,9 +93,10 @@ if SERVER then
                 local pos = ent:getPos()
                 ent:remove()
                 local angs = pr:getAngles()
-                net.start("BModCreateSmoke")
-                    net.writeVector(pos)
-                net.send(find.allPlayers())
+                local eff = beff.create("craft_effect")
+                eff:setOrigin(pos)
+                eff:setScale(0.6)
+                eff:play()
                 timer.simple(1, function()
                     for id, count in pairs(res) do
                         resource.create(id, pos, angs, count, false)
@@ -139,16 +144,8 @@ if SERVER then
 end
 
 if CLIENT then
-    ---@class beff
-    local beff = beff
-
     ---@class bgui
     local bgui = bgui
-
-    net.receive("BModCreateSmoke", function()
-        beff.craftEffect(net.readVector(), 1)
-    end)
-
 
     local Ply = player()
     local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)

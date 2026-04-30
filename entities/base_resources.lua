@@ -11,10 +11,11 @@ if CLIENT then
     icons = material.create("UnlitGeneric")
     icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
     icons:setInt("$flags", 256)
-    -- iconsU = 0.1125
-    -- iconsV = 0.1125
-    iconsU = 0.125
-    iconsV = 0.125
+    -- idk, but on laptop i have other UV coordinates
+    iconsU = 0.1125
+    iconsV = 0.1125
+    -- iconsU = 0.125
+    -- iconsV = 0.125
 
     ---@param id string
     ---@param row number
@@ -56,7 +57,7 @@ Wood.FuelInUnit = 5
 
 ---@class Paper: Resource
 local Paper = resource.fastRegister(
-    "Paper", "paper", "models/props/cs_office/file_box.mdl", Vector(0, 7, 5), Angle(0, 90, 0),
+    "Paper", "paper", "models/props/cs_office/file_box.mdl", Vector(0, 7, 7), Angle(0, 90, 0),
     "physics/cardboard/cardboard_box_break2.wav", "physics/cardboard/cardboard_box_impact_hard4.wav"
 )
 

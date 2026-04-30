@@ -34,11 +34,14 @@ deposit = require("bmod/base/deposits.lua")
 ---@class bicons
 bicons = require("bmod/base/icons.lua")
 
----@class bmodConfig
-bmodConfig = require("bmod/src/config.lua")
-
 ---@class resource
 resource = require("bmod/src/resource.lua")
+
+---@class beff
+beff = require("bmod/base/effects.lua")
+
+---@class bmodConfig
+bmodConfig = require("bmod/src/config.lua")
 
 
 if SERVER then
@@ -57,9 +60,6 @@ if SERVER then
 else
     ---@class bgui
     bgui = require("bmod/base/bgui.lua")
-
-    ---@class beff
-    beff = require("bmod/base/effects.lua")
 
     ---@class bguiElements
     local bguiElements = require("bmod/src/gui.lua")
@@ -80,6 +80,10 @@ dodir("bmod/entities", {})
 -- Initialize gases
 ---@includedir bmod/gases
 dodir("bmod/gases", {})
+
+-- Initialize effects
+---@includedir bmod/effects
+dodir("bmod/effects", {})
 
 -- Aaaand autorun scripts
 ---@includedir bmod/autorun
