@@ -93,10 +93,11 @@ dodir("bmod/effects", {})
 
 
 if SERVER then
-    ents.create("crafting_table"):spawn(chip():getPos() + Vector(50, 0, 0), Angle(), true)
+    -- ents.create("crafting_table"):spawn(chip():getPos() + Vector(50, 0, 0), Angle(), true)
     -- resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
     -- resource.create("copper", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    resource.create("explosives", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
     -- ents.create("bucket"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end

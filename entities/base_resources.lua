@@ -38,6 +38,7 @@ if CLIENT then
     addIcon("coolant", 2, 6)
     addIcon("copperore", 2, 7)
     addIcon("copper", 2, 8)
+    addIcon("explosives", 3, 2)
     addIcon("fuel", 3, 4)
     addIcon("gas", 3, 5)
     addIcon("glass", 3, 7)
@@ -45,6 +46,7 @@ if CLIENT then
     addIcon("oil", 4, 8)
     addIcon("paper", 5, 2)
     addIcon("plastic", 5, 3)
+    addIcon("power", 5, 6)
     addIcon("precisionparts", 5, 7)
     addIcon("rubber", 6, 1)
     addIcon("silver", 6, 4)
@@ -99,6 +101,13 @@ Copper.modifyEntity = function(ent)
     ent:setMaterial("models/xqm/cylinderx1_diffuse")
     ent:setColor(Color(220, 120, 40))
 end
+
+
+---@class Explosives: Resource
+local Explosives = resource.fastRegister(
+    "Explosives", "explosives", "models/Items/ammoCrate_Rockets.mdl", Vector(16, 0, 2), Angle(0, 0, 0),
+    "BaseCombatCharacter.AmmoPickup", "player/pl_shell1.wav"
+)
 
 
 ---@class Gold: Resource
@@ -219,6 +228,13 @@ end
 local Cloth = resource.fastRegister(
     "Cloth", "cloth", "models/props/cs_office/Paper_towels.mdl", Vector(0, 5, 3), Angle(0, 90, 0),
     "physics/surfaces/sand_impact_bullet4.wav", "player/footsteps/sand4.wav"
+)
+
+
+---@class Chemicals: Resource
+local Chemicals = resource.fastRegister(
+    "Chemicals", "chemicals", "models/props/CS_militia/caseofbeer01.mdl", Vector(0, 7, 7), Angle(0, 90, 0),
+    "physics/glass/glass_strain2.wav", "physics/glass/glass_sheet_impact_hard3.wav"
 )
 
 
