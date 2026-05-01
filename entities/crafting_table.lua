@@ -1,7 +1,6 @@
----@name Crafting table
----@author AstricUnion
----@shared
 
+---@class BMod
+local BMod = BMod
 
 ---@class beff
 local beff = beff
@@ -81,6 +80,7 @@ CraftingTable.hooks = {}
 if SERVER then
     function CraftingTable:initialize()
         local pr = self.ent
+        pr.craftOffset = Vector(0, 0, 50)
         ---@param colData CollisionData
         pr:addCollisionListener(function(colData)
             if colData.HitSpeed:getLength() < 500 then return end
@@ -88,19 +88,26 @@ if SERVER then
             local ent = colData.HitEntity
             if !isValid(ent) or ent:getClass() ~= "prop_physics" then return end
             if !ent.BModEntity then
-                local res = resource.props[ent:getModel()]
-                if !res then return end
-                local pos = ent:getPos()
-                ent:remove()
-                local angs = pr:getAngles()
-                local eff = beff.create("craft_effect")
-                eff:setOrigin(pos)
-                eff:setScale(0.6)
-                eff:play()
-                timer.simple(1, function()
-                    for id, count in pairs(res) do
-                        resource.create(id, pos, angs, count, false)
-                    end
+                -- If I picked up object, his mass will be 1, so I must make this shit. Sorry
+                ent:enableMotion(false)
+                if self.inProcess then return end
+                self.inProcess = ent
+                timer.simple(0, function()
+                    local res = resource.salvage(ent)
+                    if !res then return end
+                    local pos = ent:getPos()
+                    ent:remove()
+                    local angs = pr:getAngles()
+                    local eff = beff.create("craft_effect")
+                    eff:setOrigin(pos)
+                    eff:setScale(0.6)
+                    eff:play()
+                    timer.simple(0.5, function()
+                        for id, count in pairs(res) do
+                            resource.create(id, pos, angs, count, false)
+                        end
+                        self.inProcess = nil
+                    end)
                 end)
             elseif ent.BModResource then
                 local fuelInUnit = ents.registered[ent.BModResource].FuelInUnit
@@ -147,26 +154,10 @@ if CLIENT then
     ---@class bgui
     local bgui = bgui
 
-    local Ply = player()
-    local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
-
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self CraftingTable
     function CraftingTable.hooks.PostDrawTranslucentRenderables(self)
-        local pos = Ply:getPos()
-        if !isValid(self.ent) then return end
-        if self.ent:getPos():getDistance(pos) > 256 then return end
-        local ang = self.ent:getAngles()
-        local m = Matrix(ang, self.ent:localToWorld(Vector(10.5, -50, 18)))
-        m:rotate(Angle(0, 90, 90))
-        m:setScale(Vector(0.1, -0.1, 1))
-        render.pushMatrix(m)
-        do
-            render.enableDepth(true)
-            render.setFont(font)
-            render.drawSimpleText(0, -8, string.format("Fuel: %s", self:getFuel()), TEXT_ALIGN.CENTER)
-        end
-        render.popMatrix()
+        BMod.Display(self.ent, Vector(10.5, -50, 18), Angle(), string.format("Fuel: %s", self:getFuel()))
     end
 
     net.receive("BModCraftingTableOpen", function()

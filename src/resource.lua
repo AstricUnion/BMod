@@ -3,11 +3,17 @@
 ---@author AstricUnion
 ---@shared
 
+---@class BMod
+local BMod = BMod
+
 ---@class ents
 local ents = ents
 
 ---@class bicons
 local bicons = bicons
+
+---@class bmodConfig
+local bmodConfig = bmodConfig
 
 
 ---Class for resource manipulations
@@ -136,7 +142,6 @@ end
 
 
 if CLIENT then
-    local Ply = player()
     resource.font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
 
     function Resource:iconFunc() end
@@ -150,23 +155,12 @@ if CLIENT then
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self Resource
     function Resource.hooks.PostDrawTranslucentRenderables(self)
-        local pos = Ply:getPos()
-        if !isValid(self.ent) then return end
-        if self.ent:getPos():getDistance(pos) > 256 then return end
-        local ang = self.ent:getAngles()
-        local m = Matrix(ang, self.ent:localToWorld(self.SignOffset))
-        m:rotate(Angle(0, 90, 90) + self.SignAngle)
-        m:setScale(Vector(0.1, -0.1, 1))
-        render.pushMatrix(m)
-        do
+        BMod.Display(self.ent, self.SignOffset, self.SignAngle, function()
             render.setColor(Color():setA(170))
-            render.enableDepth(true)
-            render.setFont(resource.font)
             render.drawSimpleText(0, -75, self.Name, TEXT_ALIGN.CENTER)
             self.iconFunc(-43, -43, 86, 86)
             render.drawSimpleText(0, 38, string.format("%s units", self:getCount()), TEXT_ALIGN.CENTER)
-        end
-        render.popMatrix()
+        end)
     end
 end
 
@@ -205,16 +199,6 @@ function resource.fastRegister(name, identifier, model, signOffset, signAngle, m
     end
     ents.register(class, "base_resource")
     return class
-end
-
-
----[SHARED] Adds prop as resources
----@param model string[] Props to resources
----@param resources table<string, number> Key is resource type, value is amount of this resource
-function resource.addProp(model, resources)
-    for _, v in ipairs(model) do
-        resource.props[v] = resources
-    end
 end
 
 
@@ -327,6 +311,7 @@ if SERVER then
                     ---@cast foundRes Resource
                     local count = foundRes:getCount()
                     local diff = count - reqCount
+                    print(diff)
                     foundRes:setCount(diff)
                     reqCount = math.abs(diff)
                 end
@@ -336,21 +321,52 @@ if SERVER then
         end
 
         local res = resource.getResources(ply, withProps)
-        local errorMes = ""
+        local errorMes = {}
         for requiredId, count in pairs(required) do
             local currentClass = res[requiredId]
             local currentCount = currentClass and currentClass.count or 0
             local class = ents.registered[requiredId]
             local diff = count - currentCount
             if diff > 0 then
-                errorMes = errorMes .. " " .. diff .. " more " .. string.lower(class.Name)
+                errorMes[#errorMes+1] = diff .. " more " .. string.lower(class.Name)
             end
         end
-        if errorMes ~= "" then return "You need" .. errorMes end
+        if next(errorMes) ~= nil then return "You need " .. table.concat(errorMes, ", ") end
         for requiredId, count in pairs(required) do
             local currentClass = res[requiredId]
             takeResources(count, currentClass.ents)
         end
+    end
+
+    local salvageByPhys = bmodConfig.salvageByPhys
+    local salvageByModel = bmodConfig.salvageByModel
+
+    ---[SERVER] Makes from prop to resources
+    ---@param ent Entity Prop to salvage
+    function resource.salvage(ent)
+        local phys = ent:getPhysicsObject()
+        local mat, mass = string.lower(phys:getMaterial()), phys:getMass()
+        local result = {}
+        local byModel, resources = false, salvageByPhys[mat]
+        local model = ent:getModel()
+        for _, res in ipairs(salvageByModel) do
+            for _, substring in ipairs(res.substrings) do
+                if string.find(model, substring, nil, false) then
+                    resources = res.resources
+                    byModel = true
+                    break
+                end
+            end
+            if byModel then break end
+        end
+        for name, count in pairs(resources) do
+            local totalCount = math.ceil(count * mass * 1.5)
+            if totalCount <= 0 then goto cont end
+            print(name, totalCount)
+            result[name] = totalCount
+            ::cont::
+        end
+        return result
     end
 end
 

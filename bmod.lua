@@ -17,8 +17,10 @@ if SERVER then
     prop.setPropUndo(true)
 end
 
+---@class BMod
+BMod = {}
+
 -- Firstly, we should include our libraries. It will be shared in all files
---
 ---@class ents
 ents = require("bmod/base/entity.lua")
 
@@ -34,14 +36,14 @@ deposit = require("bmod/base/deposits.lua")
 ---@class bicons
 bicons = require("bmod/base/icons.lua")
 
+---@class bmodConfig
+bmodConfig = require("bmod/src/config.lua")
+
 ---@class resource
 resource = require("bmod/src/resource.lua")
 
 ---@class beff
 beff = require("bmod/base/effects.lua")
-
----@class bmodConfig
-bmodConfig = require("bmod/src/config.lua")
 
 
 if SERVER then
@@ -73,6 +75,10 @@ else
     end)
 end
 
+-- Autorun scripts
+---@includedir bmod/autorun
+dodir("bmod/autorun", {})
+
 -- Initialize entities
 ---@includedir bmod/entities
 dodir("bmod/entities", {})
@@ -85,15 +91,13 @@ dodir("bmod/gases", {})
 ---@includedir bmod/effects
 dodir("bmod/effects", {})
 
--- Aaaand autorun scripts
----@includedir bmod/autorun
-dodir("bmod/autorun", {})
-
 
 if SERVER then
     ents.create("crafting_table"):spawn(chip():getPos() + Vector(50, 0, 0), Angle(), true)
-    resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
-    resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    -- resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
+    -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    -- resource.create("copper", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    -- ents.create("bucket"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

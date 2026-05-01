@@ -93,11 +93,11 @@ if SERVER then
     function BModEntity:remove()
         if isValid(self.ent) then
             self.ent:remove()
+            ents.inited[self.ent:entIndex()] = nil
+            net.start("BModRemoveEntity")
+                net.writeEntity(self.ent)
+            net.send(find.allPlayers())
         end
-        ents.inited[self.ent:entIndex()] = nil
-        net.start("BModRemoveEntity")
-            net.writeEntity(self.ent)
-        net.send(find.allPlayers())
         self:onRemove()
         setmetatable(self, nil)
     end

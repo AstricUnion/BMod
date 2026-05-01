@@ -12,19 +12,24 @@ function CraftRow:init()
     self.category = nil
     self.craftTable = nil
     self.canMake = false
+    self.menu = nil
 end
 
 ---@param craft BModCraft
----@param resources table<string, number>
-function CraftRow:setCraft(category, craft, resources)
+function CraftRow:setCraft(category, craft)
     self.craft = craft
     self.category = category
-    self.canMake = self:canByResources(resources)
 end
 
 ---@param ent Entity
 function CraftRow:setTable(ent)
     self.craftTable = ent
+end
+
+---@param menu CraftMenu
+function CraftRow:setMenu(menu)
+    self.menu = menu
+    self:updateData()
 end
 
 function CraftRow:paint(x, y, w, h)
@@ -35,9 +40,12 @@ function CraftRow:paint(x, y, w, h)
     end
     local paintY = y + h / 2
     render.drawSimpleText(x + 48, paintY, self.text, TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
-    local iconSize = 32
+    local iconSize = 36
     if self.craft.icon then
-        bicons.get(self.craft.icon)(x + 8, paintY - iconSize / 2, iconSize, iconSize)
+        local draw = bicons.get(self.craft.icon)
+        if draw then
+            draw(x + 8, paintY - iconSize / 2, iconSize, iconSize)
+        end
     end
     local offset = 16 + iconSize
     for id, count in pairs(self.craft.requires) do
@@ -47,7 +55,7 @@ function CraftRow:paint(x, y, w, h)
         else
             render.drawSimpleText(x + w - offset - iconSize / 2, paintY - 8, id, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
         end
-        render.drawSimpleText(x + w - offset - iconSize / 2, paintY + 16, "x" .. count, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+        render.drawSimpleText(x + w - offset - iconSize / 2, paintY + 18, "x" .. count, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
         offset = offset - iconSize - 8
     end
     if !self.canMake then
@@ -56,30 +64,42 @@ function CraftRow:paint(x, y, w, h)
     end
 end
 
+function CraftRow:updateData()
+    self.canMake = self:canByResources()
+end
+
 -- REPEAT CODE FROM autorun/sv_craftmenu.lua
-function CraftRow:canByResources(resources)
+function CraftRow:canByResources()
+    local resources = self.menu.resources
     for id, count in pairs(self.craft.requires) do
-        if resources[id] < count then return false end
+        local current = resources[id]
+        if !current or current < count then return false end
     end
     return true
 end
 
 function CraftRow:doClick()
-    if !self.canMake then
-        notification.addLegacy("You can't make this craft!", NOTIFY.ERROR, 3)
-        return
-    end
+    -- To error on server
     net.start("BModMakeCraft")
         net.writeString(self.category)
         net.writeString(self.craft.name)
-        net.writeEntity(self.craftTable)
+        net.writeVector(self.craftTable:getPos() + Vector(0, 0, 50))
+        net.writeAngle(self.craftTable:getAngles())
+        net.writeBool(false)
     net.send()
+    local menu = self.menu
+    timer.simple(0, function()
+        if !isValid(menu) then return end
+        menu:updateResources()
+    end)
 end
 
 bgui.register("CraftRow", CraftRow, "BLabel")
 
 
 ---@class CraftMenu: BFrame
+---@field tabs DPropertySheet
+---@field rows CraftRow[]
 ---@field resources table<string, number>
 local CraftMenu = {}
 
@@ -88,13 +108,21 @@ function CraftMenu:init()
     oldInit(self)
     self:setSize(720, 512)
     self.tabs = nil
+    self.craftTable = nil
+    self.rows = {}
+    self:updateResources()
+end
+
+function CraftMenu:updateResources()
     local resources = resource.getResources(player(), false)
     local formattedRes = {}
     for res, v in pairs(resources) do
         formattedRes[res] = v.count
     end
     self.resources = formattedRes
-    self.craftTable = nil
+    for _, v in ipairs(self.rows) do
+        v:updateData()
+    end
 end
 
 ---@param ent Entity
@@ -114,15 +142,17 @@ function CraftMenu:setType(type)
             if !craft.methods[type] then goto cont end
             local butt = bgui.create("CraftRow")
             butt:setText(craft.name)
-            butt:setCraft(category, craft, self.resources)
+            butt:setCraft(category, craft)
+            butt:setMenu(self)
             butt:setTable(self.craftTable)
             categoryPanel:addItem(butt)
-            craftsAdded[#craftsAdded+1] = craft
+            craftsAdded[#craftsAdded+1] = butt
             ::cont::
         end
         if next(craftsAdded) == nil then
             categoryPanel:remove()
         else
+            table.add(self.rows, craftsAdded)
             tabs:addSheet(category, categoryPanel)
         end
     end

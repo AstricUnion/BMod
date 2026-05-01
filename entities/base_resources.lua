@@ -24,22 +24,32 @@ if CLIENT then
         bicons.register(id, icons, iconsU * (column - 1), iconsV * (row - 1), iconsU * column, iconsV * row)
     end
 
-    addIcon("advanced_parts", 1, 1)
-    addIcon("advanced_textile", 1, 2)
-    addIcon("aluminium_ore", 1, 3)
+    addIcon("advancedparts", 1, 1)
+    addIcon("advancedtextiles", 1, 2)
+    addIcon("aluminiumore", 1, 3)
     addIcon("aluminium", 1, 4)
     addIcon("ammo", 1, 5)
     addIcon("antimatter", 1, 7)
-    addIcon("basic_parts", 1, 8)
+    addIcon("basicparts", 1, 8)
     addIcon("ceramic", 2, 1)
     addIcon("chemicals", 2, 2)
     addIcon("cloth", 2, 3)
     addIcon("coal", 2, 4)
     addIcon("coolant", 2, 6)
-    addIcon("copper_ore", 2, 7)
+    addIcon("copperore", 2, 7)
     addIcon("copper", 2, 8)
+    addIcon("fuel", 3, 4)
+    addIcon("gas", 3, 5)
+    addIcon("glass", 3, 7)
+    addIcon("gold", 4, 1)
+    addIcon("oil", 4, 8)
     addIcon("paper", 5, 2)
+    addIcon("plastic", 5, 3)
+    addIcon("precisionparts", 5, 7)
+    addIcon("rubber", 6, 1)
+    addIcon("silver", 6, 4)
     addIcon("steel", 6, 5)
+    addIcon("water", 7, 4)
     addIcon("wood", 7, 5)
 end
 
@@ -80,6 +90,28 @@ Aluminium.modifyEntity = function(ent)
 end
 
 
+---@class Copper: Resource
+local Copper = resource.fastRegister(
+    "Copper", "copper", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
+    "phx/hmetal1.wav", "phx/hmetal3.wav"
+)
+Copper.modifyEntity = function(ent)
+    ent:setMaterial("models/xqm/cylinderx1_diffuse")
+    ent:setColor(Color(220, 120, 40))
+end
+
+
+---@class Gold: Resource
+local Gold = resource.fastRegister(
+    "Gold", "gold", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
+    "phx/hmetal1.wav", "phx/hmetal3.wav"
+)
+Gold.modifyEntity = function(ent)
+    ent:setMaterial("models/xqm/cylinderx1_diffuse")
+    ent:setColor(Color(255, 215, 0))
+end
+
+
 ---@class Steel: Resource
 local Steel = resource.fastRegister(
     "Steel", "steel", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
@@ -88,6 +120,17 @@ local Steel = resource.fastRegister(
 Steel.modifyEntity = function(ent)
     ent:setMaterial("models/xqm/cylinderx1_diffuse")
     ent:setColor(Color(100, 100, 100))
+end
+
+
+---@class Silver: Resource
+local Silver = resource.fastRegister(
+    "Silver", "silver", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
+    "phx/hmetal1.wav", "phx/hmetal3.wav"
+)
+Silver.modifyEntity = function(ent)
+    ent:setMaterial("models/xqm/cylinderx1_diffuse")
+    ent:setColor(Color(200, 200, 200))
 end
 
 
@@ -103,7 +146,7 @@ end
 
 ---@class Oil: Resource
 local Oil = resource.fastRegister(
-    "Oil", "oil", "models/props_c17/oildrum001.mdl", Vector(14, 0, 20), nil,
+    "Oil", "oil", "models/props_c17/oildrum001.mdl", Vector(14, 0, 24), nil,
     "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
 )
 Oil.modifyEntity = function(ent)
@@ -181,10 +224,18 @@ local Cloth = resource.fastRegister(
 
 ---@class BasicParts: Resource
 local BasicParts = resource.fastRegister(
-    "Basic parts", "basic_parts", "models/Items/item_item_crate.mdl", Vector(17, 0, 10), Angle(0, 0, 0),
+    "Basic parts", "basicparts", "models/Items/item_item_crate.mdl", Vector(17, 0, 12), Angle(0, 0, 0),
     "physics/wood/wood_box_break1.wav", "physics/wood/wood_box_impact_hard4.wav"
 )
 
+---@class PrecisionParts: Resource
+local PrecisionParts = resource.fastRegister(
+    "Precision parts", "precisionparts", "models/props_lab/partsbin01.mdl", Vector(7, 0, 3), Angle(0, 0, 0),
+    "ambient/materials/footsteps_glass1.wav", "phx/epicmetal_soft7.wav"
+)
+PrecisionParts.modifyEntity = function(ent)
+    ent:setColor(Color(80, 130, 80))
+end
 
 ---@class Coolant: Resource
 local Coolant = resource.fastRegister(
@@ -204,56 +255,3 @@ local Ammo = resource.fastRegister(
 )
 
 
-if SERVER then
-    -- local res = ents.create("ammo")
-    ---@cast res Resource
-    -- res:setCount(50)
-    -- res:spawn(chip():getPos(), Angle(), true)
-end
-
-
--- Props to resources --
-resource.addProp({
-    "models/props_junk/wood_crate001a.mdl",
-    "models/props_junk/wood_crate001a_damaged.mdl"
-}, { wood = 23 })
-
-resource.addProp({
-    "models/props_docks/channelmarker_gib01.mdl",
-    "models/props_c17/furnituredrawer001a_shard01.mdl"
-}, { wood = 21 })
-
-resource.addProp({
-    "models/props_c17/furnituredrawer001a_chunk01.mdl",
-    "models/props_c17/furnituredrawer001a_chunk02.mdl",
-    "models/props_c17/furnituredrawer001a_chunk03.mdl",
-    "models/props_c17/furnituredrawer002a.mdl",
-    "models/gibs/wood_gib01a.mdl",
-    "models/gibs/wood_gib01b.mdl",
-    "models/gibs/wood_gib01c.mdl",
-    "models/gibs/wood_gib01d.mdl",
-    "models/gibs/wood_gib01e.mdl",
-}, { wood = 11 })
-
-
-resource.addProp({
-    "models/props_c17/streetsign001c.mdl",
-    "models/props_c17/streetsign002b.mdl",
-    "models/props_c17/streetsign003b.mdl",
-    "models/props_c17/streetsign004f.mdl",
-    "models/props_c17/streetsign005b.mdl",
-    "models/props_c17/streetsign005c.mdl",
-    "models/props_c17/streetsign005d.mdl"
-}, { aluminium = 8, steel = 6 })
-
-resource.addProp({
-    "models/props_junk/popcan01a.mdl"
-}, { aluminium = 2 })
-
-resource.addProp({
-    "models/props_junk/terracotta01.mdl"
-}, { ceramic = 2 })
-
-resource.addProp({
-    "models/props_c17/lamp001a.mdl"
-}, { ceramic = 6 })
