@@ -17,49 +17,24 @@ local cfg = bmodConfig
 ---@class bicons
 local bicons = bicons
 
----Lib from AstricUnion (TODO: remade it)
----@include https://raw.githubusercontent.com/AstricUnion/Libs/refs/heads/main/holos.lua as holos
-local holos = require("holos")
----@class Holo
-local Holo = holos.Holo
-local Rig = holos.Rig
-local SubHolo = holos.SubHolo
----@class Trail
-local Trail = holos.Trail
----@class Clip
-local Clip = holos.Clip
+---@class model
+local model = model
+local hitbox = model.hitbox
+local vertex = model.vertex
+local part = model.part
+local holo = model.holo
 
-local function getCube(offset, size)
-    return {
-        offset + Vector(-size.x, -size.y, -size.z), offset + Vector(size.x, -size.y, -size.z),
-        offset + Vector(size.x, size.y, -size.z), offset + Vector(-size.x, size.y, -size.z),
-        offset + Vector(-size.x, -size.y, size.z), offset + Vector(size.x, -size.y, size.z),
-        offset + Vector(size.x, size.y, size.z), offset + Vector(-size.x, size.y, size.z),
-    }
-end
-
-
-local function model()
-    local base = {
-        model = hologram.createPart(
-            Holo(Rig()),
-            Holo(SubHolo(Vector(0, 0, 18), Angle(), "models/props_c17/furnituretable002a.mdl", Vector(1.2, 1.2, 1))),
-            Holo(SubHolo(Vector(-12, 0, 42), Angle(), "models/props_wasteland/cafeteria_table001a.mdl", Vector(0.4, 0.6, 0.5))),
-            Holo(SubHolo(Vector(0, -50, 10), Angle(), "models/props_wasteland/laundry_basket002.mdl", Vector(0.4, 0.4, 0.5)))
-        ),
-    }
-    base.model:setPos(Vector())
-    base.hitbox = prop.createCustom(Vector(), Angle(), {
-        getCube(Vector(0, 0, 18), Vector(24, 36, 18)),
-        getCube(Vector(-12, 0, 43), Vector(8, 36, 7)),
-        getCube(Vector(0, -50, 10), Vector(10, 10, 10))
-    }, true)
-    base.hitbox:setMass(72)
-    base.hitbox:setNoDraw(true)
-    base.model:setParent(base.hitbox)
-    return base.hitbox
-end
-
+local mdl = model.create(hitbox {
+    vertex {"cube", Vector(0, 0, 18), Vector(24, 36, 18)},
+    vertex {"cube", Vector(-12, 0, 43), Vector(8, 36, 7)},
+    vertex {"cube", Vector(0, -50, 10), Vector(10, 10, 10)},
+    mass = 72
+})
+mdl:add("base", part {
+    holo { Vector(0, 0, 18), Angle(), "models/props_c17/furnituretable002a.mdl", Vector(1.2, 1.2, 1) },
+    holo { Vector(-12, 0, 42), Angle(), "models/props_wasteland/cafeteria_table001a.mdl", Vector(0.4, 0.6, 0.5) },
+    holo { Vector(0, -50, 10), Angle(), "models/props_wasteland/laundry_basket002.mdl", Vector(0.4, 0.4, 0.5) }
+})
 
 
 ---@class CraftingTable: BModEntity
@@ -70,7 +45,7 @@ local CraftingTable = {}
 CraftingTable.Identifier = "crafting_table"
 CraftingTable.Name = "Crafting table"
 CraftingTable.Model = function()
-    return model()
+    return mdl:create().bones.origin
 end
 CraftingTable.hooks = {}
 
@@ -139,6 +114,7 @@ if SERVER then
     ---[SERVER] Open craft menu on click
     function CraftingTable.hooks.KeyPress(self, ply, key)
         if key ~= IN_KEY.USE then return end
+        if self:getFuel() < 1 then return end
         local tr = ply:getEyeTrace()
         ---@cast tr TraceResult
         if tr.Entity ~= self.ent then return end

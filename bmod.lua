@@ -8,6 +8,7 @@
 ---@include bmod/base/remote.lua
 ---@include bmod/base/deposits.lua
 ---@include bmod/base/icons.lua
+---@include bmod/base/model.lua
 ---@include bmod/src/resource.lua
 ---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
@@ -35,6 +36,9 @@ deposit = require("bmod/base/deposits.lua")
 
 ---@class bicons
 bicons = require("bmod/base/icons.lua")
+
+---@class model
+model = require("bmod/base/model.lua")
 
 ---@class bmodConfig
 bmodConfig = require("bmod/src/config.lua")
@@ -93,11 +97,12 @@ dodir("bmod/effects", {})
 
 
 if SERVER then
-    -- ents.create("crafting_table"):spawn(chip():getPos() + Vector(50, 0, 0), Angle(), true)
+    ents.create("crafting_table"):spawn(chip():getPos() + Vector(50, 0, 0), Angle(), true)
     -- resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 9, true)
     -- resource.create("copper", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
-    resource.create("explosives", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
+    -- resource.create("explosives", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
     -- ents.create("bucket"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end

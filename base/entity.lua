@@ -129,10 +129,11 @@ end
 
 if CLIENT then
     local toInit = {}
+    -- Coroutine, because entity client initializing
     local cor = coroutine.wrap(function()
         while true do
             coroutine.yield()
-            for _, v in ipairs(toInit) do
+            for i, v in ipairs(toInit) do
                 -- Get type of this entity
                 local self = ents.registered[v.id]
                 if !self then goto cont end
@@ -143,9 +144,9 @@ if CLIENT then
                 -- Finally, last step: initialize it on a client
                 if obj.initialize then obj:initialize() end
                 ents.inited[ent:entIndex()] = obj
+                toInit[i] = nil
                 ::cont::
             end
-            toInit = {}
         end
     end)
 
@@ -157,7 +158,7 @@ if CLIENT then
 
     -- Initialize entity on client
     net.receive("BModInitializeEntities", function()
-        toInit = net.readTable()
+        toInit = table.add(toInit, net.readTable())
     end)
 
     -- Get networked variables

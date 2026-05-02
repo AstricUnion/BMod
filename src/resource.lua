@@ -231,7 +231,7 @@ function resource.getResources(ply, withProps)
             current.count = current.count + count
             current.ents[#current.ents+1] = {ent = pr, count = count}
         elseif withProps then
-            local counts = resource.props[pr:getModel()]
+            local counts = resource.salvage(pr)
             if !counts then goto cont end
             for id, count in pairs(counts) do
                 local current = resources[id] or { count = 0, ents = {} }
@@ -311,9 +311,8 @@ if SERVER then
                     ---@cast foundRes Resource
                     local count = foundRes:getCount()
                     local diff = count - reqCount
-                    print(diff)
                     foundRes:setCount(diff)
-                    reqCount = math.abs(diff)
+                    reqCount = diff < 0 and math.abs(diff) or 0
                 end
                 ::cont::
             end
