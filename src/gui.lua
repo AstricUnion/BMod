@@ -33,7 +33,6 @@ if CLIENT then
         -- pnl2.bgcolor = Color(0, 0, 0, 0)
         pnl2:dock(DOCK.RIGHT)
         pnl2:dockPadding(4, 4, 4, 4)
-        pnl2.bgcolor = bgui.COLORS.bg2
 
         local buttons = {}
         local buttonsInfo = {

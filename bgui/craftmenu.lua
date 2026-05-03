@@ -7,6 +7,7 @@ local cfg = bmodConfig
 local CraftRow = {}
 
 function CraftRow:init()
+    self:dockMargin(0, 0, 0, 4)
     self:setSize(128, 64)
     self.craft = nil
     self.category = nil
@@ -34,8 +35,8 @@ end
 
 function CraftRow:paint(x, y, w, h)
     if self.canMake then
-        render.setColor(Color(0, 0, 0, 200))
-        render.drawRect(x, y, w, h)
+        render.setColor(bgui.COLORS.bg)
+        render.drawRoundedBox(4, x, y, w, h)
         render.setColor(Color())
     end
     local paintY = y + h / 2
@@ -47,7 +48,7 @@ function CraftRow:paint(x, y, w, h)
             draw(x + 8, paintY - iconSize / 2, iconSize, iconSize)
         end
     end
-    local offset = 16 + iconSize
+    local offset = 16
     for id, count in pairs(self.craft.requires) do
         local icon = bicons.get(id)
         if icon then
@@ -56,11 +57,11 @@ function CraftRow:paint(x, y, w, h)
             render.drawSimpleText(x + w - offset - iconSize / 2, paintY - 8, id, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
         end
         render.drawSimpleText(x + w - offset - iconSize / 2, paintY + 18, "x" .. count, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-        offset = offset - iconSize - 8
+        offset = offset + iconSize + 8
     end
     if !self.canMake then
-        render.setColor(Color(0, 0, 0, 200))
-        render.drawRect(x, y, w, h)
+        render.setColor(bgui.COLORS.bg)
+        render.drawRoundedBox(4, x, y, w, h)
     end
 end
 
@@ -97,8 +98,35 @@ end
 bgui.register("CraftRow", CraftRow, "BLabel")
 
 
+---@class ResourceRow: BLabel
+local ResourceRow = {}
+
+function ResourceRow:init()
+    self:dockMargin(0, 0, 0, 4)
+    self:setSize(128, 48)
+    self.type = nil
+    self.count = nil
+end
+
+function ResourceRow:paint(x, y, w, h)
+    render.setColor(bgui.COLORS.bg)
+    render.drawRoundedBox(4, x, y, w, h)
+    render.setColor(Color())
+    local paintY = y + h / 2
+    render.drawSimpleText(x + 48, paintY, "x" .. self.count, TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+    local iconSize = 32
+    local draw = bicons.get(self.type)
+    if draw then
+        draw(x + 8, paintY - iconSize / 2, iconSize, iconSize)
+    end
+end
+
+bgui.register("ResourceRow", ResourceRow, "BLabel")
+
+
 ---@class CraftMenu: BFrame
----@field tabs DPropertySheet
+---@field resourcesMenu BScrollPanel
+---@field tabs BPropertySheet?
 ---@field rows CraftRow[]
 ---@field resources table<string, number>
 local CraftMenu = {}
@@ -107,7 +135,16 @@ local oldInit = bgui.registered["BFrame"].init
 function CraftMenu:init()
     oldInit(self)
     self:setSize(720, 512)
-    self.tabs = nil
+    local resourcesMenu = bgui.create("BScrollPanel", self)
+    resourcesMenu.canvas:dockPadding(4, 4, 4, 4)
+    resourcesMenu:dock(bgui.DOCK.LEFT)
+    resourcesMenu:dockMargin(0, 0, 4, 0)
+    resourcesMenu.paint = bgui.registered["BPanel"].paint
+    self.resourcesMenu = resourcesMenu
+    local tabs = bgui.create("BPropertySheet", self)
+    tabs.canvas:dockPadding(4, 4, 4, 4)
+    tabs:dock(bgui.DOCK.FILL)
+    self.tabs = tabs
     self.craftTable = nil
     self.rows = {}
     self:updateResources()
@@ -123,6 +160,25 @@ function CraftMenu:updateResources()
     for _, v in ipairs(self.rows) do
         v:updateData()
     end
+    for type, count in pairs(formattedRes) do
+        for _, v in ipairs(self.resourcesMenu.canvas.sortedChildren) do
+            ---@cast v ResourceRow
+            if v.type == type then
+                if count == 0 then
+                    v:remove()
+                elseif count ~= v.count then
+                    v.count = count
+                end
+                goto cont
+            end
+        end
+        -- We didn't found the resource
+        local resObj = bgui.create("ResourceRow")
+        resObj.type = type
+        resObj.count = count
+        self.resourcesMenu:addItem(resObj)
+        ::cont::
+    end
 end
 
 ---@param ent Entity
@@ -131,12 +187,8 @@ function CraftMenu:setTable(ent)
 end
 
 function CraftMenu:setType(type)
-    if self.tabs then self.tabs:remove() end
-    local tabs = bgui.create("BPropertySheet", self)
-    tabs.canvas:dockPadding(4, 4, 4, 4)
-    tabs:dock(bgui.DOCK.FILL)
     for category, crafts in pairs(cfg.crafts) do
-        local categoryPanel = bgui.create("BScrollPanel", tabs)
+        local categoryPanel = bgui.create("BScrollPanel", self.tabs)
         local craftsAdded = {}
         for _, craft in ipairs(crafts) do
             if !craft.methods[type] then goto cont end
@@ -153,10 +205,9 @@ function CraftMenu:setType(type)
             categoryPanel:remove()
         else
             table.add(self.rows, craftsAdded)
-            tabs:addSheet(category, categoryPanel)
+            self.tabs:addSheet(category, categoryPanel)
         end
     end
-    self.tabs = tabs
 end
 
 bgui.register("CraftMenu", CraftMenu, "BFrame")

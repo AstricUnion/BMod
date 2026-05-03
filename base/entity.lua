@@ -128,6 +128,11 @@ end
 
 
 if CLIENT then
+    ---[CLIENT] On network variable change
+    ---@param oldVars table<string, any> Old variables
+    ---@param vars table<string, any> New variables
+    function BModEntity:networkVariablesUpdate(oldVars, vars) end
+
     local toInit = {}
     -- Coroutine, because entity client initializing
     local cor = coroutine.wrap(function()
@@ -144,6 +149,7 @@ if CLIENT then
                 -- Finally, last step: initialize it on a client
                 if obj.initialize then obj:initialize() end
                 ents.inited[ent:entIndex()] = obj
+                obj:networkVariablesUpdate({}, nwVars)
                 toInit[i] = nil
                 ::cont::
             end
@@ -168,7 +174,9 @@ if CLIENT then
         net.readEntity(function(ent)
             local bent = ents.inited[ent:entIndex()]
             if !isValid(bent) then return end
+            local oldVars = bent.networkedVariables
             bent.networkedVariables = nwVars
+            bent:networkVariablesUpdate(oldVars, nwVars)
         end)
     end)
 

@@ -43,6 +43,7 @@ if CLIENT then
     addIcon("gas", 3, 5)
     addIcon("glass", 3, 7)
     addIcon("gold", 4, 1)
+    addIcon("lead", 4, 4)
     addIcon("oil", 4, 8)
     addIcon("paper", 5, 2)
     addIcon("plastic", 5, 3)
@@ -118,6 +119,16 @@ local Gold = resource.fastRegister(
 Gold.modifyEntity = function(ent)
     ent:setMaterial("models/xqm/cylinderx1_diffuse")
     ent:setColor(Color(255, 215, 0))
+end
+
+---@class Lead: Resource
+local Lead = resource.fastRegister(
+    "Lead", "lead", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
+    "phx/hmetal1.wav", "phx/hmetal3.wav"
+)
+Lead.modifyEntity = function(ent)
+    ent:setMaterial("models/xqm/cylinderx1_diffuse")
+    ent:setColor(Color(120, 120, 150))
 end
 
 

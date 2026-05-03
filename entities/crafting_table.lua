@@ -105,7 +105,6 @@ if SERVER then
     ---[SERVER] Set fuel for table
     ---@param fuel number Fuel
     function CraftingTable:setFuel(fuel)
-        if fuel < 1 then self:remove() end
         fuel = math.clamp(fuel, 0, 100)
         self:setNWVar("fuel", fuel)
     end

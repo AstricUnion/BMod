@@ -35,7 +35,7 @@ bmodConfig.crafts = {
     },
     ["Resources"] = {
         {
-            name = "Paper",
+            name = "Paper, x100",
             scale = 0.6,
             description = "Writing material that can be used for more malicious purposes",
             icon = "paper",
@@ -48,6 +48,26 @@ bmodConfig.crafts = {
             },
             result = function(pos, ang)
                 resource.create("paper", pos, ang, 100, false, true)
+            end
+        },
+        {
+            name = "Basic Parts, x50",
+            scale = 0.6,
+            description = "",
+            icon = "basicparts",
+            methods = {
+                ["crafting_table"] = true
+            },
+            requires = {
+                glass = 7,
+                rubber = 7,
+                plastic = 13,
+                copper = 20,
+                aluminium = 20,
+                steel = 20
+            },
+            result = function(pos, ang)
+                resource.create("basicparts", pos, ang, 50, false, true)
             end
         }
     },
