@@ -13,105 +13,106 @@ local bmodConfig = {}
 ---@field scale number? Scale of effect for this craft
 ---@field requires table<string, number> What requires this craft?
 ---@field result fun(pos: Vector, ang: Angle) Result of craft
----@field methods string[] Methods to craft. In base version, can be crafting_table
+---@field methods string[] Methods to craft. In base version, can be crafting_table, toolbox
+---@field category string? Categories in menu
 
----@type table<string, BModCraft[]> Key is a craft category
+---@type table<string, BModCraft> Key is a craft category
 bmodConfig.crafts = {
-    ["Handcraft"] = {
-        {
-            name = "Crafting table",
-            methods = {},
-            scale = 1.8,
-            requires = {
-                wood = 25,
-                aluminium = 8,
-                ceramic = 15
-            },
-            result = function(pos, ang)
-                local ent = ents.create("crafting_table")
-                ent:spawn(pos, ang, false)
-            end
-        }
+    ["crafting_table"] = {
+        name = "Crafting table",
+        methods = {},
+        scale = 1.8,
+        requires = {
+            wood = 25,
+            aluminium = 8,
+            ceramic = 15
+        },
+        result = function(pos, ang)
+            local ent = ents.create("crafting_table")
+            ent:spawn(pos, ang, false)
+        end
     },
-    ["Resources"] = {
-        {
-            name = "Paper", icon = "paper", scale = 0.6,
-            description = "Writing material that can be used for more malicious purposes",
-            methods = { ["crafting_table"] = true },
-            requires = { wood = 39, water = 91 },
-            result = function(pos, ang)
-                resource.create("paper", pos, ang, 100, false, true)
-            end
-        },
-        {
-            name = "Basic Parts, x50", icon = "basicparts", scale = 0.6,
-            description = "50 basic parts used for craftings and repairs",
-            methods = { ["crafting_table"] = true },
-            requires = { glass = 7, rubber = 7, plastic = 13, copper = 20, aluminium = 20, steel = 20 },
-            result = function(pos, ang)
-                resource.create("basicparts", pos, ang, 50, false, true)
-            end
-        },
-        {
-            name = "Chemical Power", icon = "power", scale = 0.6,
-            description = "Uses a chemical power to give you 100 power",
-            methods = { ["crafting_table"] = true },
-            requires = { lead = 26, chemicals = 7, copper = 26 },
-            result = function(pos, ang)
-                resource.create("power", pos, ang, 100, false, true)
-            end
-        },
-        {
-            name = "Chemicals", icon = "chemicals", scale = 0.6,
-            description = "Caustic burns and choking smoke",
-            methods = { ["crafting_table"] = true },
-            requires = { gas = 130, water = 65, oil = 65 },
-            result = function(pos, ang)
-                resource.create("chemicals", pos, ang, 100, false, true)
-            end
-        },
-        {
-            name = "Cloth", icon = "cloth", scale = 0.6,
-            description = "Mysterious fabrication of fabric from edible organics. Don't ask now",
-            methods = { ["crafting_table"] = true },
-            requires = { water = 26, organics = 104 },
-            result = function(pos, ang)
-                resource.create("cloth", pos, ang, 100, false, true)
-            end
-        },
+    ["paper"] = {
+        name = "Paper", icon = "paper", scale = 0.6,
+        description = "Writing material that can be used for more malicious purposes",
+        methods = { "crafting_table" },
+        requires = { wood = 39, water = 91 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("paper", pos, ang, 100, false, true)
+        end
     },
-    ["Tools"] = {
-        {
-            name = "Bucket", icon = "bucket", scale = 0.6,
-            description = "I am wise to collect water with my bucket",
-            methods = { ["crafting_table"] = true },
-            requires = { aluminium = 13 },
-            result = function(pos, ang)
-                local ent = ents.create("bucket")
-                ent:spawn(pos, ang, false)
-            end
-        },
-        {
-            name = "Toolbox", icon = "toolbox", scale = 0.6,
-            description = "Build. Upgrade. Salvage. All you need to build the big machines",
-            methods = { ["crafting_table"] = true },
-            requires = { basicparts = 50 },
-            result = function(pos, ang)
-                local ent = ents.create("toolbox")
-                ent:spawn(pos, ang, false)
-            end
-        }
+    ["basic_parts"] = {
+        name = "Basic Parts, x50", icon = "basicparts", scale = 0.6,
+        description = "50 basic parts used for craftings and repairs",
+        methods = { "crafting_table" },
+        requires = { glass = 7, rubber = 7, plastic = 13, copper = 20, aluminium = 20, steel = 20 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("basicparts", pos, ang, 50, false, true)
+        end
     },
-    ["Other"] = {
-        {
-            name = "HL2 Airboat", icon = "airboat", scale = 1.5,
-            description = "",
-            methods = { ["toolbox"] = true },
-            requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
-            result = function(pos, ang)
-                prop.createSeat(pos, ang, "models/airboat.mdl", false)
-            end
-        }
+    ["power"] = {
+        name = "Chemical Power", icon = "power", scale = 0.6,
+        description = "Uses a chemical power to give you 100 power",
+        methods = { "crafting_table" },
+        requires = { lead = 26, chemicals = 7, copper = 26 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("power", pos, ang, 100, false, true)
+        end
+    },
+    ["chemicals"] = {
+        name = "Chemicals", icon = "chemicals", scale = 0.6,
+        description = "Caustic burns and choking smoke",
+        methods = { "crafting_table" },
+        requires = { gas = 130, water = 65, oil = 65 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("chemicals", pos, ang, 100, false, true)
+        end
+    },
+    ["cloth"] = {
+        name = "Cloth", icon = "cloth", scale = 0.6,
+        description = "Mysterious fabrication of fabric from edible organics. Don't ask now",
+        methods = { "crafting_table" },
+        requires = { water = 26, organics = 104 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("cloth", pos, ang, 100, false, true)
+        end
+    },
+    ["bucket"] = {
+        name = "Bucket", icon = "bucket", scale = 0.6,
+        description = "I am wise to collect water with my bucket",
+        methods = { "crafting_table" },
+        requires = { aluminium = 13 },
+        category = "Tools",
+        result = function(pos, ang)
+            local ent = ents.create("bucket")
+            ent:spawn(pos, ang, false)
+        end
+    },
+    ["toolbox"] = {
+        name = "Toolbox", icon = "toolbox", scale = 0.6,
+        description = "Build. Upgrade. Salvage. All you need to build the big machines",
+        methods = { "crafting_table" },
+        requires = { basicparts = 50 },
+        category = "Tools",
+        result = function(pos, ang)
+            local ent = ents.create("toolbox")
+            ent:spawn(pos, ang, false)
+        end
+    },
+    ["airboat"] = {
+        name = "HL2 Airboat", icon = "airboat", scale = 1.5,
+        description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
+        category = "Other",
+        result = function(pos, ang)
+            prop.createSeat(pos, ang, "models/airboat.mdl", false)
+        end
     }
 }
 

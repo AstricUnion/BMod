@@ -10,21 +10,15 @@ function CraftRow:init()
     self:dockMargin(0, 0, 0, 4)
     self:setSize(128, 64)
     self.craft = nil
-    self.category = nil
-    self.craftTable = nil
+    self.craftId = nil
     self.canMake = false
     self.menu = nil
 end
 
----@param craft BModCraft
-function CraftRow:setCraft(category, craft)
-    self.craft = craft
-    self.category = category
-end
-
----@param ent Entity
-function CraftRow:setTable(ent)
-    self.craftTable = ent
+---@param craftId string
+function CraftRow:setCraft(craftId)
+    self.craft = cfg.crafts[craftId]
+    self.craftId = craftId
 end
 
 ---@param menu CraftMenu
@@ -72,27 +66,11 @@ end
 -- REPEAT CODE FROM autorun/sv_craftmenu.lua
 function CraftRow:canByResources()
     local resources = self.menu.resources
-    for id, count in pairs(self.craft.requires) do
-        local current = resources[id]
-        if !current or current < count then return false end
-    end
-    return true
+    return !resource.canByResources(resources, self.craft.requires)
 end
 
 function CraftRow:doClick()
-    -- To error on server
-    net.start("BModMakeCraft")
-        net.writeString(self.category)
-        net.writeString(self.craft.name)
-        net.writeVector(self.craftTable:getPos() + Vector(0, 0, 50))
-        net.writeAngle(self.craftTable:getAngles())
-        net.writeBool(false)
-    net.send()
-    local menu = self.menu
-    timer.simple(0, function()
-        if !isValid(menu) then return end
-        menu:updateResources()
-    end)
+    self.menu:doCraft(self.craftId)
 end
 
 bgui.register("CraftRow", CraftRow, "BLabel")
@@ -150,22 +128,28 @@ function CraftMenu:init()
     self:updateResources()
 end
 
----@param category string Category of the craft
----@param name string Name of the craft
-function CraftMenu:doCraft(category, name)
+---@param craftId string Craft identifier
+function CraftMenu:doCraft(craftId)
+    -- To error on server
+    net.start("BModMakeCraft")
+        net.writeString(craftId)
+        net.writeVector(self.craftTable:getPos() + Vector(0, 0, 50))
+        net.writeAngle(self.craftTable:getAngles())
+        net.writeBool(false)
+    net.send()
+    timer.simple(0, function()
+        if !isValid(self) then return end
+        self:updateResources()
+    end)
 end
 
 function CraftMenu:updateResources()
-    local resources = resource.getResources(player(), false)
-    local formattedRes = {}
-    for res, v in pairs(resources) do
-        formattedRes[res] = v.count
-    end
-    self.resources = formattedRes
+    local resources = resource.getResourcesFast(player(), false)
+    self.resources = resources
     for _, v in ipairs(self.rows) do
         v:updateData()
     end
-    for type, count in pairs(formattedRes) do
+    for type, count in pairs(resources) do
         for _, v in ipairs(self.resourcesMenu.canvas.sortedChildren) do
             ---@cast v ResourceRow
             if v.type == type then
@@ -192,26 +176,23 @@ function CraftMenu:setTable(ent)
 end
 
 function CraftMenu:setType(type)
-    for category, crafts in pairs(cfg.crafts) do
-        local categoryPanel = bgui.create("BScrollPanel", self.tabs)
-        local craftsAdded = {}
-        for _, craft in ipairs(crafts) do
-            if !craft.methods[type] then goto cont end
-            local butt = bgui.create("CraftRow")
-            butt:setText(craft.name)
-            butt:setCraft(category, craft)
-            butt:setMenu(self)
-            butt:setTable(self.craftTable)
-            categoryPanel:addItem(butt)
-            craftsAdded[#craftsAdded+1] = butt
-            ::cont::
+    local categories = {}
+    for id, craft in pairs(cfg.crafts) do
+        if !table.hasValue(craft.methods, type) then goto cont end
+        if !craft.category then goto cont end
+        local categoryPanel = categories[craft.category]
+        if !categoryPanel then
+            categoryPanel = bgui.create("BScrollPanel", self.tabs)
+            categories[craft.category] = categoryPanel
+            self.tabs:addSheet(craft.category, categoryPanel)
         end
-        if next(craftsAdded) == nil then
-            categoryPanel:remove()
-        else
-            table.add(self.rows, craftsAdded)
-            self.tabs:addSheet(category, categoryPanel)
-        end
+        local butt = bgui.create("CraftRow")
+        butt:setText(craft.name)
+        butt:setCraft(id)
+        butt:setMenu(self)
+        categoryPanel:addItem(butt)
+        self.rows[#self.rows+1] = butt
+        ::cont::
     end
 end
 

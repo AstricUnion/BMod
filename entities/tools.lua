@@ -5,6 +5,10 @@ local ents = ents
 ---@class resource
 local resource = resource
 
+---@class bmodConfig
+local cfg = bmodConfig
+
+
 if CLIENT then
     ---@class bicons
     local bicons = bicons
@@ -14,7 +18,7 @@ end
 
 
 
----@class ToolBox: BModEntity
+---@class Bucket: BModEntity
 local Bucket = {}
 Bucket.Identifier = "bucket"
 Bucket.Name = "Bucket"
@@ -52,7 +56,7 @@ if SERVER then
         end
     end
 else
-    ---@param self ToolBox
+    ---@param self Bucket
     function Bucket.hooks.PostDrawTranslucentRenderables(self)
         BMod.Display(self.ent, Vector(8.8, 0, 0), Angle(), function()
             render.drawSimpleText(0, -75, string.format("Water: %s", self:getNWVar("water", 0)), TEXT_ALIGN.CENTER)
@@ -79,6 +83,7 @@ if SERVER then
         self.ent:setColor(Color(255, 100, 100))
         self:setNWVar("gas", 0)
         self:setNWVar("power", 0)
+        self:setNWVar("craft", nil)
         self:setNWVar("equippedBy", nil)
     end
 
@@ -111,7 +116,7 @@ if SERVER then
             res:setCount(100 - diff)
             self:setNWVar(ent.BModResource, diff)
         elseif key == IN_KEY.RELOAD then
-            net.start("BModToolBoxOpen")
+            net.start("BModToolboxOpen")
                 net.writeEntity(self.ent)
             net.send(ply)
         end
@@ -161,6 +166,29 @@ if SERVER then
         power = math.clamp(power, 0, 100)
         self:setNWVar("power", power)
     end
+
+
+    net.receive("BModToolboxSetCraft", function()
+        local ent = net.readEntity()
+        if !isValid(ent) then return end
+        local toolbox = ents.inited[ent:entIndex()]
+        if !isValid(toolbox) then return end
+        ---@cast toolbox ToolBox
+        local craftId = net.readString()
+        local craft = cfg.crafts[craftId]
+        if !craft then return end
+        local ply = toolbox:getEquippedBy()
+        if !ply then return end
+        local res = resource.getResourcesFast(ply)
+        local errorMes = resource.canByResources(res, craft.requires)
+        if errorMes then
+            net.start("BModErrorMessage")
+                net.writeString(errorMes)
+            net.send(ply)
+            return
+        end
+        toolbox:setNWVar("craft", craftId)
+    end)
 else
     ---@param self ToolBox
     function ToolBox.hooks.PostDrawTranslucentRenderables(self)
@@ -185,16 +213,32 @@ else
         textLine("LMB: Build or upgrade", 4)
         textLine("R: Select build item", 5)
         textLine("ALT+R: Clear build item", 6)
+        local craftId = self:getNWVar("craft")
+        local craft = cfg.crafts[craftId]
+        if craft then
+            render.setFont("Trebuchet24")
+            render.drawSimpleText(sw * 0.5, sh * 0.9 - 132, craft.name, TEXT_ALIGN.CENTER, TEXT_ALIGN.BOTTOM)
+        end
     end
 
     function ToolBox:networkVariablesUpdate(oldVars, vars)
-        local ply = vars.equippedBy
-        if oldVars.equippedBy == ply or player() ~= ply then return end
-        ---@cast ply Player
-        input.selectWeapon(ply:getWeapon("weapon_crowbar"))
+        local function equip()
+            local ply = vars.equippedBy
+            if oldVars.equippedBy == ply or player() ~= ply then return end
+            ---@cast ply Player
+            input.selectWeapon(ply:getWeapon("weapon_crowbar"))
+        end
+
+        local function craft()
+            if vars.craft == oldVars.craft then return end
+            if self.craftMenu then self.craftMenu:remove() end
+        end
+
+        equip()
+        craft()
     end
 
-    net.receive("BModToolBoxOpen", function()
+    net.receive("BModToolboxOpen", function()
         net.readEntity(function(ent)
             local tbl = ents.inited[ent:entIndex()]
             ---@cast tbl ToolBox
@@ -204,6 +248,12 @@ else
             tbl.craftMenu:setTable(ent)
             tbl.craftMenu:setType("toolbox")
             tbl.craftMenu:center()
+            tbl.craftMenu.doCraft = function(self, craftId)
+                net.start("BModToolboxSetCraft")
+                    net.writeEntity(ent)
+                    net.writeString(craftId)
+                net.send()
+            end
             input.enableCursor(true)
         end)
     end)

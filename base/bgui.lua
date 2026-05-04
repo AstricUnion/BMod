@@ -781,9 +781,6 @@ do
     canvas.zPos = -1
     bgui.canvas = canvas
     bgui.focus = canvas
-    timer.simple(0.1, function()
-        print(canvas.performsLayout)
-    end)
 end
 
 

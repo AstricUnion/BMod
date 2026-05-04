@@ -44,12 +44,19 @@ if SERVER then
     end
 
 
+    ---[SERVER] Create entity model
+    ---@return Entity
+    function BModEntity:createModel()
+        return isstring(self.Model) and prop.create(Vector(), Angle(), self.Model, true) or self.Model()
+    end
+
+
     ---@param pos Vector Position of an entity
     ---@param ang Angle Angle of an entity
     ---@param freeze boolean Freeze an entity
     function BModEntity:spawn(pos, ang, freeze)
         -- This prop will be like entity for this resource
-        local pr = isstring(self.Model) and prop.create(Vector(), Angle(), self.Model, true) or self.Model()
+        local pr = self:createModel()
         pr:setPos(pos)
         pr:setAngles(ang)
         pr:setFrozen(freeze)

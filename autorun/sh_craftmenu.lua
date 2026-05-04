@@ -6,23 +6,12 @@ if SERVER then
     local beff = beff
 
     net.receive("BModMakeCraft", function(_, ply)
-        local category = net.readString()
-        local name = net.readString()
+        local id = net.readString()
         local pos = net.readVector()
         local ang = net.readAngle()
         local useProps = net.readBool()
-        local cat = cfg.crafts[category]
-        if !cat then return end
-        local item
-        for _, v in ipairs(cat) do
-            if v.name == name then
-                item = v
-                break
-            end
-        end
+        local item = cfg.crafts[id]
         if !item then return end
-        ---@cast item BModCraft
-        -- REPEAT CODE FROM bgui/craftmenu.lua
         local errorMes = resource.takeResources(ply, item.requires, useProps)
         if errorMes then
             net.start("BModErrorMessage")

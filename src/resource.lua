@@ -245,6 +245,64 @@ function resource.getResources(ply, withProps)
     return resources
 end
 
+---[SHARED] Get player's available resources fast and less info
+---@param ply Player Player to inspect
+---@param withProps boolean? Take props as a resource
+---@return table<string, number> resources Key is resource type, value is amount of this resource
+function resource.getResourcesFast(ply, withProps)
+    local found = find.byClass("prop_physics")
+    local resources = {}
+    local pos = ply:getPos()
+    for _, pr in ipairs(found) do
+        if pr:getPos():getDistance(pos) > 256 or pr:getOwner() ~= ply then goto cont end
+        if pr.BModResource then
+            local res = ents.inited[pr:entIndex()]
+            ---@cast res Resource
+            if !isValid(res) then goto cont end
+            local id = res.Identifier
+            local count = res:getCount()
+            resources[id] = (resources[id] or 0) + count
+        elseif withProps then
+            local counts = resource.salvage(pr)
+            if !counts then goto cont end
+            for id, count in pairs(counts) do
+                resources[id] = (resources[id] or 0) + count
+            end
+        end
+        ::cont::
+    end
+    return resources
+end
+
+---[SHARED] Can user craft it by resources, with message and info
+---@param resources table<string, number> Resources to test
+---@param required table<string, number> Requirements
+---@return string? error Error message or nil, if success
+function resource.canByResources(resources, required)
+    if true then return end
+    local errorMes = {}
+    for requiredId, count in pairs(required) do
+        local currentCount = resources[requiredId] or 0
+        local class = ents.registered[requiredId]
+        local diff = count - currentCount
+        if diff > 0 then
+            errorMes[#errorMes+1] = diff .. " more " .. string.lower(class.Name)
+        end
+    end
+    if next(errorMes) ~= nil then return "You need " .. table.concat(errorMes, ", ") end
+end
+
+---[SHARED] Makes found resources more easy to get
+---@param resources table<string, FoundResources>
+---@return table<string, number> resources
+function resource.fromFound(resources)
+    local simplified = {}
+    for id, v in pairs(resources) do
+        simplified[id] = v.count or 0
+    end
+    return simplified
+end
+
 
 if SERVER then
     ---[SERVER] Create new resource
@@ -319,20 +377,11 @@ if SERVER then
             return required
         end
 
-        local res = resource.getResources(ply, withProps)
-        local errorMes = {}
+        local resources = resource.getResources(player(), withProps)
+        local res = resource.canByResources(resource.fromFound(resources), required)
+        if res then return res end
         for requiredId, count in pairs(required) do
-            local currentClass = res[requiredId]
-            local currentCount = currentClass and currentClass.count or 0
-            local class = ents.registered[requiredId]
-            local diff = count - currentCount
-            if diff > 0 then
-                errorMes[#errorMes+1] = diff .. " more " .. string.lower(class.Name)
-            end
-        end
-        if next(errorMes) ~= nil then return "You need " .. table.concat(errorMes, ", ") end
-        for requiredId, count in pairs(required) do
-            local currentClass = res[requiredId]
+            local currentClass = resources[requiredId]
             takeResources(count, currentClass.ents)
         end
     end
@@ -361,7 +410,6 @@ if SERVER then
         for name, count in pairs(resources) do
             local totalCount = math.ceil(count * mass * 1.5)
             if totalCount <= 0 then goto cont end
-            print(name, totalCount)
             result[name] = totalCount
             ::cont::
         end
