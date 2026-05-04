@@ -101,6 +101,17 @@ bmodConfig.crafts = {
                 ent:spawn(pos, ang, false)
             end
         }
+    },
+    ["Other"] = {
+        {
+            name = "HL2 Airboat", icon = "airboat", scale = 1.5,
+            description = "",
+            methods = { ["toolbox"] = true },
+            requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
+            result = function(pos, ang)
+                prop.createSeat(pos, ang, "models/airboat.mdl", false)
+            end
+        }
     }
 }
 

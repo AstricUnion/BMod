@@ -42,6 +42,7 @@ if CLIENT then
     addIcon("gold", 4, 1)
     addIcon("lead", 4, 4)
     addIcon("oil", 4, 8)
+    addIcon("organics", 5, 1)
     addIcon("paper", 5, 2)
     addIcon("plastic", 5, 3)
     addIcon("power", 5, 6)
