@@ -485,6 +485,7 @@ end
 
 
 local function invalidateLayoutInner(self)
+    if !isValid(self) then return end
     -- Block with position without dock
     do
         local x, y, w, h = self.globalX, self.globalY, self.globalW, self.globalH
@@ -567,30 +568,6 @@ function BPanel:invalidateLayout(makeNow)
         end)
     end
 end
-
-
-        -- local pX, pY = par.globalX, par.globalY
-        -- local pW, pH = par.globalW, par.globalH
-        -- local funcs = {
-        --     [BDOCK.LEFT] = function()
-        --         w = self.w
-        --     end,
-        --     [BDOCK.RIGHT] = function()
-        --         x = (x + w) - self.w
-        --         w = self.w
-        --     end,
-        --     [BDOCK.TOP] = function()
-        --         h = self.h
-        --     end,
-        --     [BDOCK.BOTTOM] = function()
-        --         y = (y + h) - self.h
-        --         h = self.h
-        --     end,
-        --     [BDOCK.FILL] = function() end
-        -- }
-        -- funcs[self.docktype]()
-        -- boundX, boundY, boundX2, boundY2 = max(x, par.bounds.l), max(y, par.bounds.t), min(x + w, par.bounds.r), min(y + h, par.bounds.b)
-        --
 
 ---Invalidate parent layout. Will call hook performLayout on parent
 ---You can safely call it

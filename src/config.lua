@@ -35,54 +35,69 @@ bmodConfig.crafts = {
     },
     ["Resources"] = {
         {
-            name = "Paper, x100",
-            scale = 0.6,
+            name = "Paper", icon = "paper", scale = 0.6,
             description = "Writing material that can be used for more malicious purposes",
-            icon = "paper",
-            methods = {
-                ["crafting_table"] = true
-            },
-            requires = {
-                wood = 39,
-                water = 91
-            },
+            methods = { ["crafting_table"] = true },
+            requires = { wood = 39, water = 91 },
             result = function(pos, ang)
                 resource.create("paper", pos, ang, 100, false, true)
             end
         },
         {
-            name = "Basic Parts, x50",
-            scale = 0.6,
-            description = "",
-            icon = "basicparts",
-            methods = {
-                ["crafting_table"] = true
-            },
-            requires = {
-                glass = 7,
-                rubber = 7,
-                plastic = 13,
-                copper = 20,
-                aluminium = 20,
-                steel = 20
-            },
+            name = "Basic Parts, x50", icon = "basicparts", scale = 0.6,
+            description = "50 basic parts used for craftings and repairs",
+            methods = { ["crafting_table"] = true },
+            requires = { glass = 7, rubber = 7, plastic = 13, copper = 20, aluminium = 20, steel = 20 },
             result = function(pos, ang)
                 resource.create("basicparts", pos, ang, 50, false, true)
             end
-        }
+        },
+        {
+            name = "Chemical Power", icon = "power", scale = 0.6,
+            description = "Uses a chemical power to give you 100 power",
+            methods = { ["crafting_table"] = true },
+            requires = { lead = 26, chemicals = 7, copper = 26 },
+            result = function(pos, ang)
+                resource.create("power", pos, ang, 100, false, true)
+            end
+        },
+        {
+            name = "Chemicals", icon = "chemicals", scale = 0.6,
+            description = "Caustic burns and choking smoke",
+            methods = { ["crafting_table"] = true },
+            requires = { gas = 130, water = 65, oil = 65 },
+            result = function(pos, ang)
+                resource.create("chemicals", pos, ang, 100, false, true)
+            end
+        },
+        {
+            name = "Cloth", icon = "cloth", scale = 0.6,
+            description = "Mysterious fabrication of fabric from edible organics. Don't ask now",
+            methods = { ["crafting_table"] = true },
+            requires = { water = 26, organics = 104 },
+            result = function(pos, ang)
+                resource.create("cloth", pos, ang, 100, false, true)
+            end
+        },
     },
     ["Tools"] = {
         {
-            name = "Bucket",
-            scale = 0.6,
-            description = "Writing material that can be used for more malicious purposes",
-            icon = "bucket",
-            methods = {
-                ["crafting_table"] = true
-            },
+            name = "Bucket", icon = "bucket", scale = 0.6,
+            description = "I am wise to collect water with my bucket",
+            methods = { ["crafting_table"] = true },
             requires = { aluminium = 13 },
             result = function(pos, ang)
                 local ent = ents.create("bucket")
+                ent:spawn(pos, ang, false)
+            end
+        },
+        {
+            name = "Toolbox", icon = "toolbox", scale = 0.6,
+            description = "Build. Upgrade. Salvage. All you need to build the big machines",
+            methods = { ["crafting_table"] = true },
+            requires = { basicparts = 50 },
+            result = function(pos, ang)
+                local ent = ents.create("toolbox")
                 ent:spawn(pos, ang, false)
             end
         }

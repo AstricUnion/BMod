@@ -9,6 +9,7 @@ if CLIENT then
     ---@class bicons
     local bicons = bicons
     bicons.registerModel("bucket", "models/props_junk/MetalBucket01a.mdl", Vector(-27, 0, 9), Angle(20, 0, 5))
+    bicons.registerModel("toolbox", "models/props_c17/tools_wrench01a.mdl", Vector(0, 5, 16), Angle(90, 0, -80))
 end
 
 
