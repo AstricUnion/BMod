@@ -40,7 +40,7 @@ function bicons.register(id, mat, startU, startV, endU, endV)
     bicons.registered[id] = function(x, y, w, h)
         render.setColor(Color())
         render.setMaterial(mat)
-        render.drawTexturedRectUVFast(x, y, w, h, startU, startV, endU, endV, true)
+        render.drawTexturedRectUV(x, y, w, h, startU, startV, endU, endV)
     end
 end
 

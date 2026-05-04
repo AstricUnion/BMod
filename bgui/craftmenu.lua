@@ -150,6 +150,11 @@ function CraftMenu:init()
     self:updateResources()
 end
 
+---@param category string Category of the craft
+---@param name string Name of the craft
+function CraftMenu:doCraft(category, name)
+end
+
 function CraftMenu:updateResources()
     local resources = resource.getResources(player(), false)
     local formattedRes = {}
