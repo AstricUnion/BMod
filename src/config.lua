@@ -16,6 +16,11 @@ local bmodConfig = {}
 ---@field methods string[] Methods to craft. In base version, can be crafting_table, toolbox
 ---@field category string? Categories in menu
 
+if CLIENT then
+    bicons.registerModel("airboat", "models/airboat.mdl", Vector(-200, 100, 100), Angle(20, -30, 0))
+    bicons.registerModel("jeep", "models/buggy.mdl", Vector(-200, 100, 100), Angle(20, -30, 0))
+end
+
 ---@type table<string, BModCraft> Key is a craft category
 bmodConfig.crafts = {
     ["crafting_table"] = {
@@ -111,7 +116,16 @@ bmodConfig.crafts = {
         requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
         category = "Other",
         result = function(pos, ang)
-            prop.createSeat(pos, ang, "models/airboat.mdl", false)
+            prop.createSent(pos, ang, "Airboat", false)
+        end
+    },
+    ["jeep"] = {
+        name = "HL2 Jeep", icon = "jeep", scale = 1.5, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
+        category = "Other",
+        result = function(pos, ang)
+            prop.createSent(pos, ang, "Jeep", false)
         end
     }
 }

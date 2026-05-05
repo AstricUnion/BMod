@@ -102,8 +102,12 @@ if SERVER then
         end
         local isCrowbar = ply == equippedBy and equippedBy:getActiveWeapon():getClass() == "weapon_crowbar" or false
         if !isCrowbar then return end
+        local craftId = self:getNWVar("craft")
+        local craft = cfg.crafts[craftId]
         if sprinting and key == IN_KEY.RELOAD then
             self:drop()
+        elseif craft and walking and key == IN_KEY.RELOAD then
+            self:setNWVar("craft", nil)
         elseif walking and key == IN_KEY.USE then
             local tr = ply:getEyeTrace()
             ---@cast tr TraceResult
@@ -111,6 +115,7 @@ if SERVER then
             if ent.BModResource ~= "gas" and ent.BModResource ~= "power" then return end
             if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
             local res = ents.inited[ent:entIndex()]
+            ---@cast res Resource
             local diff = res:getCount() - self:getNWVar(ent.BModResource, 0)
             ---@cast res Resource
             res:setCount(100 - diff)
@@ -119,6 +124,11 @@ if SERVER then
             net.start("BModToolboxOpen")
                 net.writeEntity(self.ent)
             net.send(ply)
+        elseif craft and key == IN_KEY.ATTACK then
+            local shootPos = ply:getShootPos()
+            local angs = ply:getEyeAngles()
+            local tr = trace.line(shootPos, shootPos + angs:getForward() * 128, {ply})
+            BMod.makeCraft(ply, tr.HitPos, angs, craft)
         end
     end
 
@@ -192,8 +202,19 @@ if SERVER then
 else
     ---@param self ToolBox
     function ToolBox.hooks.PostDrawTranslucentRenderables(self)
-        if self:getEquippedBy() then return end
-        BMod.Display(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
+        local ply = self:getEquippedBy()
+        if !ply then
+            BMod.Display(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
+            return
+        end
+        local craftId = self:getNWVar("craft")
+        local craft = cfg.crafts[craftId]
+        if craft then
+            local shootPos = ply:getShootPos()
+            local angs = ply:getEyeAngles()
+            local tr = trace.line(shootPos, shootPos + angs:getForward() * 128, {ply})
+            render.draw3DWireframeBox(tr.HitPos, angs:setP(0), craft.scale * Vector(-30, -30, 0), craft.scale * Vector(30, 30, 50))
+        end
     end
 
     function ToolBox.hooks.DrawHUD(self)
@@ -231,7 +252,10 @@ else
 
         local function craft()
             if vars.craft == oldVars.craft then return end
-            if self.craftMenu then self.craftMenu:remove() end
+            if isValid(self.craftMenu) then
+                self.craftMenu:remove()
+                self.craftMenu = nil
+            end
         end
 
         equip()

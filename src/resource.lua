@@ -381,7 +381,7 @@ if SERVER then
         local res = resource.canByResources(resource.fromFound(resources), required)
         if res then return res end
         for requiredId, count in pairs(required) do
-            local currentClass = resources[requiredId]
+            local currentClass = resources[requiredId] or {count = 0, ents = {}}
             takeResources(count, currentClass.ents)
         end
     end
