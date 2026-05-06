@@ -312,7 +312,7 @@ if SERVER then
     ---@param count number Count of resource in this block
     ---@param freeze boolean Freeze resource entity
     ---@param dontStack boolean? Create a new resource without merging with existing one(s)
-    ---@return Resource?
+    ---@return Resource[]?
     function resource.create(identifier, pos, ang, count, freeze, dontStack)
         if !dontStack then
             local found = find.byClass("prop_physics")
@@ -340,11 +340,21 @@ if SERVER then
             end
             if existingResource then return existingResource end
         end
-        local newRes = ents.create(identifier)
-        ---@cast newRes Resource
-        newRes:setCount(count)
-        newRes:spawn(pos, ang, freeze)
-        return newRes
+        local resources = {}
+        local totalCreated = 0
+        local x = 0
+        for i=1, math.ceil(count / 100) do
+            local newRes = ents.create(identifier)
+            ---@cast newRes Resource
+            local diff = count - totalCreated
+            local currentCount = diff < 100 and diff or 100
+            newRes:setCount(currentCount)
+            newRes:spawn(pos + Vector(x, 0, 0), ang, freeze)
+            totalCreated = totalCreated + currentCount
+            x = x + 32
+            resources[#resources+1] = newRes
+        end
+        return resources
     end
 
 
@@ -393,8 +403,21 @@ if SERVER then
     ---@param ent Entity Prop to salvage
     ---@return table<string, number>
     function resource.salvage(ent)
+        local physCount = ent:getPhysicsObjectCount()
         local phys = ent:getPhysicsObject()
         local mat, mass = string.lower(phys:getMaterial()), phys:getMass()
+        if physCount > 1 then
+            mass = 0
+            for i=1, physCount do
+                local ragPhys = ent:getPhysicsObjectNum(i - 1)
+                if !isValid(ragPhys) then goto cont end
+                mass = mass + ragPhys:getMass()
+                ::cont::
+            end
+        end
+        if mass > 35 then
+            mass = math.ceil(mass ^ 0.9)
+        end
         local result = {}
         local byModel, resources = false, salvageByPhys[mat]
         local model = ent:getModel()

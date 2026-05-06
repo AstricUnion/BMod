@@ -41,12 +41,14 @@ if CLIENT then
     addIcon("glass", 3, 7)
     addIcon("gold", 4, 1)
     addIcon("lead", 4, 4)
+    addIcon("nutrients", 4, 7)
     addIcon("oil", 4, 8)
     addIcon("organics", 5, 1)
     addIcon("paper", 5, 2)
     addIcon("plastic", 5, 3)
     addIcon("power", 5, 6)
     addIcon("precisionparts", 5, 7)
+    addIcon("propellant", 5, 8)
     addIcon("rubber", 6, 1)
     addIcon("silver", 6, 4)
     addIcon("steel", 6, 5)
@@ -71,6 +73,9 @@ local Paper = resource.fastRegister(
     "Paper", "paper", "models/props/cs_office/file_box.mdl", Vector(0, 7, 7), Angle(0, 90, 0),
     "physics/cardboard/cardboard_box_break2.wav", "physics/cardboard/cardboard_box_impact_hard4.wav"
 )
+Paper.modifyEntity = function(ent)
+    ent:setAngles(ent:localToWorldAngles(Angle(0, -90, 0)))
+end
 
 
 ---@class Water: Resource
@@ -129,6 +134,15 @@ Lead.modifyEntity = function(ent)
     ent:setColor(Color(120, 120, 150))
 end
 
+-- edit sounds
+---@class Nutrients: Resource
+local Nutrients = resource.fastRegister(
+    "Nutrients", "nutrients", "models/props/cs_office/Cardboard_box01.mdl", Vector(0, 12, 8), Angle(0, 90, 0),
+    "phx/hmetal1.wav", "phx/hmetal3.wav"
+)
+Nutrients.modifyEntity = function(ent)
+    ent:setAngles(ent:localToWorldAngles(Angle(0, -90, 0)))
+end
 
 ---@class Steel: Resource
 local Steel = resource.fastRegister(
@@ -173,6 +187,7 @@ end
 deposit.add("oil", 300, 8, nil, 600, true)
 
 
+-- edit sounds
 ---@class Organics: Resource
 local Organics = resource.fastRegister(
     "Organics", "organics", "models/props_junk/PlasticCrate01a.mdl", Vector(9, 0, 0), nil,
@@ -219,7 +234,7 @@ local Plastic = resource.fastRegister(
 
 ---@class Rubber: Resource
 local Rubber = resource.fastRegister(
-    "Rubber", "rubber", "models/props_vehicles/apc_tire001.mdl", Vector(10, 0, 1), nil,
+    "Rubber", "rubber", "models/props_vehicles/carparts_wheel01a.mdl", Vector(0, 6, 0), Angle(0, 90, 0),
     "physics/body/body_medium_impact_soft1.wav", "physics/body/body_medium_impact_soft2.wav"
 )
 
@@ -274,6 +289,12 @@ local PrecisionParts = resource.fastRegister(
 PrecisionParts.modifyEntity = function(ent)
     ent:setColor(Color(80, 130, 80))
 end
+
+---@class Propellant: Resource
+local Propellant = resource.fastRegister(
+    "Propellant", "propellant", "models/props_junk/plasticbucket001a.mdl", Vector(7, 0, 3), Angle(0, 0, 0),
+    "physics/surfaces/sand_impact_bullet4.wav", "player/footsteps/sand4.wav"
+)
 
 ---@class Coolant: Resource
 local Coolant = resource.fastRegister(

@@ -104,6 +104,28 @@ bmodConfig.crafts = {
         end
     },
 
+    ["nutrients"] = {
+        name = "Nutrients", icon = "nutrients", scale = 0.6,
+        description = "",
+        methods = { "crafting_table" },
+        requires = { water = 33, organics = 65, paper = 33 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("nutrients", pos, ang, 100, false, true)
+        end
+    },
+
+    ["propellant"] = {
+        name = "Propellant", icon = "propellant", scale = 0.6,
+        description = "",
+        methods = { "crafting_table" },
+        requires = { chemicals = 65, cloth = 33 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("propellant", pos, ang, 100, false, true)
+        end
+    },
+
     ["bucket"] = {
         name = "Bucket", icon = "bucket", scale = 0.6,
         description = "I am wise to collect water with my bucket",

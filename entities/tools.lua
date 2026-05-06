@@ -157,6 +157,10 @@ if SERVER then
             local eyeAngs = ply:getEyeAngles()
             local tr = trace.line(shootPos, shootPos + eyeAngs:getForward() * 256, {ply})
             local ent = tr.Entity
+            if isValid(ent) and ent:getMass() > 10000 then
+                BMod.errorMessage(ply, "Object too large")
+                return
+            end
             local salvagingCurrent, percent = self:getSalvage()
             if isValid(ent) and !ent.BModEntity or (salvagingCurrent and salvagingCurrent == ent) then
                 if !isValid(salvagingCurrent) then
@@ -168,9 +172,13 @@ if SERVER then
                 if percent >= 1 then
                     ent:remove()
                     local height = 0
+                    local time = 1 / prop.spawnRate()
                     for id, count in pairs(res) do
-                        resource.create(id, pos + Vector(0, 0, height), angs, count, false)
-                        height = height + 24
+                        -- because prop limit. I don't use it in crafting table, because table makes less props
+                        timer.simple(height * time, function()
+                            resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false)
+                        end)
+                        height = height + 1
                     end
                     return
                 end
@@ -225,14 +233,12 @@ if SERVER then
         self.ent:emitSound("AI_BaseNPC.BodyDrop_Heavy")
     end
 
-
     ---[SERVER] Set gas for toolbox
     ---@param gas number Gas
     function ToolBox:setGas(gas)
         gas = math.clamp(gas, 0, 100)
         self:setNWVar("gas", gas)
     end
-
 
     ---[SERVER] Set power for toolbox
     ---@param power number Gas

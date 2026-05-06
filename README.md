@@ -70,3 +70,7 @@
 - [ ] Build system (make your BMod build with modules in one file)
     - [ ] GitHub releases
     - [ ] GitHub CI for BMod (maybe for other chips)
+
+## Recommended options
+`sf_props_burstmax 10`
+`sf_props_burstrate 4`
