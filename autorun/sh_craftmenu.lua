@@ -13,9 +13,7 @@ if SERVER then
     function BMod.makeCraft(ply, pos, ang, craft, useProps)
         local errorMes = resource.takeResources(ply, craft.requires, useProps)
         if errorMes then
-            net.start("BModErrorMessage")
-                net.writeString(errorMes)
-            net.send(ply)
+            BMod.errorMessage(ply, errorMes)
             return
         end
         local eff = beff.create("craft_effect")

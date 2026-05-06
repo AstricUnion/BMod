@@ -69,7 +69,6 @@ if SERVER then
                 self.inProcess = ent
                 timer.simple(0, function()
                     local res = resource.salvage(ent)
-                    if !res then return end
                     local pos = ent:getPos()
                     ent:remove()
                     local angs = pr:getAngles()

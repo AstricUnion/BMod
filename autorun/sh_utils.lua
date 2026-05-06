@@ -1,7 +1,5 @@
 
 if CLIENT then
-    ---@class BMod
-    local BMod = BMod
     local Ply = player()
     local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
 
@@ -31,5 +29,13 @@ if CLIENT then
             end
         end
         render.popMatrix()
+    end
+else
+    ---@param ply Player Player to message
+    ---@param message string String to message
+    function BMod.errorMessage(ply, message)
+        net.start("BModErrorMessage")
+            net.writeString(message)
+        net.send(ply)
     end
 end

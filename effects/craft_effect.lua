@@ -15,7 +15,7 @@ if CLIENT then
 
     function CraftEffect:init()
         local origin = self:getOrigin()
-        local scale = self:getScale()
+        local scale = self:getScale() / 1.5
         local emm = particle.create(origin, false)
         local len = #smokes
         for _=0, 100 do

@@ -123,6 +123,7 @@ if SERVER then
     ---@param key string Key of a variable
     ---@param value any Value to network
     function BModEntity:setNWVar(key, value)
+        if self.networkedVariables[key] == value then return end
         self.networkedVariables[key] = value
         if isValid(self.ent) then
             net.start("BModUpdateNWEntity")
@@ -275,7 +276,12 @@ if SERVER then
     ---@param identifier string Identifier of resource to create
     ---@return BModEntity
     function ents.create(identifier)
-        return ents.registered[identifier]:new()
+        local ent = ents.registered[identifier]
+        if !ent then
+            throw("No entity with identifier " .. identifier)
+            return
+        end
+        return ent:new()
     end
 end
 

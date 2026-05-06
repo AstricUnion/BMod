@@ -103,10 +103,11 @@ if SERVER then
     -- resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
     -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 9, true)
-    -- resource.create("gas", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
-    -- resource.create("power", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
+    resource.create("gas", chip():getPos() + Vector(0, 20, 12), Angle(), 50, true)
+    resource.create("power", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("explosives", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
     ents.create("toolbox"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- resource.create("organics", chip():getPos() + Vector(0, 20, 12), Angle(), 50, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

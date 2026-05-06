@@ -391,6 +391,7 @@ if SERVER then
 
     ---[SERVER] Makes from prop to resources
     ---@param ent Entity Prop to salvage
+    ---@return table<string, number>
     function resource.salvage(ent)
         local phys = ent:getPhysicsObject()
         local mat, mass = string.lower(phys:getMaterial()), phys:getMass()

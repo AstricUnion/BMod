@@ -71,6 +71,8 @@ ents.register(Bucket)
 
 ---@class ToolBox: BModEntity
 ---@field craftMenu CraftMenu
+---@field salvagingProp Entity
+---@field salvagingProgress number
 local ToolBox = {}
 ToolBox.Identifier = "toolbox"
 ToolBox.Name = "ToolBox"
@@ -100,7 +102,7 @@ if SERVER then
             self:equip(ply)
             return
         end
-        local isCrowbar = ply == equippedBy and equippedBy:getActiveWeapon():getClass() == "weapon_crowbar" or false
+        local isCrowbar = ply == equippedBy and isValid(ply) and equippedBy:getActiveWeapon():getClass() == "weapon_crowbar" or false
         if !isCrowbar then return end
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
@@ -116,19 +118,81 @@ if SERVER then
             if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
             local res = ents.inited[ent:entIndex()]
             ---@cast res Resource
-            local diff = res:getCount() - self:getNWVar(ent.BModResource, 0)
+            local currentCount = self:getNWVar(ent.BModResource, 0)
+            local toGet = 100 - currentCount
             ---@cast res Resource
-            res:setCount(100 - diff)
-            self:setNWVar(ent.BModResource, diff)
+            local resCount = res:getCount()
+            local diff = math.min(toGet, resCount)
+            res:setCount(resCount - diff)
+            self:setNWVar(ent.BModResource, currentCount + diff)
         elseif key == IN_KEY.RELOAD then
             net.start("BModToolboxOpen")
                 net.writeEntity(self.ent)
             net.send(ply)
         elseif craft and key == IN_KEY.ATTACK then
+            local gas = self:getGas()
+            local power = self:getPower()
+            local requiredGas, requiredPower = math.ceil(math.min(3 * craft.scale, 100)), math.ceil(math.min(4 * craft.scale, 100))
+            if requiredGas > gas or requiredPower > power then
+                BMod.errorMessage(ply, "Refill gas and power in toolbox on ALT+E on resource")
+                return
+            end
+            self:setGas(gas - requiredGas)
+            self:setPower(power - requiredPower)
             local shootPos = ply:getShootPos()
             local angs = ply:getEyeAngles()
-            local tr = trace.line(shootPos, shootPos + angs:getForward() * 128, {ply})
+            local tr = trace.line(shootPos, shootPos + angs:getForward() * 256, {ply})
             BMod.makeCraft(ply, tr.HitPos, angs, craft)
+        end
+    end
+
+
+    ---@param self ToolBox
+    function ToolBox.hooks.Think(self)
+        local function salvage()
+            local ply = self:getEquippedBy()
+            if !(ply and isValid(ply) and ply:getActiveWeapon():getClass() == "weapon_crowbar") then return end
+            if !ply:keyDown(IN_KEY.ATTACK2) then return end
+            local shootPos = ply:getShootPos()
+            local eyeAngs = ply:getEyeAngles()
+            local tr = trace.line(shootPos, shootPos + eyeAngs:getForward() * 256, {ply})
+            local ent = tr.Entity
+            local salvagingCurrent, percent = self:getSalvage()
+            if isValid(ent) and !ent.BModEntity or (salvagingCurrent and salvagingCurrent == ent) then
+                if !isValid(salvagingCurrent) then
+                    self:setNWVar("salvagingProp", ent)
+                end
+                local res = resource.salvage(ent)
+                local pos = ent:getPos()
+                local angs = ent:getAngles()
+                if percent >= 1 then
+                    ent:remove()
+                    local height = 0
+                    for id, count in pairs(res) do
+                        resource.create(id, pos + Vector(0, 0, height), angs, count, false)
+                        height = height + 24
+                    end
+                    return
+                end
+                percent = percent + 250 / ent:getMass() * game.getTickInterval()
+                if game.getTickCount() % 15 == 0 then
+                    self:setNWVar("salvagingProgress", percent)
+                end
+                return true
+            end
+        end
+        if !salvage() then
+            self:setNWVar("salvagingProp", nil)
+            self:setNWVar("salvagingProgress", 0)
+        end
+    end
+
+
+    ---@param self ToolBox
+    ---@param ply Player
+    function ToolBox.hooks.PlayerDeath(self, ply, _, _)
+        if self:getEquippedBy() == ply then
+            self:drop()
         end
     end
 
@@ -148,7 +212,7 @@ if SERVER then
     ---[SERVER] Drop toolbox
     function ToolBox:drop()
         local ply = self:getEquippedBy()
-        if !ply then return end
+        if !ply or !isValid(ply) then return end
         local pos = ply:getShootPos()
         local angs = ply:getEyeAngles()
         local tr = trace.line(pos, pos + angs:getForward() * 64, {ply})
@@ -203,27 +267,39 @@ else
     ---@param self ToolBox
     function ToolBox.hooks.PostDrawTranslucentRenderables(self)
         local ply = self:getEquippedBy()
-        if !ply then
+        if !ply or !isValid(ply) then
             BMod.Display(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
             return
         end
+        if ply:isAlive() and ply:getActiveWeapon():getClass() ~= "weapon_crowbar" then return end
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
         if craft then
             local shootPos = ply:getShootPos()
             local angs = ply:getEyeAngles()
-            local tr = trace.line(shootPos, shootPos + angs:getForward() * 128, {ply})
-            render.draw3DWireframeBox(tr.HitPos, angs:setP(0), craft.scale * Vector(-30, -30, 0), craft.scale * Vector(30, 30, 50))
+            local tr = trace.line(shootPos, shootPos + angs:getForward() * 256, {ply})
+            render.draw3DWireframeBox(tr.HitPos, angs:setP(0), craft.scale * Vector(-30, -15, 0), craft.scale * Vector(0, 15, 30))
         end
     end
 
+    ---@param self ToolBox
     function ToolBox.hooks.DrawHUD(self)
         local ply = self:getEquippedBy()
-        if !ply or ply:getActiveWeapon():getClass() ~= "weapon_crowbar" then return end
+        if !isValid(ply) or !ply:isAlive() or ply:getActiveWeapon():getClass() ~= "weapon_crowbar" then return end
         local sw, sh = bgui.screenWidth, bgui.screenHeight
         render.setFont("Trebuchet18")
-        render.drawSimpleText(sw * 0.2, sh * 0.5, string.format("Gas: %s", self:getGas()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
-        render.drawSimpleText(sw * 0.2, sh * 0.5 + 18, string.format("Power: %s", self:getPower()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+        -- Salvage progress
+        local salvageProp, salvagePercent = self:getSalvage()
+        if salvageProp and isValid(salvageProp) then
+            render.drawSimpleText(sw * 0.4, sh * 0.5 - 16, string.format("Salvaging..."), TEXT_ALIGN.LEFT, TEXT_ALIGN.BOTTOM)
+            local function drawRect(percent) render.drawRoundedBox(4, sw * 0.4, sh * 0.5 - 16, sw * 0.2 * percent, 32) end
+            render.setColor(Color(255, 255, 255, 100))
+            drawRect(1)
+            render.setColor(Color(255, 255, 255))
+            drawRect(salvagePercent)
+        end
+        render.drawSimpleText(sw * 0.2, sh * 0.5, string.format("Power: %s", self:getPower()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+        render.drawSimpleText(sw * 0.2, sh * 0.5 + 18, string.format("Gas: %s", self:getGas()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
         local function textLine(text, lineId)
             render.drawSimpleText(sw * 0.5, sh * 0.9 - lineId * 18, text, TEXT_ALIGN.CENTER, TEXT_ALIGN.BOTTOM)
         end
@@ -236,8 +312,8 @@ else
         textLine("ALT+R: Clear build item", 6)
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
+        render.setFont("Trebuchet24")
         if craft then
-            render.setFont("Trebuchet24")
             render.drawSimpleText(sw * 0.5, sh * 0.9 - 132, craft.name, TEXT_ALIGN.CENTER, TEXT_ALIGN.BOTTOM)
         end
     end
@@ -260,6 +336,10 @@ else
 
         equip()
         craft()
+    end
+
+    function ToolBox:onRemove()
+        if isValid(self.craftMenu) then self.craftMenu:remove() end
     end
 
     net.receive("BModToolboxOpen", function()
@@ -299,6 +379,13 @@ end
 ---@return Player? owner
 function ToolBox:getEquippedBy()
     return self:getNWVar("equippedBy", nil)
+end
+
+---[SHARED] Get salvage info
+---@return Entity? salvaging
+---@return number percent Percent of salvage
+function ToolBox:getSalvage()
+    return self:getNWVar("salvagingProp"), self:getNWVar("salvagingProgress", 0)
 end
 
 

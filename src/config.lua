@@ -37,6 +37,7 @@ bmodConfig.crafts = {
             ent:spawn(pos, ang, false)
         end
     },
+
     ["paper"] = {
         name = "Paper", icon = "paper", scale = 0.6,
         description = "Writing material that can be used for more malicious purposes",
@@ -47,6 +48,7 @@ bmodConfig.crafts = {
             resource.create("paper", pos, ang, 100, false, true)
         end
     },
+
     ["basic_parts"] = {
         name = "Basic Parts, x50", icon = "basicparts", scale = 0.6,
         description = "50 basic parts used for craftings and repairs",
@@ -57,6 +59,7 @@ bmodConfig.crafts = {
             resource.create("basicparts", pos, ang, 50, false, true)
         end
     },
+
     ["power"] = {
         name = "Chemical Power", icon = "power", scale = 0.6,
         description = "Uses a chemical power to give you 100 power",
@@ -67,6 +70,7 @@ bmodConfig.crafts = {
             resource.create("power", pos, ang, 100, false, true)
         end
     },
+
     ["chemicals"] = {
         name = "Chemicals", icon = "chemicals", scale = 0.6,
         description = "Caustic burns and choking smoke",
@@ -77,6 +81,7 @@ bmodConfig.crafts = {
             resource.create("chemicals", pos, ang, 100, false, true)
         end
     },
+
     ["cloth"] = {
         name = "Cloth", icon = "cloth", scale = 0.6,
         description = "Mysterious fabrication of fabric from edible organics. Don't ask now",
@@ -87,6 +92,18 @@ bmodConfig.crafts = {
             resource.create("cloth", pos, ang, 100, false, true)
         end
     },
+
+    ["gas"] = {
+        name = "Electrolysis Gas", icon = "gas", scale = 0.6,
+        description = "",
+        methods = { "crafting_table" },
+        requires = { power = 65, water = 65 },
+        category = "Resources",
+        result = function(pos, ang)
+            resource.create("gas", pos, ang, 100, false, true)
+        end
+    },
+
     ["bucket"] = {
         name = "Bucket", icon = "bucket", scale = 0.6,
         description = "I am wise to collect water with my bucket",
@@ -98,6 +115,7 @@ bmodConfig.crafts = {
             ent:spawn(pos, ang, false)
         end
     },
+
     ["toolbox"] = {
         name = "Toolbox", icon = "toolbox", scale = 0.6,
         description = "Build. Upgrade. Salvage. All you need to build the big machines",
@@ -109,8 +127,9 @@ bmodConfig.crafts = {
             ent:spawn(pos, ang, false)
         end
     },
+
     ["airboat"] = {
-        name = "HL2 Airboat", icon = "airboat", scale = 1.5,
+        name = "HL2 Airboat", icon = "airboat", scale = 4,
         description = "",
         methods = { "toolbox" },
         requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
@@ -119,10 +138,11 @@ bmodConfig.crafts = {
             prop.createSent(pos, ang, "Airboat", false)
         end
     },
+
     ["jeep"] = {
-        name = "HL2 Jeep", icon = "jeep", scale = 1.5, description = "",
+        name = "HL2 Jeep", icon = "jeep", scale = 4, description = "",
         methods = { "toolbox" },
-        requires = { basicparts = 150, power = 50, fuel = 300, precisionparts = 100, aluminium = 300 },
+        requires = { basicparts = 200, power = 50, fuel = 300, precisionparts = 100, steel = 300, ammo = 200 },
         category = "Other",
         result = function(pos, ang)
             prop.createSent(pos, ang, "Jeep", false)

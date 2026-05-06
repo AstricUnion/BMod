@@ -173,6 +173,19 @@ end
 deposit.add("oil", 300, 8, nil, 600, true)
 
 
+---@class Organics: Resource
+local Organics = resource.fastRegister(
+    "Organics", "organics", "models/props_junk/PlasticCrate01a.mdl", Vector(9, 0, 0), nil,
+    "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
+)
+Organics.modifyEntity = function(ent)
+    local holo = hologram.create(ent:getPos() - Vector(0, 0, 3), ent:getAngles(), "models/holograms/cube.mdl", Vector(1.4, 2, 0.7))
+    if !holo then return end
+    holo:setMaterial("phoenix_storms/ps_grass")
+    holo:setParent(ent)
+end
+
+
 ---@class Gas: Resource
 local Gas = resource.fastRegister(
     "Gas", "gas", "models/props_explosive/explosive_butane_can.mdl", Vector(8, 0, 15), nil,
