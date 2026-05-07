@@ -88,11 +88,14 @@ end
 ---@param id string
 ---@param name string
 ---@return Resource
-local function createOre(id, name)
+local function createOre(id, name, smeltCount)
     local res = resource.fastRegister(
         name, id, "models/maxofs2d/cube_tool.mdl", Vector(10.1, 0, 0), Angle(0, 0, 0),
         "physics/concrete/rock_impact_hard5.wav", "physics/concrete/rock_impact_hard6.wav", false
     )
+    res.SmeltResource = {
+        [string.replace(id, "ore", "")] = smeltCount
+    }
     res.modifyEntity = function(ent)
         if CLIENT then return end
         ent:setPhysMaterial("Concrete")
@@ -137,13 +140,13 @@ deposit.add("water", 400, 10, 0.5, 0, false)
 local Aluminium = createIngot("aluminium", "Aluminium")
 
 ---@class AluminiumOre: Resource
-local AluminiumOre = createOre("aluminiumore", "Aluminium ore")
+local AluminiumOre = createOre("aluminiumore", "Aluminium ore", 0.5)
 
 ---@class Copper: Resource
 local Copper = createIngot("copper", "Copper", Color(220, 120, 40))
 
 ---@class CopperOre: Resource
-local CopperOre = createOre("copperore", "Copper ore")
+local CopperOre = createOre("copperore", "Copper ore", 0.5)
 
 
 ---@class Explosives: Resource
@@ -156,13 +159,13 @@ local Explosives = resource.fastRegister(
 local Gold = createIngot("gold", "Gold", Color(255, 215, 0))
 
 ---@class GoldOre: Resource
-local GoldOre = createOre("goldore", "Gold ore")
+local GoldOre = createOre("goldore", "Gold ore", 0.2)
 
 ---@class Lead: Resource
 local Lead = createIngot("lead", "Lead", Color(100, 100, 130))
 
 ---@class LeadOre: Resource
-local LeadOre = createOre("leadore", "Lead ore")
+local LeadOre = createOre("leadore", "Lead ore", 0.5)
 
 -- edit sounds
 ---@class Nutrients: Resource
@@ -179,31 +182,31 @@ end
 local Steel = createIngot("steel", "Steel", Color(100, 100, 100))
 
 ---@class SteelOre: Resource
-local SteelOre = createOre("steelore", "Steel ore")
+local SteelOre = createOre("steelore", "Steel ore", 1)
 
 ---@class Titanium: Resource
 local Titanium = createIngot("titanium", "Titanium", Color(250, 250, 250))
 
 ---@class TitaniumOre: Resource
-local TitaniumOre = createOre("titaniumore", "Titanium ore")
+local TitaniumOre = createOre("titaniumore", "Titanium ore", 0.4)
 
 ---@class Tungsten: Resource
 local Tungsten = createIngot("tungsten", "Tungsten", Color(200, 200, 250))
 
 ---@class TungstenOre: Resource
-local TungstenOre = createOre("tungstenore", "Tungsten ore")
+local TungstenOre = createOre("tungstenore", "Tungsten ore", 0.4)
 
 ---@class Platinum: Resource
 local Platinum = createIngot("platinum", "Platinum", Color(250, 220, 250))
 
 ---@class PlatinumOre: Resource
-local PlatinumOre = createOre("platinumore", "Platinum ore")
+local PlatinumOre = createOre("platinumore", "Platinum ore", 0.2)
 
 ---@class Silver: Resource
 local Silver = createIngot("silver", "Silver", Color(200, 200, 200))
 
 ---@class SilverOre: Resource
-local SilverOre = createOre("silverore", "Silver ore")
+local SilverOre = createOre("silverore", "Silver ore", 0.3)
 
 ---@class Ceramic: Resource
 local Ceramic = resource.fastRegister(
@@ -300,6 +303,7 @@ local Sand = resource.fastRegister(
     "Sand", "sand", "models/props_trenches/sandbag01.mdl", Vector(0, 8, 2), Angle(0, 90, 0),
     "physics/surfaces/sand_impact_bullet4.wav", "player/footsteps/sand4.wav"
 )
+Sand.SmeltResource = { sand = 0.75 }
 
 
 ---@class Cloth: Resource
@@ -311,6 +315,7 @@ local Cloth = resource.fastRegister(
 ---@class Coal: Resource
 local Coal = createOre("coal", "Coal")
 Coal.SolidFuelInUnit = 10
+Coal.SmeltResource = nil
 
 
 ---@class Chemicals: Resource

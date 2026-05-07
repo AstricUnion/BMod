@@ -59,7 +59,6 @@ if SERVER then
         ---@param colData CollisionData
         pr:addCollisionListener(function(colData)
             if colData.HitSpeed:getLength() < 500 then return end
-            if pr:worldToLocal(colData.HitPos).y > -28 then return end
             local ent = colData.HitEntity
             if !isValid(ent) or ent:getClass() ~= "prop_physics" then return end
             if !ent.BModEntity then
@@ -67,7 +66,7 @@ if SERVER then
                 ent:enableMotion(false)
                 if self.inProcess then return end
                 self.inProcess = ent
-                timer.simple(0, function()
+                timer.simple(0.01, function()
                     local res = resource.salvage(ent)
                     local pos = ent:getPos()
                     ent:remove()
@@ -83,19 +82,6 @@ if SERVER then
                         self.inProcess = nil
                     end)
                 end)
-            elseif ent.BModResource then
-                local fuelInUnit = ents.registered[ent.BModResource].SolidFuelInUnit
-                if !fuelInUnit then return end
-                local res = ents.inited[ent:entIndex()]
-                ---@cast res Resource
-                if !isValid(res) or !isValid(res.pickedUpBy) then return end
-                local count = res:getCount()
-                local fuel = self:getFuel()
-                local fuelDiff = 100 - fuel
-                if fuelDiff <= 0 then return end
-                local units = math.min(fuelDiff / fuelInUnit, count)
-                res:setCount(count - units)
-                self:setFuel(fuel + units * fuelInUnit)
             end
         end)
     end
@@ -106,6 +92,20 @@ if SERVER then
     function CraftingTable:setFuel(fuel)
         fuel = math.clamp(fuel, 0, 100)
         self:setNWVar("fuel", fuel)
+    end
+
+
+    ---[SERVER] Set smelting resource
+    ---@param res string Resource to smelt
+    function CraftingTable:setSmelting(res)
+        self:setNWVar("smelting", res)
+    end
+
+
+    ---[SERVER] Set smelting progress
+    ---@param progress number Progress
+    function CraftingTable:setSmeltingProgress(progress)
+        self:setNWVar("smeltingProgress", progress)
     end
 
 
@@ -122,6 +122,35 @@ if SERVER then
         net.send(ply)
     end
 
+
+    ---[SERVER] Interaction of resource
+    ---@param self CraftingTable
+    ---@param res Resource
+    ---@param ent Entity
+    function CraftingTable.hooks.BModResourceInteracted(self, res, ent)
+        if ent ~= self.ent then return end
+        local function tryToRefill()
+            local fuelInUnit = res.SolidFuelInUnit
+            if !fuelInUnit then return end
+            ---@cast res Resource
+            if !isValid(res) or !isValid(res.pickedUpBy) then return end
+            local count = res:getCount()
+            local fuel = self:getFuel()
+            local fuelDiff = 100 - fuel
+            if fuelDiff <= 0 then return end
+            local units = fuelDiff / fuelInUnit
+            units = res:take(count - units)
+            self:setFuel(fuel + units * fuelInUnit)
+            return true
+        end
+        local function tryToSmelt()
+            local smeltTbl = res.SmeltResource
+            if !smeltTbl then return end
+        end
+        if !tryToRefill() then
+            tryToSmelt()
+        end
+    end
 end
 
 if CLIENT then
@@ -156,6 +185,18 @@ end
 ---[SHARED] Get fuel
 function CraftingTable:getFuel()
     return self:getNWVar("fuel", 0)
+end
+
+---[SHARED] Set smelting resource
+---@return string? res Resource to smelt
+function CraftingTable:getSmelting()
+    return self:getNWVar("smelting", nil)
+end
+
+---[SHARED] Set smelting progress
+---@return number progress Progress
+function CraftingTable:getSmeltingProgress()
+    self:setNWVar("smeltingProgress", 0)
 end
 
 ents.register(CraftingTable)

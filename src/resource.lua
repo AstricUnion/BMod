@@ -111,6 +111,16 @@ if SERVER then
         self:setNWVar("count", count)
     end
 
+    ---[SERVER] Take units of resource
+    ---@param count number Count
+    ---@return number took How many resource you took actually 
+    function Resource:take(count)
+        local currentCount = self:getCount()
+        local diff = currentCount - count
+        self:setCount(diff)
+        return math.min(count, currentCount)
+    end
+
     ---[SERVER] OnPlayerPhysicsPickup hook
     ---@param self Resource
     ---@param ply Player

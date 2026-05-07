@@ -114,17 +114,16 @@ if SERVER then
             local tr = ply:getEyeTrace()
             ---@cast tr TraceResult
             local ent = tr.Entity
-            if ent.BModResource ~= "gas" and ent.BModResource ~= "power" then return end
+            local resName = ent.BModResource
+            if resName ~= "gas" and resName ~= "power" then return end
             if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
             local res = ents.inited[ent:entIndex()]
             ---@cast res Resource
-            local currentCount = self:getNWVar(ent.BModResource, 0)
+            local currentCount = self:getNWVar(resName, 0)
             local toGet = 100 - currentCount
             ---@cast res Resource
-            local resCount = res:getCount()
-            local diff = math.min(toGet, resCount)
-            res:setCount(resCount - diff)
-            self:setNWVar(ent.BModResource, currentCount + diff)
+            local took = res:take(toGet)
+            self:setNWVar(resName, took)
         elseif key == IN_KEY.RELOAD then
             net.start("BModToolboxOpen")
                 net.writeEntity(self.ent)
@@ -134,7 +133,7 @@ if SERVER then
             local power = self:getPower()
             local requiredGas, requiredPower = math.ceil(math.min(3 * craft.scale, 100)), math.ceil(math.min(4 * craft.scale, 100))
             if requiredGas > gas or requiredPower > power then
-                BMod.errorMessage(ply, "Refill gas and power in toolbox on ALT+E on resource")
+                BMod.errorMessage(ply, "Firstly, refill gas and power in toolbox on ALT+E on resource")
                 return
             end
             self:setGas(gas - requiredGas)

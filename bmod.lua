@@ -97,17 +97,17 @@ dodir("bmod/effects", {})
 
 
 if SERVER then
-    -- local ent = ents.create("crafting_table")
+    local ent = ents.create("crafting_table")
     -- ent:setFuel(100)
-    -- ent:spawn(chip():getPos() + Vector(0, 0, 0), Angle(), true)
+    ent:spawn(chip():getPos() + Vector(0, 0, 0), Angle(), true)
     -- resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
     -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 9, true)
-    resource.create("gas", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
-    resource.create("gas", chip():getPos() + Vector(0, 40, 12), Angle(), 100, true)
-    resource.create("power", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
+    -- resource.create("gas", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    -- resource.create("gas", chip():getPos() + Vector(0, 40, 12), Angle(), 100, true)
+    -- resource.create("power", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("explosives", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
-    ents.create("toolbox"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- ents.create("toolbox"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- resource.create("coal", chip():getPos() + Vector(0, 20, 12), Angle(), 50, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
