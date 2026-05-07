@@ -84,7 +84,7 @@ if SERVER then
                     end)
                 end)
             elseif ent.BModResource then
-                local fuelInUnit = ents.registered[ent.BModResource].FuelInUnit
+                local fuelInUnit = ents.registered[ent.BModResource].SolidFuelInUnit
                 if !fuelInUnit then return end
                 local res = ents.inited[ent:entIndex()]
                 ---@cast res Resource

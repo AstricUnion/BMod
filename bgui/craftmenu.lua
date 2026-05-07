@@ -145,6 +145,7 @@ end
 
 function CraftMenu:updateResources()
     local resources = resource.getResourcesFast(player(), false)
+    resources = self.overrideResources and self.overrideResources(self, resources) or resources
     self.resources = resources
     for _, v in ipairs(self.rows) do
         v:updateData()

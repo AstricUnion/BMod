@@ -176,7 +176,7 @@ if SERVER then
                     for id, count in pairs(res) do
                         -- because prop limit. I don't use it in crafting table, because table makes less props
                         timer.simple(height * time, function()
-                            resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false)
+                            resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, false)
                         end)
                         height = height + 1
                     end
@@ -262,9 +262,7 @@ if SERVER then
         local res = resource.getResourcesFast(ply)
         local errorMes = resource.canByResources(res, craft.requires)
         if errorMes then
-            net.start("BModErrorMessage")
-                net.writeString(errorMes)
-            net.send(ply)
+            BMod.errorMessage(ply, errorMes)
             return
         end
         toolbox:setNWVar("craft", craftId)

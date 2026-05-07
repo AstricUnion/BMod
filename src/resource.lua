@@ -32,8 +32,11 @@ resource.props = {}
 -- Public fields
 ---@field SignOffset Vector Offset of a sign with resource info
 ---@field SignAngle Angle Angle of a sign with resource info
+---@field Compact boolean Compact view for resource info
 ---@field Sounds ResourceSounds Angle of a sign with resource info
----@field FuelInUnit number How many fuel this 
+---@field SolidFuelInUnit number Solid fuel in one unit of resource
+---@field LiquidFuelInUnit number Liquid fuel in one unit of resource
+---@field SmeltResource table<string, number> Resources on smelting
 ---@field Icon string? Icon identifier to bicons. Default will take identifier
 -- Private fields
 ---@field pickedUpBy Player [SERVER] Player, that's picked up this resource
@@ -48,8 +51,14 @@ Resource.Sounds = {
     Merge = "items/ammocrate_close.wav",
     Split = "items/ammocrate_open.wav"
 }
-Resource.FuelInUnit = nil
+Resource.SolidFuelInUnit = nil
+Resource.LiquidFuelInUnit = nil
+Resource.SmeltResource = nil
 Resource.hooks = {}
+
+---[SHARED] Modify resource entity
+---@param pr Entity
+function Resource.modifyEntity(pr) end
 
 local maxResource = 100
 
@@ -76,7 +85,7 @@ if SERVER then
                 if res.Identifier ~= self.Identifier then return end
                 local count = self:getCount()
                 local resCount = res:getCount()
-                if resCount == maxResource and count == maxResource then return end
+                if resCount == maxResource or count == maxResource then return end
                 local diff = maxResource - resCount
                 if count > diff then
                     res:setCount(maxResource)
@@ -93,11 +102,6 @@ if SERVER then
             end
         end)
     end
-
-
-    ---[SERVER] Modify resource entity
-    ---@param pr Entity
-    function Resource.modifyEntity(pr) end
 
     ---[SERVER] Set count of resource
     ---@param count number Count
@@ -143,11 +147,13 @@ end
 
 if CLIENT then
     resource.font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
+    resource.compactFont = render.createFont("Roboto",18,500,false,false,false,false,0,false,0)
 
     function Resource:iconFunc() end
 
     function Resource:initialize()
         local pr = self.ent
+        self.modifyEntity(pr)
         pr.BModResource = self.Identifier
         self.iconFunc = bicons.get(self.Icon or self.Identifier) or self.iconFunc
     end
@@ -156,10 +162,18 @@ if CLIENT then
     ---@param self Resource
     function Resource.hooks.PostDrawTranslucentRenderables(self)
         BMod.Display(self.ent, self.SignOffset, self.SignAngle, function()
-            render.setColor(Color():setA(170))
-            render.drawSimpleText(0, -75, self.Name, TEXT_ALIGN.CENTER)
-            self.iconFunc(-43, -43, 86, 86)
-            render.drawSimpleText(0, 38, string.format("%s units", self:getCount()), TEXT_ALIGN.CENTER)
+            if !self.Compact then
+                render.setFont(resource.font)
+                render.setColor(Color():setA(170))
+                render.drawSimpleText(0, -75, self.Name, TEXT_ALIGN.CENTER)
+                self.iconFunc(-43, -43, 86, 86)
+                render.drawSimpleText(0, 38, string.format("%s units", self:getCount()), TEXT_ALIGN.CENTER)
+            else
+                render.setFont(resource.compactFont)
+                render.drawSimpleText(-36, 0, self.Name, TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+                self.iconFunc(-32, -32, 64, 64)
+                render.drawSimpleText(36, 0, string.format("%s units", self:getCount()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+            end
         end)
     end
 end
@@ -184,14 +198,16 @@ resource.Base = Resource
 ---@param signAngle Angle?
 ---@param mergeSound string?
 ---@param splitSound string?
+---@param compact boolean?
 ---@return Resource class Fast created class for this resource
-function resource.fastRegister(name, identifier, model, signOffset, signAngle, mergeSound, splitSound)
+function resource.fastRegister(name, identifier, model, signOffset, signAngle, mergeSound, splitSound, compact)
     local class = {}
     class.Name = name
     class.Identifier = identifier
     class.Model = model
     class.SignOffset = signOffset
     class.SignAngle = signAngle or Angle()
+    class.Compact = compact
     if mergeSound or splitSound then
         class.Sounds = table.copy(Resource.Sounds)
         class.Sounds.Merge = mergeSound or class.Sounds.Merge
@@ -403,18 +419,8 @@ if SERVER then
     ---@param ent Entity Prop to salvage
     ---@return table<string, number>
     function resource.salvage(ent)
-        local physCount = ent:getPhysicsObjectCount()
         local phys = ent:getPhysicsObject()
         local mat, mass = string.lower(phys:getMaterial()), phys:getMass()
-        if physCount > 1 then
-            mass = 0
-            for i=1, physCount do
-                local ragPhys = ent:getPhysicsObjectNum(i - 1)
-                if !isValid(ragPhys) then goto cont end
-                mass = mass + ragPhys:getMass()
-                ::cont::
-            end
-        end
         if mass > 35 then
             mass = math.ceil(mass ^ 0.9)
         end

@@ -39,21 +39,66 @@ if CLIENT then
     addIcon("fuel", 3, 4)
     addIcon("gas", 3, 5)
     addIcon("glass", 3, 7)
+    addIcon("goldore", 3, 8)
     addIcon("gold", 4, 1)
+    addIcon("steelore", 4, 2)
+    addIcon("leadore", 4, 3)
     addIcon("lead", 4, 4)
     addIcon("nutrients", 4, 7)
     addIcon("oil", 4, 8)
     addIcon("organics", 5, 1)
     addIcon("paper", 5, 2)
     addIcon("plastic", 5, 3)
+    addIcon("platinumore", 5, 4)
+    addIcon("platinum", 5, 5)
     addIcon("power", 5, 6)
     addIcon("precisionparts", 5, 7)
     addIcon("propellant", 5, 8)
     addIcon("rubber", 6, 1)
     addIcon("silver", 6, 4)
     addIcon("steel", 6, 5)
+    addIcon("titaniumore", 6, 6)
+    addIcon("titanium", 6, 7)
+    addIcon("tungstenore", 6, 8)
+    addIcon("tungsten", 7, 1)
     addIcon("water", 7, 4)
     addIcon("wood", 7, 5)
+end
+
+---@param id string
+---@param name string
+---@param color Color?
+---@return Resource
+local function createIngot(id, name, color)
+    color = color or Color(255, 255, 255)
+    local res = resource.fastRegister(
+        name, id, "models/hunter/plates/plate025x05.mdl", Vector(0, 0, 1.6), Angle(0, 0, -90),
+        "phx/hmetal1.wav", "phx/hmetal3.wav", true
+    )
+    res.modifyEntity = function(ent)
+        if CLIENT then return end
+        ent:setPhysMaterial("Metalpanel")
+        ent:setMaterial("models/xqm/cylinderx1_diffuse")
+        ent:setColor(color)
+    end
+    return res
+end
+
+
+---@param id string
+---@param name string
+---@return Resource
+local function createOre(id, name)
+    local res = resource.fastRegister(
+        name, id, "models/maxofs2d/cube_tool.mdl", Vector(10.1, 0, 0), Angle(0, 0, 0),
+        "physics/concrete/rock_impact_hard5.wav", "physics/concrete/rock_impact_hard6.wav", false
+    )
+    res.modifyEntity = function(ent)
+        if CLIENT then return end
+        ent:setPhysMaterial("Concrete")
+        ent:setMaterial("models/props_wasteland/rockcliff02b")
+    end
+    return res
 end
 
 
@@ -63,9 +108,10 @@ local Wood = resource.fastRegister(
     "physics/wood/wood_box_break1.wav", "physics/wood/wood_box_impact_hard4.wav"
 )
 Wood.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setMaterial("phoenix_storms/wood")
 end
-Wood.FuelInUnit = 5
+Wood.SolidFuelInUnit = 5
 
 
 ---@class Paper: Resource
@@ -74,6 +120,7 @@ local Paper = resource.fastRegister(
     "physics/cardboard/cardboard_box_break2.wav", "physics/cardboard/cardboard_box_impact_hard4.wav"
 )
 Paper.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setAngles(ent:localToWorldAngles(Angle(0, -90, 0)))
 end
 
@@ -87,24 +134,16 @@ deposit.add("water", 400, 10, 0.5, 0, false)
 
 
 ---@class Aluminium: Resource
-local Aluminium = resource.fastRegister(
-    "Aluminium", "aluminium", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
-)
-Aluminium.modifyEntity = function(ent)
-    ent:setMaterial("models/xqm/cylinderx1_diffuse")
-end
+local Aluminium = createIngot("aluminium", "Aluminium")
 
+---@class AluminiumOre: Resource
+local AluminiumOre = createOre("aluminiumore", "Aluminium ore")
 
 ---@class Copper: Resource
-local Copper = resource.fastRegister(
-    "Copper", "copper", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
-)
-Copper.modifyEntity = function(ent)
-    ent:setMaterial("models/xqm/cylinderx1_diffuse")
-    ent:setColor(Color(220, 120, 40))
-end
+local Copper = createIngot("copper", "Copper", Color(220, 120, 40))
+
+---@class CopperOre: Resource
+local CopperOre = createOre("copperore", "Copper ore")
 
 
 ---@class Explosives: Resource
@@ -113,58 +152,58 @@ local Explosives = resource.fastRegister(
     "BaseCombatCharacter.AmmoPickup", "player/pl_shell1.wav"
 )
 
-
 ---@class Gold: Resource
-local Gold = resource.fastRegister(
-    "Gold", "gold", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
-)
-Gold.modifyEntity = function(ent)
-    ent:setMaterial("models/xqm/cylinderx1_diffuse")
-    ent:setColor(Color(255, 215, 0))
-end
+local Gold = createIngot("gold", "Gold", Color(255, 215, 0))
+
+---@class GoldOre: Resource
+local GoldOre = createOre("goldore", "Gold ore")
 
 ---@class Lead: Resource
-local Lead = resource.fastRegister(
-    "Lead", "lead", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
-)
-Lead.modifyEntity = function(ent)
-    ent:setMaterial("models/xqm/cylinderx1_diffuse")
-    ent:setColor(Color(120, 120, 150))
-end
+local Lead = createIngot("lead", "Lead", Color(100, 100, 130))
+
+---@class LeadOre: Resource
+local LeadOre = createOre("leadore", "Lead ore")
 
 -- edit sounds
 ---@class Nutrients: Resource
 local Nutrients = resource.fastRegister(
     "Nutrients", "nutrients", "models/props/cs_office/Cardboard_box01.mdl", Vector(0, 12, 8), Angle(0, 90, 0),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
+    "physics/cardboard/cardboard_box_break2.wav", "physics/cardboard/cardboard_box_impact_hard4.wav"
 )
 Nutrients.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setAngles(ent:localToWorldAngles(Angle(0, -90, 0)))
 end
 
 ---@class Steel: Resource
-local Steel = resource.fastRegister(
-    "Steel", "steel", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
-)
-Steel.modifyEntity = function(ent)
-    ent:setMaterial("models/xqm/cylinderx1_diffuse")
-    ent:setColor(Color(100, 100, 100))
-end
+local Steel = createIngot("steel", "Steel", Color(100, 100, 100))
 
+---@class SteelOre: Resource
+local SteelOre = createOre("steelore", "Steel ore")
+
+---@class Titanium: Resource
+local Titanium = createIngot("titanium", "Titanium", Color(250, 250, 250))
+
+---@class TitaniumOre: Resource
+local TitaniumOre = createOre("titaniumore", "Titanium ore")
+
+---@class Tungsten: Resource
+local Tungsten = createIngot("tungsten", "Tungsten", Color(200, 200, 250))
+
+---@class TungstenOre: Resource
+local TungstenOre = createOre("tungstenore", "Tungsten ore")
+
+---@class Platinum: Resource
+local Platinum = createIngot("platinum", "Platinum", Color(250, 220, 250))
+
+---@class PlatinumOre: Resource
+local PlatinumOre = createOre("platinumore", "Platinum ore")
 
 ---@class Silver: Resource
-local Silver = resource.fastRegister(
-    "Silver", "silver", "models/hunter/blocks/cube025x05x025.mdl", Vector(-5, 0, 12), Angle(0, 0, -90),
-    "phx/hmetal1.wav", "phx/hmetal3.wav"
-)
-Silver.modifyEntity = function(ent)
-    ent:setMaterial("models/xqm/cylinderx1_diffuse")
-    ent:setColor(Color(200, 200, 200))
-end
+local Silver = createIngot("silver", "Silver", Color(200, 200, 200))
 
+---@class SilverOre: Resource
+local SilverOre = createOre("silverore", "Silver ore")
 
 ---@class Ceramic: Resource
 local Ceramic = resource.fastRegister(
@@ -172,6 +211,7 @@ local Ceramic = resource.fastRegister(
     "physics/glass/glass_strain2.wav", "physics/glass/glass_sheet_impact_hard3.wav"
 )
 Ceramic.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setMaterial("models/props_building_details/courtyard_template001c_bars")
 end
 
@@ -182,6 +222,7 @@ local Oil = resource.fastRegister(
     "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
 )
 Oil.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setColor(Color(50, 50, 50))
 end
 deposit.add("oil", 300, 8, nil, 600, true)
@@ -191,9 +232,10 @@ deposit.add("oil", 300, 8, nil, 600, true)
 ---@class Organics: Resource
 local Organics = resource.fastRegister(
     "Organics", "organics", "models/props_junk/PlasticCrate01a.mdl", Vector(9, 0, 0), nil,
-    "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
+    "physics/surfaces/sand_impact_bullet4.wav", "player/footsteps/sand4.wav"
 )
 Organics.modifyEntity = function(ent)
+    if CLIENT then return end
     local holo = hologram.create(ent:getPos() - Vector(0, 0, 3), ent:getAngles(), "models/holograms/cube.mdl", Vector(1.4, 2, 0.7))
     if !holo then return end
     holo:setMaterial("phoenix_storms/ps_grass")
@@ -207,6 +249,7 @@ local Gas = resource.fastRegister(
     "physics/metal/metal_box_impact_soft1.wav", "physics/metal/metal_box_impact_bullet2.wav"
 )
 Gas.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setMaterial("phoenix_storms/grey_chrome")
 end
 
@@ -223,6 +266,7 @@ local Fuel = resource.fastRegister(
     "Fuel", "fuel", "models/props_junk/gascan001a.mdl", Vector(4, 0, -1), nil,
     "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
 )
+Fuel.LiquidFuelInUnit = 20
 
 
 ---@class Plastic: Resource
@@ -245,6 +289,7 @@ local Glass = resource.fastRegister(
     "physics/glass/glass_strain2.wav", "physics/glass/glass_sheet_impact_hard3.wav"
 )
 Glass.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setMaterial("models/debug/debugwhite")
     ent:setColor(Color(100, 100, 100, 100))
 end
@@ -255,10 +300,6 @@ local Sand = resource.fastRegister(
     "Sand", "sand", "models/props_trenches/sandbag01.mdl", Vector(0, 8, 2), Angle(0, 90, 0),
     "physics/surfaces/sand_impact_bullet4.wav", "player/footsteps/sand4.wav"
 )
-Sand.modifyEntity = function(ent)
-    ent:setMaterial("models/debug/debugwhite")
-    ent:setColor(Color(100, 100, 100, 100))
-end
 
 
 ---@class Cloth: Resource
@@ -266,6 +307,10 @@ local Cloth = resource.fastRegister(
     "Cloth", "cloth", "models/props/cs_office/Paper_towels.mdl", Vector(0, 5, 3), Angle(0, 90, 0),
     "physics/surfaces/sand_impact_bullet4.wav", "player/footsteps/sand4.wav"
 )
+
+---@class Coal: Resource
+local Coal = createOre("coal", "Coal")
+Coal.SolidFuelInUnit = 10
 
 
 ---@class Chemicals: Resource
@@ -287,6 +332,7 @@ local PrecisionParts = resource.fastRegister(
     "ambient/materials/footsteps_glass1.wav", "phx/epicmetal_soft7.wav"
 )
 PrecisionParts.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setColor(Color(80, 130, 80))
 end
 
@@ -302,6 +348,7 @@ local Coolant = resource.fastRegister(
     "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
 )
 Coolant.modifyEntity = function(ent)
+    if CLIENT then return end
     ent:setMaterial("models/debug/debugwhite")
     ent:setColor(Color(100, 100, 220))
 end
