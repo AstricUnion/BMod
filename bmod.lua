@@ -6,10 +6,10 @@
 ---@include bmod/base/gas.lua
 ---@include bmod/base/utils.lua
 ---@include bmod/base/remote.lua
----@include bmod/base/deposits.lua
 ---@include bmod/base/icons.lua
 ---@include bmod/base/model.lua
 ---@include bmod/src/resource.lua
+---@include bmod/src/deposits.lua
 ---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
 
@@ -21,7 +21,7 @@ end
 ---@class BMod
 ---@field debug boolean
 BMod = {}
-BMod.debug = true
+BMod.debug = false
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
@@ -40,13 +40,15 @@ bicons = require("bmod/base/icons.lua")
 model = require("bmod/base/model.lua")
 
 ---@class deposit
-deposit = require("bmod/base/deposits.lua")
+deposit = require("bmod/src/deposits.lua")
 
 ---@class bmodConfig
 bmodConfig = require("bmod/src/config.lua")
 
 ---@class resource
 resource = require("bmod/src/resource.lua")
+
+require("bmod/src/machine.lua")
 
 ---@class beff
 beff = require("bmod/base/effects.lua")
@@ -102,19 +104,12 @@ if SERVER then
     -- local ent = ents.create("crafting_table")
     -- ent:setFuel(100)
     -- ent:spawn(chip():getPos() + Vector(0, 0, 0), Angle(), true)
-    -- resource.create("wood", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
-    -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
-    -- resource.create("water", chip():getPos() + Vector(0, 20, 12), Angle(), 9, true)
-    -- resource.create("gas", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
-    -- resource.create("gas", chip():getPos() + Vector(0, 40, 12), Angle(), 100, true)
-    -- resource.create("power", chip():getPos() + Vector(0, -20, 12), Angle(), 100, true)
     -- resource.create("copperore", chip():getPos() + Vector(0, 0, 12), Angle(), 300, true)
-    -- local ent = ents.create("resource_crate")
-    -- ent:spawn(chip():getPos(), Angle(), true)
-    local toolbox = ents.create("toolbox")
-    toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
-    toolbox:setGas(100)
-    toolbox:setPower(100)
+    -- local toolbox = ents.create("toolbox")
+    -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- toolbox:setGas(100)
+    -- toolbox:setPower(100)
+    ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- resource.create("coal", chip():getPos() + Vector(0, 20, 12), Angle(), 50, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end

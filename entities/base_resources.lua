@@ -13,8 +13,8 @@ if CLIENT then
     icons:setInt("$flags", 256)
     -- iconsU = 0.1125
     -- iconsV = 0.1125
-    iconsU = 0.125
-    iconsV = 0.125
+    iconsU = 0.1125
+    iconsV = 0.1125
 
     ---@param id string
     ---@param row number
@@ -57,6 +57,7 @@ if CLIENT then
     addIcon("precisionparts", 5, 7)
     addIcon("propellant", 5, 8)
     addIcon("rubber", 6, 1)
+    addIcon("silverore", 6, 3)
     addIcon("silver", 6, 4)
     addIcon("steel", 6, 5)
     addIcon("titaniumore", 6, 6)
@@ -143,12 +144,14 @@ local Aluminium = createIngot("aluminium", "Aluminium")
 
 ---@class AluminiumOre: Resource
 local AluminiumOre = createOre("aluminiumore", "Aluminium ore", 0.5)
+deposit.add("aluminiumore", 200, 9, nil, 500, false)
 
 ---@class Copper: Resource
 local Copper = createIngot("copper", "Copper", Color(220, 120, 40))
 
 ---@class CopperOre: Resource
 local CopperOre = createOre("copperore", "Copper ore", 0.5)
+deposit.add("copperore", 200, 10, nil, 500, false)
 
 
 ---@class Explosives: Resource
@@ -162,12 +165,14 @@ local Gold = createIngot("gold", "Gold", Color(255, 215, 0))
 
 ---@class GoldOre: Resource
 local GoldOre = createOre("goldore", "Gold ore", 0.2)
+deposit.add("goldore", 100, 2, nil, 300, false)
 
 ---@class Lead: Resource
 local Lead = createIngot("lead", "Lead", Color(100, 100, 130))
 
 ---@class LeadOre: Resource
 local LeadOre = createOre("leadore", "Lead ore", 0.5)
+deposit.add("leadore", 200, 7, nil, 600, false)
 
 -- edit sounds
 ---@class Nutrients: Resource
@@ -185,30 +190,35 @@ local Steel = createIngot("steel", "Steel", Color(100, 100, 100))
 
 ---@class SteelOre: Resource
 local SteelOre = createOre("steelore", "Steel ore", 1)
+deposit.add("steelore", 200, 12, nil, 700, false)
 
 ---@class Titanium: Resource
 local Titanium = createIngot("titanium", "Titanium", Color(250, 250, 250))
 
 ---@class TitaniumOre: Resource
 local TitaniumOre = createOre("titaniumore", "Titanium ore", 0.4)
+deposit.add("titaniumore", 100, 4, nil, 350, false)
 
 ---@class Tungsten: Resource
 local Tungsten = createIngot("tungsten", "Tungsten", Color(200, 200, 250))
 
 ---@class TungstenOre: Resource
 local TungstenOre = createOre("tungstenore", "Tungsten ore", 0.4)
+deposit.add("tungstenore", 100, 4, nil, 300, false)
 
 ---@class Platinum: Resource
 local Platinum = createIngot("platinum", "Platinum", Color(250, 220, 250))
 
 ---@class PlatinumOre: Resource
 local PlatinumOre = createOre("platinumore", "Platinum ore", 0.2)
+deposit.add("platinumore", 100, 2, nil, 300, false)
 
 ---@class Silver: Resource
 local Silver = createIngot("silver", "Silver", Color(200, 200, 200))
 
 ---@class SilverOre: Resource
 local SilverOre = createOre("silverore", "Silver ore", 0.3)
+deposit.add("silverore", 100, 3, nil, 300, false)
 
 ---@class Ceramic: Resource
 local Ceramic = resource.fastRegister(

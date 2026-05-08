@@ -123,7 +123,7 @@ if SERVER then
             local toGet = 100 - currentCount
             ---@cast res Resource
             local took = res:take(toGet)
-            self:setNWVar(resName, took)
+            self:setNWVar(resName, currentCount + took)
         elseif key == IN_KEY.RELOAD then
             net.start("BModToolboxOpen")
                 net.writeEntity(self.ent)

@@ -37,6 +37,7 @@ if SERVER then
         wire.triggerInput(turr, "Fire", 1)
     end
 
+    -- error with turret when player disconnects
     hook.add("Think", "BModTurretUpdate", function()
         local cur = timer.curtime()
         for ply, turr in pairs(turrets) do

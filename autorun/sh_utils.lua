@@ -9,7 +9,8 @@ if CLIENT then
     ---@param angle Angle? Angles of display
     ---@param draw string|fun() Text to display or function to draw
     ---@param distance number? Distance to disappear. Default 256
-    function BMod.Display(ent, offset, angle, draw, distance)
+    ---@param scale number? Scale. Default 0.1
+    function BMod.Display(ent, offset, angle, draw, distance, scale)
         local pos = Ply:getPos()
         distance = distance or 256
         if !isValid(ent) then ent = nil end
@@ -18,7 +19,8 @@ if CLIENT then
         local ang = ent and ent:getAngles() or angle
         local m = Matrix(ang, mPos)
         m:rotate(Angle(0, 90, 90) + (ent and angle or Angle()))
-        m:setScale(Vector(0.1, -0.1, 1))
+        scale = scale or 0.1
+        m:setScale(Vector(scale, -scale, 1))
         render.pushMatrix(m)
         do
             render.enableDepth(true)

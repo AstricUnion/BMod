@@ -112,8 +112,10 @@ if SERVER then
                 -- Generating values for deposit
                 local size = math.round(depositInfo.size * math.rand(0.5, 1.5))
                 local amount = depositInfo.amount and math.round(depositInfo.amount * math.rand(0.5, 1.5))
-                local rate = depositInfo.rate and math.round(depositInfo.rate * math.rand(0.5, 1.5))
-                local areas = navmesh.find(point, size, 300, 300)
+                local rate = depositInfo.rate and math.round(depositInfo.rate * math.rand(0.5, 1.5), 1)
+                local deposits = deposit.findInSphere(point, size)
+                if next(deposits) ~= nil then goto cont end
+                local areas = navmesh.find(point, size, 50000, 50000)
                 for _, v in ipairs(areas) do
                     ---@cast v NavArea
                     table.removeByValue(navAreas, v)
@@ -121,7 +123,7 @@ if SERVER then
                 deposit.inited[#deposit.inited+1] = {
                     resource = depositInfo.resource,
                     position = point,
-                    size = size,
+                    size = size * 2,
                     rate = rate,
                     amount = amount,
                     underwater = isWater
@@ -145,7 +147,7 @@ else
         local font = render.createFont("Roboto",512,500,false,false,false,false,0,false,0)
         hook.add("PostDrawTranslucentRenderables", "BModDepositsDebug", function()
             for _, v in ipairs(deposit.inited) do
-                BMod.Display(nil, v.position + Vector(0, 0, 50), Angle(-90, 0, 0), function()
+                BMod.Display(nil, v.position + Vector(0, 0, 16), Angle(-90, 0, 0), function()
                     local size = v.size * 5
                     local icon = bicons.get(v.resource)
                     if icon then
@@ -155,7 +157,6 @@ else
                         render.drawCircle(0, 0, size)
                         render.setColor(Color(0, 0, 0))
                         render.setFont("Trebuchet24")
-                        render.drawSimpleText(0, 0, v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
                     end
                     render.setFont(font)
                     render.drawSimpleText(0, -size - 256, v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
