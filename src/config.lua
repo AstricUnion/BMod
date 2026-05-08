@@ -169,6 +169,17 @@ bmodConfig.crafts = {
         result = function(pos, ang)
             prop.createSent(pos, ang, "Jeep", false)
         end
+    },
+
+    ["resource_crate"] = {
+        name = "Resource crate", icon = "resource_crate", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { wood = 100 },
+        category = "Other",
+        result = function(pos, ang)
+            local ent = ents.create("resource_crate")
+            ent:spawn(pos, ang, false)
+        end
     }
 }
 

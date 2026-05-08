@@ -67,6 +67,7 @@ if SERVER then
         local pr = self.ent
         pr:setMass(30)
         pr:setUnbreakable(true)
+        pr:getPhysicsObject():addGameFlags(FVPHYSICS.NO_IMPACT_DMG)
         self.modifyEntity(pr)
         pr.BModResource = self.Identifier
         ---Collision listener to merge resources
@@ -107,7 +108,7 @@ if SERVER then
     ---@param count number Count
     function Resource:setCount(count)
         if count < 1 then self:remove() return end
-        count = math.clamp(count, 1, maxResource)
+        count = math.ceil(math.clamp(count, 1, maxResource))
         self:setNWVar("count", count)
     end
 
@@ -338,8 +339,9 @@ if SERVER then
     ---@param count number Count of resource in this block
     ---@param freeze boolean Freeze resource entity
     ---@param dontStack boolean? Create a new resource without merging with existing one(s)
-    ---@return Resource[]?
+    ---@return Resource[]
     function resource.create(identifier, pos, ang, count, freeze, dontStack)
+        if count <= 0 then return {} end
         if !dontStack then
             local found = find.byClass("prop_physics")
             local existingResource
@@ -350,7 +352,7 @@ if SERVER then
                 ---@cast res Resource
                 local resCount = res:getCount()
                 -- This means that's we have already created entity, may be it that's we want
-                if !resCount then return end
+                if !resCount then return {} end
                 ---@cast res Resource
                 if resCount == maxResource then goto cont end
                 local diff = maxResource - resCount
@@ -370,10 +372,11 @@ if SERVER then
         local totalCreated = 0
         local x = 0
         for i=1, math.ceil(count / 100) do
-            local newRes = ents.create(identifier)
-            ---@cast newRes Resource
             local diff = count - totalCreated
             local currentCount = diff < 100 and diff or 100
+            if currentCount <= 1 then return {} end
+            local newRes = ents.create(identifier)
+            ---@cast newRes Resource
             newRes:setCount(currentCount)
             newRes:spawn(pos + Vector(x, 0, 0), ang, freeze)
             totalCreated = totalCreated + currentCount

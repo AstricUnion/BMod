@@ -39,17 +39,17 @@ end
 ---Carbon monoxide gas (CO)
 ---@class CarbonMonoxide: Gas
 local CarbonMonoxide = {}
-CarbonMonoxide.Identifier = "gas_carbonmonoxide"
-CarbonMonoxide.ThinkRate = 1
-CarbonMonoxide.MaxVelocity = 80
-CarbonMonoxide.MaxLife = 100
+CarbonMonoxide.Identifier = "carbonmonoxide"
+CarbonMonoxide.ThinkRate = 2
+CarbonMonoxide.MaxVelocity = 100
+CarbonMonoxide.MaxLife = 120
 CarbonMonoxide.Gravity = Vector(0, 0, -8)
 CarbonMonoxide.AirResistance = Vector(1, 1, 2)
 CarbonMonoxide.BounceMultiplier = 0.8
 CarbonMonoxide.VelocityMultiplier = 6
 if SERVER then
     CarbonMonoxide.Effect = true
-    CarbonMonoxide.EffectRadius = 300
+    CarbonMonoxide.EffectRadius = 200
     CarbonMonoxide.Effects = {
         gas.getEffect("poisoning")
     }
@@ -60,7 +60,7 @@ CarbonMonoxide.CoughRate = 2.5
 
 if CLIENT then
     function CarbonMonoxide:getColor()
-        return Color(120, math.random(120, 150), 75, 25)
+        return Color(124, 124, 124, 25)
     end
 end
 

@@ -198,9 +198,13 @@ else
         self:init()
     end
 
+    ---Function on destroy this effect
+    function BEffect:onDestroy() end
+
     ---Destroy effect
     function BEffect:destroy()
         beff.inited[self.index] = nil
+        self:onDestroy()
         setmetatable(self, nil)
     end
 

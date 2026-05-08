@@ -278,7 +278,7 @@ if SERVER then
     function ents.create(identifier)
         local ent = ents.registered[identifier]
         if !ent then
-            throw("No entity with identifier " .. identifier)
+            throw("No such entity with identifier " .. identifier)
             return
         end
         return ent:new()

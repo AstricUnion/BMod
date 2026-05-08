@@ -134,7 +134,6 @@ if SERVER then
 
     ---[SERVER] Remove this particle
     function Gas:remove()
-        print("removed")
         gas.inited[self.index] = nil
         setmetatable(self, nil)
         net.start("BModRemoveGas")
@@ -360,10 +359,13 @@ end
 if SERVER then
     ---[SERVER] Create new particle
     ---@param classname string
-    ---@return Gas?
+    ---@return Gas
     function gas.create(classname)
         local class = gas.registered[classname]
-        if !class then return end
+        if !class then
+            throw("No such gas with identifier " .. classname)
+            return
+        end
         return class:new()
     end
 end

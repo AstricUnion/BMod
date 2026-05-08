@@ -141,7 +141,7 @@ if SERVER then
             local shootPos = ply:getShootPos()
             local angs = ply:getEyeAngles()
             local tr = trace.line(shootPos, shootPos + angs:getForward() * 256, {ply})
-            BMod.makeCraft(ply, tr.HitPos, angs, craft)
+            BMod.makeCraft(ply, tr.HitPos, angs:setP(0), craft)
         end
     end
 

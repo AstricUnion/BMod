@@ -316,6 +316,11 @@ local Cloth = resource.fastRegister(
 local Coal = createOre("coal", "Coal")
 Coal.SolidFuelInUnit = 10
 Coal.SmeltResource = nil
+local oldCoalModify = Coal.modifyEntity
+Coal.modifyEntity = function(pr)
+    oldCoalModify(pr)
+    pr:setColor(Color(100, 100, 100))
+end
 
 
 ---@class Chemicals: Resource
