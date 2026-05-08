@@ -4,22 +4,26 @@ if CLIENT then
     local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
 
     ---[CLIENT] Display for entities
-    ---@param ent Entity
+    ---@param ent Entity? Entity or nil, to place in the world
     ---@param offset Vector? Offset of display
     ---@param angle Angle? Angles of display
     ---@param draw string|fun() Text to display or function to draw
-    function BMod.Display(ent, offset, angle, draw)
+    ---@param distance number? Distance to disappear. Default 256
+    function BMod.Display(ent, offset, angle, draw, distance)
         local pos = Ply:getPos()
-        if !isValid(ent) then return end
-        if ent:getPos():getDistance(pos) > 256 then return end
-        local ang = ent:getAngles()
-        local m = Matrix(ang, ent:localToWorld(offset or Vector()))
-        m:rotate(Angle(0, 90, 90) + (angle or Angle()))
+        distance = distance or 256
+        if !isValid(ent) then ent = nil end
+        local mPos = ent and ent:localToWorld(offset or Vector()) or offset
+        if mPos:getDistance(pos) > distance then return end
+        local ang = ent and ent:getAngles() or angle
+        local m = Matrix(ang, mPos)
+        m:rotate(Angle(0, 90, 90) + (ent and angle or Angle()))
         m:setScale(Vector(0.1, -0.1, 1))
         render.pushMatrix(m)
         do
             render.enableDepth(true)
             render.setFont(font)
+            render.setColor(Color())
             if isfunction(draw) then
                 ---@cast draw fun()
                 draw()

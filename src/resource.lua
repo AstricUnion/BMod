@@ -257,7 +257,7 @@ function resource.getResources(ply, withProps)
             local count = res:getCount()
             current.count = current.count + count
             current.ents[#current.ents+1] = {ent = pr, count = count}
-        elseif withProps then
+        elseif withProps and !pr.BModEntity then
             local counts = resource.salvage(pr)
             if !counts then goto cont end
             for id, count in pairs(counts) do
@@ -289,7 +289,7 @@ function resource.getResourcesFast(ply, withProps)
             local id = res.Identifier
             local count = res:getCount()
             resources[id] = (resources[id] or 0) + count
-        elseif withProps then
+        elseif withProps and !pr.BModEntity then
             local counts = resource.salvage(pr)
             if !counts then goto cont end
             for id, count in pairs(counts) do
@@ -306,7 +306,7 @@ end
 ---@param required table<string, number> Requirements
 ---@return string? error Error message or nil, if success
 function resource.canByResources(resources, required)
-    if true then return end
+    if BMod.debug then return end
     local errorMes = {}
     for requiredId, count in pairs(required) do
         local currentCount = resources[requiredId] or 0

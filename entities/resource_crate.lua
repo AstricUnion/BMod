@@ -17,6 +17,7 @@ ResourceCrate.hooks = {}
 if SERVER then
     function ResourceCrate:initialize()
         self.ent:setMass(100)
+        self.ent:setUnbreakable(true)
     end
 
     ---[SERVER] Interaction of resource
@@ -82,17 +83,19 @@ if CLIENT then
     ---@class bgui
     local bgui = bgui
 
+    local font = render.createFont("Roboto",64,500,false,false,false,false,0,false,0)
+
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self ResourceCrate
     function ResourceCrate.hooks.PostDrawTranslucentRenderables(self)
         BMod.Display(self.ent, Vector(20, 0, 0), Angle(), function()
-            render.setFont("Trebuchet24")
+            render.setFont(font)
             local type = self:getResourceType()
             local res = ents.registered[type]
             local name = res and res.Name or "Put resource"
-            render.drawSimpleText(0, 0, name, TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
-            render.setFont("Trebuchet18")
-            render.drawSimpleText(0, 32, string.format("%s units", self:getResourceCount()), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            render.drawSimpleText(0, 0, name, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+            render.setFont("Trebuchet24")
+            render.drawSimpleText(0, 44, string.format("%s units", self:getResourceCount()), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
         end)
     end
 end

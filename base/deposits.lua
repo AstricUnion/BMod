@@ -106,7 +106,7 @@ if SERVER then
                 ---@cast tr TraceResult
                 table.removeByValue(navAreas, navarea)
                 if !allowedMat[tr.MatType] then goto cont end
-                local isWater = bit.band(trace.pointContents(point + Vector(0, 0, 1)), CONTENTS.WATER) == 1 and true or false
+                local isWater = bit.band(trace.pointContents(point + Vector(0, 0, 1)), CONTENTS.WATER) == CONTENTS.WATER and true or false
                 local depositInfo = selectDeposit(isWater)
                 if !depositInfo then goto cont end
                 -- Generating values for deposit
@@ -129,10 +129,55 @@ if SERVER then
                 depositsLeft = depositsLeft - 1
                 ::cont::
             end
+            net.start("BModSyncDeposits")
+                net.writeTable(deposit.inited)
+            net.send(find.allPlayers())
             return true
         end
         return multiThread and coroutine.wrap(generate) or (generate() and nil)
     end
+else
+    net.receive("BModSyncDeposits", function()
+        deposit.inited = net.readTable()
+    end)
+
+    if BMod.debug then
+        local font = render.createFont("Roboto",512,500,false,false,false,false,0,false,0)
+        hook.add("PostDrawTranslucentRenderables", "BModDepositsDebug", function()
+            for _, v in ipairs(deposit.inited) do
+                BMod.Display(nil, v.position + Vector(0, 0, 50), Angle(-90, 0, 0), function()
+                    local size = v.size * 5
+                    local icon = bicons.get(v.resource)
+                    if icon then
+                        icon(-size, -size, size * 2, size * 2)
+                    else
+                        render.setColor(Color(255, 255, 255))
+                        render.drawCircle(0, 0, size)
+                        render.setColor(Color(0, 0, 0))
+                        render.setFont("Trebuchet24")
+                        render.drawSimpleText(0, 0, v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                    end
+                    render.setFont(font)
+                    render.drawSimpleText(0, -size - 256, v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                    render.drawSimpleText(0, size + 256, v.rate and v.rate .. " per second" or v.amount and v.amount .. " units" or "", TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                end, 2048 + v.size / 2)
+            end
+        end)
+    end
+end
+
+---[SHARED] Find deposits around the point
+---@param pos Vector Position of sphere
+---@param radius number Radius of sphere. If 0, will found is a point in deposit
+---@return Deposit[]
+function deposit.findInSphere(pos, radius)
+    local result = {}
+    for _, v in ipairs(deposit.inited) do
+        if pos:getDistance(v.position) < radius + v.size then
+            result[#result+1] = v
+        end
+    end
+    return result
 end
 
 

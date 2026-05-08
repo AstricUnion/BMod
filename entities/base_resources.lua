@@ -11,8 +11,10 @@ if CLIENT then
     icons = material.create("UnlitGeneric")
     icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
     icons:setInt("$flags", 256)
-    iconsU = 0.1125
-    iconsV = 0.1125
+    -- iconsU = 0.1125
+    -- iconsV = 0.1125
+    iconsU = 0.125
+    iconsV = 0.125
 
     ---@param id string
     ---@param row number
@@ -321,6 +323,7 @@ Coal.modifyEntity = function(pr)
     oldCoalModify(pr)
     pr:setColor(Color(100, 100, 100))
 end
+deposit.add("coal", 300, 12, nil, 800, false)
 
 
 ---@class Chemicals: Resource

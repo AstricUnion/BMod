@@ -185,10 +185,10 @@ if SERVER then
             end
             if v.nextThink > cur then goto cont end
             local selfPos = v.position
-            -- if !v.AllowUnderwater and (bit.band(trace.pointContents(v.position), CONTENTS.WATER) and true or false) then
-                -- v:remove()
-                -- goto cont
-            -- end
+            if !v.AllowUnderwater and bit.band(trace.pointContents(v.position), CONTENTS.WATER) == CONTENTS.WATER then
+                v:remove()
+                goto cont
+            end
             local rand = gas.randVector() * v.VelocityMultiplier
             if v.Effect then
                 allPlayers = allPlayers or find.allPlayers()

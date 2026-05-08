@@ -178,7 +178,7 @@ bmodConfig.crafts = {
         category = "Other",
         result = function(pos, ang)
             local ent = ents.create("resource_crate")
-            ent:spawn(pos, ang, false)
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
         end
     }
 }

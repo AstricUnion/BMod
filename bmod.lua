@@ -19,7 +19,9 @@ if SERVER then
 end
 
 ---@class BMod
+---@field debug boolean
 BMod = {}
+BMod.debug = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
@@ -31,14 +33,14 @@ gas = require("bmod/base/gas.lua")
 ---@class butils
 butils = require("bmod/base/utils.lua")
 
----@class deposit
-deposit = require("bmod/base/deposits.lua")
-
 ---@class bicons
 bicons = require("bmod/base/icons.lua")
 
 ---@class model
 model = require("bmod/base/model.lua")
+
+---@class deposit
+deposit = require("bmod/base/deposits.lua")
 
 ---@class bmodConfig
 bmodConfig = require("bmod/src/config.lua")
