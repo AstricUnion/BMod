@@ -87,6 +87,15 @@ function BEffect:setAttachment(attachment) self.attachment = attachment end
 function BEffect:getAttachment() return self.attachment end
 
 
+---Set entity of the effect
+---@param entity Entity
+function BEffect:setEntity(entity) self.entity = entity end
+
+---Get entity of the effect
+---@return Entity entity
+function BEffect:getEntity() return self.entity end
+
+
 ---Set flags of the effect
 ---@param flags number
 function BEffect:setFlags(flags) self.flags = flags end
@@ -176,7 +185,12 @@ if SERVER then
         local index = #beff.inited+1
         beff.inited[index] = self
         self.index = index
+        local entValid = isValid(self.entity)
         net.start("BModEffect")
+            net.writeBool(entValid)
+            if entValid then
+                net.writeEntity(self.entity)
+            end
             net.writeTable(self)
         net.send(find.allPlayers())
     end
@@ -209,11 +223,21 @@ else
     end
 
     net.receive("BModEffect", function()
-        local tbl = net.readTable()
-        local class = beff.registered[tbl.Identifier]
-        if !class then return end
-        local inherited = setmetatable(tbl, class)
-        inherited:play()
+        local function loadEffect()
+            local tbl = net.readTable()
+            local class = beff.registered[tbl.Identifier]
+            if !class then return end
+            local inherited = setmetatable(tbl, class)
+            inherited:play()
+        end
+        local isEntity = net.readBool()
+        if isEntity then
+            net.readEntity(function()
+                loadEffect()
+            end)
+        else
+            loadEffect()
+        end
     end)
 
     net.receive("BModEffectDestroy", function()

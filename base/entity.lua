@@ -244,8 +244,10 @@ function ents.register(class, inheritFrom)
         throw("Can't inherit class \"" .. inheritFrom .. "\": doesn't exist")
         return
     end
+    local inheritingHooks = table.copy(inheritClass.hooks)
     local inheritedClass = setmetatable(class, inheritClass)
     inheritedClass.__index = class
+    inheritedClass.hooks = table.inherit(inheritedClass.hooks, inheritingHooks)
 
     for name, func in pairs(inheritedClass.hooks) do
         local hooks = ents.hooks[name]

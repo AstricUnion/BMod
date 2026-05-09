@@ -31,7 +31,9 @@ if CLIENT then
     function OilSmoke:think()
         local cur = timer.curtime()
         if self.nextParticle >= cur then return end
-        local origin = self:getOrigin()
+        local entity = self:getEntity()
+        local originStart = self:getOrigin()
+        local origin = isValid(entity) and entity:localToWorld(originStart) or originStart
         local sprite
         local isFire = false
         if math.random(1, 4) ~= 4 then

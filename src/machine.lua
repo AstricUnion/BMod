@@ -2,14 +2,13 @@
 local ents = ents
 
 ---@class ResourceInput
----@field identifier string? Identifier of input
 ---@field type string? Type of resource. Can be nil, if using rateField
----@field rateField string? Rate field. Like SolidFuelInUnit
+---@field rateField string? Rate field. Like SolidFuelInUnit. Can be nil, if using type
 ---@field maxCount number Max count of this resource
----@field callback fun(res: Resource) Callback of this input
+---@field callback? fun(self: BaseMachine, res: Resource, wantToTake: number): boolean? Callback of this input. Return true to prevent input
 
 ---@class BaseMachine: BModEntity
----@field Inputs ResourceInput[]
+---@field Inputs table<string, ResourceInput>
 local BaseMachine = {}
 BaseMachine.Identifier = "base_machine"
 BaseMachine.Name = "Base machine"
@@ -18,9 +17,6 @@ BaseMachine.hooks = {}
 BaseMachine.Inputs = {}
 
 if SERVER then
-    function BaseMachine:initialize()
-    end
-
     ---[SERVER] Hook on machine use
     ---@param ply Player
     ---@param isWalking boolean
@@ -47,21 +43,74 @@ if SERVER then
     ---@param ent Entity
     function BaseMachine.hooks.BModResourceInteracted(self, res, ent)
         if ent ~= self.ent then return end
-        for _, v in ipairs(self.Inputs) do
-            if v.type and res.Identifier == v.type then
-                local count = self:getNWVar(v.identifier, 0)
-                local actual = res:take(v.maxCount - count)
-                self:setNWVar(v.identifier, count + actual)
-                if v.callback then v.callback(res) end
+        local function makeCallback(input, want)
+            local result = false
+            if input.callback then result = input.callback(self, res, want) end
+            return result
+        end
+        local resMeta = getmetatable(res)
+        for id, v in pairs(self.Inputs) do
+            if v.type and resMeta.Identifier == v.type then
+                local count = self:getNWVar(id, 0)
+                local wantToTake = v.maxCount - count
+                if makeCallback(v, wantToTake) then goto cont end
+                local actual = res:take(wantToTake)
+                self:setNWVar(id, count + actual)
                 return
-            elseif v.rateField and res[v.rateField] then
-                local inUnit = res[v.rateField]
-                local count = self:getNWVar(v.identifier, 0)
-                local actual = res:take((v.maxCount - count) / inUnit)
-                self:setNWVar(v.identifier, count + actual * inUnit)
+            elseif v.rateField and resMeta[v.rateField] then
+                local inUnit = resMeta[v.rateField]
+                inUnit = isnumber(inUnit) and inUnit or 1
+                local count = self:getNWVar(id, 0)
+                local wantToTake = (v.maxCount - count) / inUnit
+                if makeCallback(v, wantToTake) then goto cont end
+                local actual = res:take(wantToTake)
+                self:setNWVar(id, count + actual * inUnit)
+                return
+            elseif !v.type and !v.rateField then
+                local count = self:getNWVar(id, 0)
+                local wantToTake = v.maxCount - count
+                if makeCallback(v, wantToTake) then goto cont end
+                local actual = res:take(wantToTake)
+                self:setNWVar(id, count + actual)
+                self:setNWVar(id .. "Type", resMeta.Identifier)
+                v.type = resMeta.Identifier
+                return
             end
+            ::cont::
         end
     end
+
+
+    ---[SERVER] Set input resource count
+    ---@param identifier string Identifier of input
+    ---@param count number Count of resource to set
+    ---@param type string? Type of resource for flex. Can be nil
+    function BaseMachine:setInput(identifier, count, type)
+        local input = self.Inputs[identifier]
+        if !input then
+            throw("No such input: " .. identifier)
+            return
+        end
+        local currentCount = self:getNWVar(identifier, 0)
+        local currentType = self:getNWVar(identifier .. "Type", nil)
+        self:setNWVar(identifier, math.clamp(count, 0, input.maxCount))
+        if !input.type and !input.rateField and type and currentCount == 0 then
+            self:setNWVar(identifier .. "Type", type)
+            input.type = type
+        elseif input.type and currentType and count == 0 then
+            self:setNWVar(identifier .. "Type", nil)
+            input.type = nil
+        end
+    end
+end
+
+
+---[SHARED] Get input of machine
+---@param identifier string
+---@return number count Count of resource
+---@return string? type Resource type
+function BaseMachine:getInput(identifier)
+    return self:getNWVar(identifier, 0), self:getNWVar(identifier .. "Type", nil)
 end
 
 

@@ -58,7 +58,7 @@ if SERVER then
 else
     ---@param self Bucket
     function Bucket.hooks.PostDrawTranslucentRenderables(self)
-        BMod.Display(self.ent, Vector(8.8, 0, 0), Angle(), function()
+        BMod.displayEnt(self.ent, Vector(8.8, 0, 0), Angle(), function()
             render.drawSimpleText(0, -75, string.format("Water: %s", self:getNWVar("water", 0)), TEXT_ALIGN.CENTER)
             bicons.get("water")(-43, -43, 86, 86)
         end)
@@ -161,7 +161,7 @@ if SERVER then
                 return
             end
             local salvagingCurrent, percent = self:getSalvage()
-            if isValid(ent) and !ent.BModEntity or (salvagingCurrent and salvagingCurrent == ent) then
+            if isValid(ent) and !ent.BModResource or (salvagingCurrent and salvagingCurrent == ent) then
                 if !isValid(salvagingCurrent) then
                     self:setNWVar("salvagingProp", ent)
                 end
@@ -271,7 +271,7 @@ else
     function ToolBox.hooks.PostDrawTranslucentRenderables(self)
         local ply = self:getEquippedBy()
         if !ply or !isValid(ply) then
-            BMod.Display(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
+            BMod.displayEnt(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
             return
         end
         if ply:isAlive() and ply:getActiveWeapon():getClass() ~= "weapon_crowbar" then return end

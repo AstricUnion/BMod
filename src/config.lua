@@ -150,7 +150,7 @@ bmodConfig.crafts = {
         end
     },
 
-    ["airboat"] = {
+    ["prop_vehicle_airboat"] = {
         name = "HL2 Airboat", icon = "airboat", scale = 4,
         description = "",
         methods = { "toolbox" },
@@ -161,7 +161,7 @@ bmodConfig.crafts = {
         end
     },
 
-    ["jeep"] = {
+    ["prop_vehicle_jeep"] = {
         name = "HL2 Jeep", icon = "jeep", scale = 4, description = "",
         methods = { "toolbox" },
         requires = { basicparts = 200, power = 50, fuel = 300, precisionparts = 100, steel = 300, ammo = 200 },

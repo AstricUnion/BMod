@@ -172,7 +172,7 @@ if CLIENT then
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self Resource
     function Resource.hooks.PostDrawTranslucentRenderables(self)
-        BMod.Display(self.ent, self.SignOffset, self.SignAngle, function()
+        BMod.displayEnt(self.ent, self.SignOffset, self.SignAngle, function()
             if !self.Compact then
                 render.setFont(resource.font)
                 render.setColor(Color():setA(170))
@@ -432,6 +432,15 @@ if SERVER then
     ---@param ent Entity Prop to salvage
     ---@return table<string, number>
     function resource.salvage(ent)
+        local class = ent.BModEntity or ent:getClass()
+        local craft = bmodConfig.crafts[class]
+        if craft then
+            local req = table.copy(craft.requires)
+            for type, count in pairs(req) do
+                req[type] = math.ceil(count * 0.9)
+            end
+            return req
+        end
         local phys = ent:getPhysicsObject()
         local mat, mass = string.lower(phys:getMaterial()), phys:getMass()
         if mass > 35 then

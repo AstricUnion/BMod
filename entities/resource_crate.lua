@@ -77,6 +77,24 @@ if SERVER then
         self:setNWVar("count", count)
         if count < 1 then self:setResourceType(nil) end
     end
+
+    function ResourceCrate:onRemove()
+        local type = self:getResourceType()
+        if !type then return end
+        local angs = self.ent:getAngles()
+        local pos = self.ent:getPos()
+        local time = 1 / prop.spawnRate()
+        local totalCreated = 0
+        local count = self:getResourceCount()
+        for i=1, math.ceil(count / 100) do
+            -- because prop limit. I don't use it in crafting table, because table makes less props
+            timer.simple(i * time, function()
+                local toCreate = math.min(count - totalCreated, 100)
+                resource.create(type, pos + Vector(0, 0, i * 12), angs, toCreate, false, false)
+                totalCreated = totalCreated + toCreate
+            end)
+        end
+    end
 end
 
 if CLIENT then
@@ -88,7 +106,7 @@ if CLIENT then
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self ResourceCrate
     function ResourceCrate.hooks.PostDrawTranslucentRenderables(self)
-        BMod.Display(self.ent, Vector(20, 0, 0), Angle(), function()
+        BMod.displayEnt(self.ent, Vector(20, 0, 0), Angle(), function()
             render.setFont(font)
             local type = self:getResourceType()
             local res = ents.registered[type]

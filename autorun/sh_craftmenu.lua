@@ -38,11 +38,19 @@ if SERVER then
         if !item then return end
         BMod.makeCraft(ply, pos, ang, item, useProps)
     end)
-
 else
+    ---@type Bass?
+    local errorSound
+    bass.loadFile("sound/buttons/button10.wav", "noblock noplay", function(bass, err)
+        if err ~= 0 then return end
+        errorSound = bass
+    end)
     net.receive("BModErrorMessage", function()
         local mes = net.readString()
-        bass.loadFile("sound/buttons/button10.wav", "", function() end)
+        if errorSound then
+            errorSound:setTime(0)
+            errorSound:play()
+        end
         notification.addLegacy(mes, NOTIFY.ERROR, 3)
     end)
 end

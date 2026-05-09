@@ -133,7 +133,7 @@ function CraftMenu:doCraft(craftId)
     -- To error on server
     net.start("BModMakeCraft")
         net.writeString(craftId)
-        net.writeVector(self.craftTable:getPos() + Vector(0, 0, 50))
+        net.writeVector(self.craftTable:localToWorld(self.craftTable.craftOffset or Vector()))
         net.writeAngle(self.craftTable:getAngles())
         net.writeBool(false)
     net.send()
@@ -162,7 +162,7 @@ function CraftMenu:updateResources()
                 goto cont
             end
         end
-        -- We didn't found the resource
+        -- We can't find the resource
         local resObj = bgui.create("ResourceRow")
         resObj.type = type
         resObj.count = count

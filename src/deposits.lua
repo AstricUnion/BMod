@@ -143,11 +143,11 @@ else
         deposit.inited = net.readTable()
     end)
 
-    if BMod.debug then
+    if BMod.displayDeposits then
         local font = render.createFont("Roboto",512,500,false,false,false,false,0,false,0)
         hook.add("PostDrawTranslucentRenderables", "BModDepositsDebug", function()
             for _, v in ipairs(deposit.inited) do
-                BMod.Display(nil, v.position + Vector(0, 0, 16), Angle(-90, 0, 0), function()
+                BMod.display(v.position + Vector(0, 0, 16), Angle(-90, 0, 0), function()
                     local size = v.size * 5
                     local icon = bicons.get(v.resource)
                     if icon then

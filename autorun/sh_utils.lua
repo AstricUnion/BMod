@@ -4,23 +4,48 @@ if CLIENT then
     local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
 
     ---[CLIENT] Display for entities
-    ---@param ent Entity? Entity or nil, to place in the world
+    ---@param ent Entity Entity
     ---@param offset Vector? Offset of display
     ---@param angle Angle? Angles of display
     ---@param draw string|fun() Text to display or function to draw
     ---@param distance number? Distance to disappear. Default 256
-    ---@param scale number? Scale. Default 0.1
-    function BMod.Display(ent, offset, angle, draw, distance, scale)
+    function BMod.displayEnt(ent, offset, angle, draw, distance)
         local pos = Ply:getPos()
         distance = distance or 256
-        if !isValid(ent) then ent = nil end
-        local mPos = ent and ent:localToWorld(offset or Vector()) or offset
+        local mPos = ent and ent:localToWorld(offset or Vector())
         if mPos:getDistance(pos) > distance then return end
-        local ang = ent and ent:getAngles() or angle
+        local ang = ent:getAngles()
         local m = Matrix(ang, mPos)
-        m:rotate(Angle(0, 90, 90) + (ent and angle or Angle()))
-        scale = scale or 0.1
-        m:setScale(Vector(scale, -scale, 1))
+        m:rotate(Angle(0, 90, 90) + angle)
+        m:setScale(Vector(0.1, -0.1, 1))
+        render.pushMatrix(m)
+        do
+            render.enableDepth(true)
+            render.setFont(font)
+            render.setColor(Color())
+            if isfunction(draw) then
+                ---@cast draw fun()
+                draw()
+            else
+                ---@cast draw string
+                render.drawSimpleText(0, 0, draw, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+            end
+        end
+        render.popMatrix()
+    end
+
+    ---[CLIENT] Display in world
+    ---@param pos Vector Offset of display
+    ---@param angle Angle? Angles of display
+    ---@param draw string|fun() Text to display or function to draw
+    ---@param distance number? Distance to disappear. Default 256
+    function BMod.display(pos, angle, draw, distance)
+        local plyPos = Ply:getPos()
+        distance = distance or 256
+        if pos:getDistance(plyPos) > distance then return end
+        local m = Matrix(angle, pos)
+        m:rotate(Angle(0, 90, 90) + angle)
+        m:setScale(Vector(0.1, -0.1, 1))
         render.pushMatrix(m)
         do
             render.enableDepth(true)

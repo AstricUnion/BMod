@@ -10,12 +10,17 @@ local deposit = deposit
 ---@class resource
 local resource = resource
 
----@class GroundScanner: BModEntity
+---@class GroundScanner: BaseMachine
+---@field toScan Deposit[]
+---@field nextThink number Next think. Relative to curtime
 local GroundScanner = {}
 GroundScanner.Identifier = "groundscanner"
 GroundScanner.Name = "Resource Crate"
 GroundScanner.Model = "models/props_silo/launch_button.mdl"
 GroundScanner.hooks = {}
+---@type table<string, ResourceInput>
+GroundScanner.Inputs = {}
+GroundScanner.Inputs.power = { type = "power", maxCount = 100 }
 
 local unitsInMeter = 39.37008
 local foundRadius = 50 * unitsInMeter
@@ -23,34 +28,52 @@ local foundRadius = 50 * unitsInMeter
 if SERVER then
     function GroundScanner:initialize()
         self.ent:setMass(25)
+        self.nextThink = 0
     end
 
     ---[SERVER] Activate ground scanner
-    ---@param ply Player
-    ---@param key number
-    function GroundScanner.hooks.KeyPress(self, ply, key)
-        if key ~= IN_KEY.USE or !ply:keyDown(IN_KEY.WALK) then return end
-        local tr = ply:getEyeTrace()
-        ---@cast tr TraceResult
-        if tr.Entity ~= self.ent then return end
-        if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
-        self:activate()
+    function GroundScanner:onUse(_, isWalking, isSprinting)
+        if self:getInput("power") < 1 then return end
+        if isWalking then
+            self:activate()
+        elseif isSprinting then
+            self:setNWVar("scanned", nil)
+        end
     end
 
     function GroundScanner:activate()
-        local result = table.copy(deposit.findInSphere(self.ent:getPos(), foundRadius))
+        local entPos = self.ent:getPos()
+        local result = table.copy(deposit.findInSphere(entPos, foundRadius))
+        table.sort(result, function(a, b)
+            return entPos:getDistance(a.position) < entPos:getDistance(b.position)
+        end)
         for _, v in ipairs(result) do
             local angs = self.ent:getAngles()
             angs = angs:rotateAroundAxis(angs:getUp(), -90)
-            local pos = worldToLocal(v.position, Angle(), self.ent:getPos(), angs)
+            local pos = worldToLocal(v.position, Angle(), entPos, angs)
             v.position = pos
         end
-        self:setNWVar("scanned", result)
+        self.toScan = result
+        self:setNWVar("scanned", {})
     end
 
-    ---[SERVER] Set power of scanner
-    function GroundScanner:setPower(power)
-        self:setNWVar("power", power)
+    ---[SERVER] Think function. To scan deposits
+    function GroundScanner.hooks:Think()
+        local cur = timer.curtime()
+        local scanned = self:getNWVar("scanned")
+        if !scanned then return end
+        if self.nextThink >= cur then return end
+        local power = self:getInput("power")
+        if power <= 0 then
+            self:setNWVar("scanned", nil)
+            return
+        end
+        self:setInput("power", power - 0.5)
+        local index = #scanned+1
+        if index <= #self.toScan then
+            scanned[index] = self.toScan[index]
+        end
+        self.nextThink = cur + 1
     end
 end
 
@@ -91,55 +114,56 @@ if CLIENT then
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self GroundScanner
     function GroundScanner.hooks.PostDrawTranslucentRenderables(self)
-        BMod.Display(self.ent, Vector(0, 0, 20), Angle(0, 0, -60), function()
+        BMod.displayEnt(self.ent, Vector(0, 0, 20), Angle(0, 0, -60), function()
             ---@type Deposit[]
             local scanned = self:getNWVar("scanned", nil)
-            if !scanned then return end
-            render.setColor(Color(0, 0, 0, 200))
-            pushMask(function()
-                render.drawFilledCircle(0, 0, 256)
-            end)
-            render.enableDepth(false)
-            render.drawRect(-256, -256, 512, 512)
-            render.enableDepth(true)
-            render.setColor(Color(0, 255, 0, 150))
-            render.drawLine(-256, 0, 256, 0)
-            render.drawLine(0, 0, 0, 256)
-            render.setFont("Default")
-            for i=1, 4 do
-                local rad = i * 10
-                local navCircRadius = rad * scale * unitsInMeter
+            if scanned then
+                render.setColor(Color(0, 0, 0, 200))
+                pushMask(function()
+                    render.drawFilledCircle(0, 0, 256)
+                end)
+                render.enableDepth(false)
+                render.drawRect(-256, -256, 512, 512)
+                render.enableDepth(true)
                 render.setColor(Color(0, 255, 0, 150))
-                render.drawCircle(0, 0, navCircRadius)
-                render.setColor(Color(200, 200, 200, 150))
-                render.drawSimpleText(navCircRadius, 0, rad .. "m", TEXT_ALIGN.RIGHT, TEXT_ALIGN.BOTTOM)
-            end
-            render.setColor(Color())
-            render.drawLine(0, 0, 0, -256)
-            for _, v in ipairs(scanned) do
-                local pos = v.position * Vector(-scale, scale, 0)
-                local size = v.size * scale
-                local icon = bicons.get(v.resource)
-                local half = size / 2
-                if icon then
-                    icon(pos.x - half, pos.y - half, size, size)
-                else
-                    render.drawCircle(0, 0, half)
+                render.drawLine(-256, 0, 256, 0)
+                render.drawLine(0, 0, 0, 256)
+                render.setFont("Default")
+                for i=1, 4 do
+                    local rad = i * 10
+                    local navCircRadius = rad * scale * unitsInMeter
+                    render.setColor(Color(0, 255, 0, 150))
+                    render.drawCircle(0, 0, navCircRadius)
+                    render.setColor(Color(200, 200, 200, 150))
+                    render.drawSimpleText(navCircRadius, 0, rad .. "m", TEXT_ALIGN.RIGHT, TEXT_ALIGN.BOTTOM)
                 end
-                local res = ents.registered[v.resource]
-                render.drawSimpleText(pos.x, pos.y - half - 10, res and res.Name or v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-                render.drawSimpleText(
-                    pos.x, pos.y + half + 10,
-                    v.rate and v.rate .. " per second" or v.amount and v.amount .. " units" or "",
-                    TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER
-                )
+                render.setColor(Color())
+                render.drawLine(0, 0, 0, -256)
+                for _, v in ipairs(scanned) do
+                    local pos = v.position * Vector(-scale, scale, 0)
+                    local size = v.size * scale
+                    local icon = bicons.get(v.resource)
+                    local half = size / 2
+                    if icon then
+                        icon(pos.x - half, pos.y - half, size, size)
+                    else
+                        render.drawCircle(0, 0, half)
+                    end
+                    local res = ents.registered[v.resource]
+                    render.drawSimpleText(pos.x, pos.y - half - 10, res and res.Name or v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                    render.drawSimpleText(
+                        pos.x, pos.y + half + 10,
+                        v.rate and v.rate .. " per second" or v.amount and v.amount .. " units" or "",
+                        TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER
+                    )
+                end
+                popMask()
             end
-            popMask()
             render.setFont("Trebuchet24")
-            render.drawSimpleText(-256, 256, "Power: 100%", TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+            render.drawSimpleText(-256, 256, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
         end)
     end
 end
 
-ents.register(GroundScanner)
+ents.register(GroundScanner, "base_machine")
 

@@ -9,6 +9,7 @@
 ---@include bmod/base/icons.lua
 ---@include bmod/base/model.lua
 ---@include bmod/src/resource.lua
+---@include bmod/src/machine.lua
 ---@include bmod/src/deposits.lua
 ---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
@@ -20,8 +21,10 @@ end
 
 ---@class BMod
 ---@field debug boolean
+---@field displayDeposits boolean
 BMod = {}
-BMod.debug = false
+BMod.debug = true
+BMod.displayDeposits = false
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
@@ -104,13 +107,13 @@ if SERVER then
     -- local ent = ents.create("crafting_table")
     -- ent:setFuel(100)
     -- ent:spawn(chip():getPos() + Vector(0, 0, 0), Angle(), true)
-    -- resource.create("copperore", chip():getPos() + Vector(0, 0, 12), Angle(), 300, true)
+    -- resource.create("copperore", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
     -- local toolbox = ents.create("toolbox")
     -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- toolbox:setGas(100)
     -- toolbox:setPower(100)
     ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
-    -- resource.create("coal", chip():getPos() + Vector(0, 20, 12), Angle(), 50, true)
+    resource.create("power", chip():getPos() + Vector(0, 20, 12), Angle(), 10, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()
