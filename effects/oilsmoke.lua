@@ -21,9 +21,9 @@ if CLIENT then
         material.load("particles/flamelet4"),
         material.load("particles/flamelet5")
     }
+    local emm = particle.create(Vector(), false)
 
     function OilSmoke:init()
-        local emm = self.emmiter or particle.create(Vector(), false)
         self.emmiter = emm
         self.nextParticle = 0
     end
@@ -63,10 +63,6 @@ if CLIENT then
             end
         end
         self.nextParticle = cur + 0.1
-    end
-
-    function OilSmoke:onDestroy()
-        self.emmiter:destroy()
     end
 end
 

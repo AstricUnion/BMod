@@ -10,6 +10,7 @@
 ---@include bmod/base/model.lua
 ---@include bmod/src/resource.lua
 ---@include bmod/src/machine.lua
+---@include bmod/src/utils.lua
 ---@include bmod/src/deposits.lua
 ---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
@@ -24,7 +25,7 @@ end
 ---@field displayDeposits boolean
 BMod = {}
 BMod.debug = true
-BMod.displayDeposits = false
+BMod.displayDeposits = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
@@ -42,6 +43,8 @@ bicons = require("bmod/base/icons.lua")
 ---@class model
 model = require("bmod/base/model.lua")
 
+require("bmod/src/utils.lua")
+
 ---@class deposit
 deposit = require("bmod/src/deposits.lua")
 
@@ -52,6 +55,7 @@ bmodConfig = require("bmod/src/config.lua")
 resource = require("bmod/src/resource.lua")
 
 require("bmod/src/machine.lua")
+
 
 ---@class beff
 beff = require("bmod/base/effects.lua")
@@ -112,8 +116,8 @@ if SERVER then
     -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- toolbox:setGas(100)
     -- toolbox:setPower(100)
-    ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
-    resource.create("power", chip():getPos() + Vector(0, 20, 12), Angle(), 10, true)
+    ents.create("augerdrill"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- resource.create("power", chip():getPos() + Vector(0, 20, 12), Angle(), 10, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

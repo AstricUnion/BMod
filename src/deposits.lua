@@ -14,9 +14,10 @@
 ---@field amount? number Average max resource, that's can be mined from this deposit
 ---@field allowUnderwater boolean Can deposit spawn underwater?
 
----Info about deposit
+---Info about inited deposit
 ---@class Deposit
----@field resource string Identifier of deposit
+---@field id number Deposit identifier
+---@field resource string Identifier of deposit resource
 ---@field size number Deposit size
 ---@field position Vector Deposit position
 ---@field underwater boolean Is deposit underwater
@@ -120,7 +121,9 @@ if SERVER then
                     ---@cast v NavArea
                     table.removeByValue(navAreas, v)
                 end
-                deposit.inited[#deposit.inited+1] = {
+                local id = #deposit.inited+1
+                deposit.inited[id] = {
+                    id = id,
                     resource = depositInfo.resource,
                     position = point,
                     size = size * 2,

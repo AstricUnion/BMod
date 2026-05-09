@@ -28,9 +28,9 @@ local part = model.part
 local holo = model.holo
 
 local mdl = model.create(hitbox {
-    vertex {"cube", Vector(0, 0, 18), Vector(24, 36, 18)},
-    vertex {"cube", Vector(-12, 0, 43), Vector(8, 36, 7)},
-    vertex {"cube", Vector(0, -50, 10), Vector(10, 10, 10)},
+    vertex {"cube", Vector(0, 0, 18), nil, Vector(24, 36, 18)},
+    vertex {"cube", Vector(-12, 0, 43), nil, Vector(8, 36, 7)},
+    vertex {"cube", Vector(0, -50, 10), nil, Vector(10, 10, 10)},
     mass = 250
 })
 mdl:add("base", part {

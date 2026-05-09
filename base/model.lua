@@ -103,8 +103,33 @@ local VertexType = {
 ---@class VertexParameters
 ---@field type VertexType?
 ---@field offset Vector?
+---@field angle Angle?
 ---@field scale Vector?
 ---@field vertices Vector[]?
+
+local rotMat = {
+    x = function(a)
+        return {
+            Vector(1, 0, 0),
+            Vector(0, math.cos(a), -math.sin(a)),
+            Vector(0, math.sin(a), math.cos(a)),
+        }
+    end,
+    y = function(a)
+        return {
+            Vector(math.cos(a), 0, math.sin(a)),
+            Vector(0, 1, 0),
+            Vector(-math.sin(a), 0, math.cos(a)),
+        }
+    end,
+    z = function(a)
+        return {
+            Vector(math.cos(a), -math.sin(a), 0),
+            Vector(math.sin(a), math.cos(a), 0),
+            Vector(0, 0, 1),
+        }
+    end
+}
 
 ---[SHARED] Create new vertex
 ---@param tbl VertexParameters
@@ -112,11 +137,21 @@ local VertexType = {
 function model.vertex(tbl)
     local type = tbl.type or tbl[1] or "custom"
     local offset = tbl.offset or tbl[2] or Vector()
-    local scale = tbl.scale or tbl[3] or Vector(1, 1, 1)
+    local angle = tbl.angle or tbl[3] or Angle()
+    local scale = tbl.scale or tbl[4] or Vector(1, 1, 1)
     local byType = VertexType[type]
-    local vertices = byType and table.copy(byType) or tbl.vertices or tbl[4]
+    local vertices = byType and table.copy(byType) or tbl.vertices or tbl[5]
+    local mats = {
+        x = rotMat.x(math.rad(angle.p)),
+        y = rotMat.y(math.rad(angle.y)),
+        z = rotMat.z(math.rad(angle.r)),
+    }
     for vId, v in ipairs(vertices) do
-        vertices[vId] = (v * scale) + offset
+        local pos = v * scale
+        local pZ = Vector(mats.z[1]:dot(pos), mats.z[2]:dot(pos), mats.z[3]:dot(pos))
+        local pY = Vector(mats.y[1]:dot(pZ), mats.y[2]:dot(pZ), mats.y[3]:dot(pZ))
+        local pX = Vector(mats.x[1]:dot(pY), mats.x[2]:dot(pY), mats.x[3]:dot(pY))
+        vertices[vId] = pX + offset
     end
     return vertices
 end
@@ -146,8 +181,11 @@ function model.hitbox(tbl)
         local phys = pr:getPhysicsObject()
         pr:setFrozen(freeze)
         pr:setNoDraw(!visible)
-        phys:setMass(mass)
-        phys:setMaterial(mat)
+        timer.simple(0, function()
+            if !isValid(phys) then return end
+            phys:setMass(mass)
+            phys:setMaterial(mat)
+        end)
         return pr
     end
 end
