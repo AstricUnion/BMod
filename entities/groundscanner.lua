@@ -31,17 +31,8 @@ if SERVER then
         self.nextThink = 0
     end
 
-    ---[SERVER] Activate ground scanner
-    function GroundScanner:onUse(_, isWalking, isSprinting)
+    function GroundScanner:turnOn()
         if self:getInput("power") < 1 then return end
-        if isWalking then
-            self:activate()
-        elseif isSprinting then
-            self:setNWVar("scanned", nil)
-        end
-    end
-
-    function GroundScanner:activate()
         local entPos = self.ent:getPos()
         local result = table.copy(deposit.findInSphere(entPos, foundRadius))
         table.sort(result, function(a, b)
@@ -55,6 +46,11 @@ if SERVER then
         end
         self.toScan = result
         self:setNWVar("scanned", {})
+        return true
+    end
+
+    function GroundScanner:turnOff()
+        self:setNWVar("scanned", nil)
     end
 
     ---[SERVER] Think function. To scan deposits

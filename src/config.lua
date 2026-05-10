@@ -11,7 +11,7 @@ local bmodConfig = {}
 ---@field description string? Description for craft
 ---@field icon string? Identifier of icon from bicons
 ---@field scale number? Scale of effect for this craft
----@field requires table<string, number> What requires this craft?
+---@field requires Resources What requires this craft?
 ---@field result fun(pos: Vector, ang: Angle) Result of craft
 ---@field methods string[] Methods to craft. In base version, can be crafting_table, toolbox
 ---@field category string? Categories in menu
@@ -180,11 +180,33 @@ bmodConfig.crafts = {
             local ent = ents.create("resource_crate")
             ent:spawn(pos + Vector(0, 0, 25), ang, false)
         end
+    },
+
+    ["augerdrill"] = {
+        name = "Auger drill", icon = "augerdrill", scale = 5, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 100, precisionparts = 25, tungsten = 25, steel = 100 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("augerdrill")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
+    ["groundscanner"] = {
+        name = "Ground scanner", icon = "groundscanner", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 50, copper = 50, precisionparts = 25, steel = 50 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("groundscanner")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
     }
 }
 
 
----@type table<string, table<string, number>>
+---@type table<string, Resources>
 bmodConfig.salvageByPhys = {
     metalgrate = { steel = 0.1, aluminium = 0.1 },
     default = { steel = 0.2 },
@@ -255,7 +277,7 @@ bmodConfig.salvageByPhys = {
 
 ---@class BModSalvage
 ---@field substrings string[]? Substrings to find
----@field resources table<string, number> Resources to give
+---@field resources Resources Resources to give
 
 ---@type table<string, BModSalvage>
 bmodConfig.salvageByModel = {

@@ -54,6 +54,37 @@ end
 
 
 if SERVER then
+    hook.add("ClientInitialized", "BModSyncDeposits", function(ply)
+        net.start("BModSyncDeposits")
+            net.writeTable(deposit.inited)
+        net.send(ply)
+    end)
+
+    ---[SERVER] Create new deposit with resource and size
+    ---@param resource string Deposit identify
+    ---@param pos Vector Position of deposit
+    ---@param size number Diameter of deposit
+    ---@param rateOrAmount number Rate or amount of deposit, addicted to type
+    function deposit.create(resource, pos, size, rateOrAmount)
+        local id = #deposit.inited+1
+        local tr = trace.line(pos, pos - Vector(0, 0, 32768), nil, MASK.PLAYERSOLID_BRUSHONLY)
+        local depositInfo = deposit.info[resource]
+        local isWater = bit.band(trace.pointContents(tr.HitPos + Vector(0, 0, 1)), CONTENTS.WATER) == CONTENTS.WATER and true or false
+        if isWater and !depositInfo.allowUnderwater then return end
+        deposit.inited[id] = {
+            id = id,
+            resource = resource,
+            position = tr.HitPos,
+            size = size,
+            rate = depositInfo.rate and rateOrAmount,
+            amount = depositInfo.amount and rateOrAmount,
+            underwater = isWater
+        }
+        net.start("BModSyncDeposits")
+            net.writeTable(deposit.inited)
+        net.send(find.allPlayers())
+    end
+
     local allowedMat = {
         [MAT.SNOW] = true,
         [MAT.SAND] = true,
@@ -66,7 +97,6 @@ if SERVER then
     -- Caching navareas
     ---@type NavArea[]
     local globalNavAreas = navmesh.getAllNavAreas()
-
 
     ---[SERVER] Start generation for deposits
     ---@param count number Deposits to create

@@ -25,7 +25,6 @@ end
 ---@field displayDeposits boolean
 BMod = {}
 BMod.debug = true
-BMod.displayDeposits = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
 ---@class ents
@@ -109,15 +108,17 @@ dodir("bmod/effects", {})
 
 if SERVER then
     -- local ent = ents.create("crafting_table")
-    -- ent:setFuel(100)
+    -- ent:setInput("fuel", 100)
     -- ent:spawn(chip():getPos() + Vector(0, 0, 0), Angle(), true)
     -- resource.create("copperore", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
-    -- local toolbox = ents.create("toolbox")
-    -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
-    -- toolbox:setGas(100)
-    -- toolbox:setPower(100)
-    ents.create("augerdrill"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
-    -- resource.create("power", chip():getPos() + Vector(0, 20, 12), Angle(), 10, true)
+    local toolbox = ents.create("toolbox")
+    toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    toolbox:setGas(100)
+    toolbox:setPower(100)
+    -- ents.create("augerdrill"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- deposit.create("coal", chip():getPos(), 300, 727)
+    -- resource.create("power", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

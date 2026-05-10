@@ -15,6 +15,8 @@ local bicons = bicons
 ---@class bmodConfig
 local bmodConfig = bmodConfig
 
+---@alias Resources Resources
+
 
 ---Class for resource manipulations
 ---@class resource
@@ -36,7 +38,7 @@ resource.props = {}
 ---@field Sounds ResourceSounds Angle of a sign with resource info
 ---@field SolidFuelInUnit number Solid fuel in one unit of resource
 ---@field LiquidFuelInUnit number Liquid fuel in one unit of resource
----@field SmeltResource table<string, number> Resources on smelting
+---@field SmeltResource Resources Resources on smelting
 ---@field Icon string? Icon identifier to bicons. Default will take identifier
 -- Private fields
 ---@field pickedUpBy Player [SERVER] Player, that's picked up this resource
@@ -275,7 +277,7 @@ end
 ---[SHARED] Get player's available resources fast and less info
 ---@param ply Player Player to inspect
 ---@param withProps boolean? Take props as a resource
----@return table<string, number> resources Key is resource type, value is amount of this resource
+---@return Resources resources Key is resource type, value is amount of this resource
 function resource.getResourcesFast(ply, withProps)
     local found = find.byClass("prop_physics")
     local resources = {}
@@ -302,8 +304,8 @@ function resource.getResourcesFast(ply, withProps)
 end
 
 ---[SHARED] Can user craft it by resources, with message and info
----@param resources table<string, number> Resources to test
----@param required table<string, number> Requirements
+---@param resources Resources Resources to test
+---@param required Resources Requirements
 ---@return string? error Error message or nil, if success
 function resource.canByResources(resources, required)
     if BMod.debug then return end
@@ -321,7 +323,7 @@ end
 
 ---[SHARED] Makes found resources more easy to get
 ---@param resources table<string, FoundResources>
----@return table<string, number> resources
+---@return Resources resources
 function resource.fromFound(resources)
     local simplified = {}
     for id, v in pairs(resources) do
@@ -387,6 +389,22 @@ if SERVER then
     end
 
 
+    ---[SERVER] Produce resources
+    ---@param pos Vector
+    ---@param angs Angle
+    ---@param resources Resources
+    function resource.produce(pos, angs, resources)
+        local height = 0
+        local time = 1 / prop.spawnRate()
+        for id, count in pairs(resources) do
+            timer.simple(height * time * math.ceil(count / 100), function()
+                resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, false)
+            end)
+            height = height + 1
+        end
+    end
+
+
     ---[SERVER] Take resources from player
     ---@param ply Player Player to take
     ---@param required table Table of required resource. Index is name, value is count
@@ -430,7 +448,7 @@ if SERVER then
 
     ---[SERVER] Makes from prop to resources
     ---@param ent Entity Prop to salvage
-    ---@return table<string, number>
+    ---@return Resources
     function resource.salvage(ent)
         local class = ent.BModEntity or ent:getClass()
         local craft = bmodConfig.crafts[class]

@@ -46,7 +46,7 @@ mdl:add("base", part {
 ---@field nextThink number
 ---@field nextGasParticle number
 ---@field smeltingEffect BEffect
----@field produce table<string, number>
+---@field produce Resources
 ---@field craftMenu BPanel
 local CraftingTable = {}
 CraftingTable.Identifier = "crafting_table"
