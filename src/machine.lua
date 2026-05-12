@@ -4,22 +4,27 @@ local ents = ents
 ---@class ResourceInput
 ---@field type string? Type of resource. Can be nil, if using rateField
 ---@field rateField string? Rate field. Like SolidFuelInUnit. Can be nil, if using type
+---@field affectedByGrade boolean? Is delta of this input affected by grade of the machine
 ---@field maxCount number Max count of this resource
 ---@field callback? fun(self: BaseMachine, res: Resource, wantToTake: number): boolean? Callback of this input. Return true to prevent input
 
 ---@class ResourceOutput
 ---@field type string? Type of resource to produce. Can be nil, for flex output
 ---@field maxCount number Max count of this resource
+---@field affectedByGrade boolean? Is delta of this output affected by grade of the machine
 
 ---@class BaseMachine: BModEntity
 ---@field Inputs table<string, ResourceInput>
 ---@field Outputs table<string, ResourceOutput>
 ---@field OutputOffset Vector
+---@field FontSize number? Font size of field
 ---@field WorkCooldown number? Cooldown between works. Default 0
 ---@field EndlessDeposits boolean Can it mine from endless deposits Default true
 ---@field LimitedDeposits boolean Can it mine from limited deposits. Default true
 ---@field private nextThink number Next think. Relative to curtime
 ---@field private installConstraint Constraint? Is machine installed and constraint to install
+---@field private font string Font data for fields
+---@field private toProduce Resources Resources to produce, out of outputs
 local BaseMachine = {}
 BaseMachine.Identifier = "base_machine"
 BaseMachine.Name = "Base machine"
@@ -35,12 +40,12 @@ BaseMachine.Outputs = {}
 
 if SERVER then
     ---[SERVER] Turn machine on. Default on ALT+E. Return true to verify machine state
-    ---@param ply Player
+    ---@param ply Player?
     ---@return boolean? turnOn
     function BaseMachine:turnOn(ply) end
 
     ---[SERVER] Turn machine off. Default on ALT+E, if machine turned on
-    ---@param ply Player
+    ---@param ply Player?
     function BaseMachine:turnOff(ply) end
 
     ---[SERVER] Hook on machine use
@@ -48,6 +53,29 @@ if SERVER then
     ---@param isWalking boolean
     ---@param isSprinting boolean
     function BaseMachine:onUse(ply, isWalking, isSprinting) end
+
+
+    ---[SERVER] [INTERNAL] Turn machine off internally
+    ---@param ply Player?
+    function BaseMachine:turnOffInternal(ply)
+        self:turnOff(ply)
+        self:setNWVar("turnedOn", false)
+        self:produce()
+        BMod.logDebug("(%s) Turned machine off", tostring(self))
+    end
+
+
+    ---[SERVER] [INTERNAL] Turn machine on internally
+    ---@param ply Player?
+    function BaseMachine:turnOnInternal(ply)
+        local res = self:turnOn(ply)
+        if !res then
+            self:turnOnInternal(ply)
+        else
+            self:setNWVar("turnedOn", true)
+            BMod.logDebug("(%s) Turned machine on", tostring(self))
+        end
+    end
 
 
     ---[SERVER] KeyPress hook to get when using machine
@@ -65,13 +93,9 @@ if SERVER then
         if isWalking then
             local isTurnedOn = self:isTurnedOn()
             if isTurnedOn then
-                self:turnOff(ply)
-                self:setNWVar("turnedOn", false)
-                self:produce()
+                self:turnOffInternal(ply)
             else
-                local res = self:turnOn(ply)
-                self:setNWVar("turnedOn", res)
-                if !res then self:produce() end
+                self:turnOnInternal(ply)
             end
         end
     end
@@ -112,7 +136,6 @@ if SERVER then
                 if makeCallback(v, wantToTake) then goto cont end
                 local actual = res:take(wantToTake)
                 self:setInput(id, count + actual, resMeta.Identifier)
-                v.type = resMeta.Identifier
                 return
             end
             ::cont::
@@ -171,6 +194,13 @@ if SERVER then
     end
 
 
+    ---[SERVER] Hook on setting input
+    ---@param identifier string Identifier of input
+    ---@param count number Count of resource to set
+    ---@param type string? Type of resource for flex. Can be nil
+    function BaseMachine:onSetInput(identifier, count, type) end
+
+
     ---[SERVER] Set input resource count
     ---@param identifier string Identifier of input
     ---@param count number Count of resource to set
@@ -183,14 +213,24 @@ if SERVER then
         end
         local currentCount, currentType = self:getInput(identifier)
         self:setNWVar("input_" .. identifier, math.clamp(count, 0, input.maxCount))
-        if !input.type and !input.rateField and type and currentCount == 0 then
+        local isFlex = !input.type and !input.rateField
+        local typeToSet
+        if isFlex and type and currentCount == 0 then
             self:setNWVar("input_" .. identifier .. "Type", type)
-            input.type = type
-        elseif input.type and currentType and count == 0 then
+            typeToSet = type
+        elseif currentType and count == 0 then
             self:setNWVar("input_" .. identifier .. "Type", nil)
-            input.type = nil
         end
+        BMod.logDebug("(%s) Set input %s with type %s to %s", tostring(self), identifier, type or currentType or input.type, count)
+        self:onSetInput(identifier, count, typeToSet or currentType)
     end
+
+
+    ---[SERVER] Hook on setting output
+    ---@param identifier string Identifier of input
+    ---@param count number Count of resource to set
+    ---@param type string? Type of resource for flex. Can be nil
+    function BaseMachine:onSetOutput(identifier, count, type) end
 
 
     ---[SERVER] Set output resource
@@ -204,34 +244,220 @@ if SERVER then
             return
         end
         local currentCount, currentType = self:getOutput(identifier)
+        local setType = false
         if count > output.maxCount then
             count = count - output.maxCount
             self:produce()
+            setType = true
         end
         self:setNWVar("output_" .. identifier, count)
-        if !output.type and type and currentCount == 0 then
+        local typeToSet
+        local isFlex = !output.type
+        if isFlex and type and (currentCount == 0 or setType) then
             self:setNWVar("output_" .. identifier .. "Type", type)
-            output.type = type
-        elseif output.type and currentType and count == 0 then
+            typeToSet = type
+        elseif isFlex and currentType and count == 0 then
             self:setNWVar("output_" .. identifier .. "Type", nil)
-            output.type = nil
         end
+        self:onSetOutput(identifier, count, typeToSet or currentType)
+    end
+
+
+    ---[SERVER] Consume input with modifiers by grade
+    ---@param identifier string Identifier of the input
+    ---@param delta number Count to consume
+    ---@param type string? Type of resource for flex. Can be nil
+    function BaseMachine:consumeInput(identifier, delta, type)
+        local input = self.Inputs[identifier]
+        if !input then
+            throw("No such input: " .. identifier)
+            return
+        end
+        local currentCount = self:getInput(identifier)
+        local count = currentCount - delta
+        if input.affectedByGrade then
+            count = currentCount - (delta * self:getGradeMultiplier())
+        end
+        self:setInput(identifier, count, type)
+    end
+
+
+    ---[SERVER] Add value to output with modifiers by grade
+    ---@param identifier string Identifier of the output
+    ---@param delta number Count to consume
+    ---@param type string? Type of resource for flex. Can be nil
+    function BaseMachine:addToOutput(identifier, delta, type)
+        local output = self.Outputs[identifier]
+        if !output then
+            throw("No such output: " .. identifier)
+            return
+        end
+        local currentCount = self:getOutput(identifier)
+        local count = currentCount + delta
+        if output.affectedByGrade then
+            count = currentCount + (delta * self:getGradeMultiplier())
+        end
+        self:setOutput(identifier, count, type)
+    end
+
+    ---[SERVER] Set grade of machine
+    ---@param grade number
+    function BaseMachine:setGrade(grade)
+        self:setNWVar("grade", math.clamp(grade, 1, 5))
+    end
+
+    ---[SERVER] Set custom resource to produce 
+    ---@param identifier string Identifier of resource
+    ---@param count number Count of resource
+    function BaseMachine:setCustomProduce(identifier, count)
+        self.toProduce = self.toProduce or {}
+        self.toProduce[identifier] = count
+    end
+
+    ---[SERVER] Get custom resource from produce 
+    ---@param identifier string Identifier of resource
+    ---@return number count Count of resource to produce
+    function BaseMachine:getCustomProduce(identifier)
+        if !self.toProduce then return 0 end
+        return self.toProduce[identifier] or 0
     end
 
     ---[SERVER] Produce outputs
     function BaseMachine:produce()
         ---@type Resources
         local outputs = {}
+        local entStr = tostring(self)
         for id, output in pairs(self.Outputs) do
             local res, type = self:getOutput(id)
             if !type then goto cont end
-            outputs[type or output.type] = res
-            self:setOutput(id, 0)
+            type = type or output.type
+            outputs[type] = res
+            BMod.logDebug("(%s) Produced %s of %s", entStr, res, type)
+            self:setOutput(id, 0, type)
             ::cont::
+        end
+        if self.toProduce then
+            for id, v in pairs(self.toProduce) do
+                outputs[id] = v
+                BMod.logDebug("(%s) Produced %s of %s", entStr, v, type)
+            end
+            self.toProduce = nil
         end
         resource.produce(self.ent:localToWorld(self.OutputOffset or Vector()), self.ent:getAngles(), outputs)
     end
+
+    ---[SERVER] Take inputs resource
+    function BaseMachine:takeInputs()
+        ---@type Resources
+        local inputs = {}
+        local entStr = tostring(self)
+        for id, input in pairs(self.Inputs) do
+            local res, type = self:getInput(id)
+            if !type then goto cont end
+            type = type or input.type
+            inputs[type] = res
+            BMod.logDebug("(%s) Took %s of %s", entStr, res, type)
+            self:setInput(id, 0, type)
+            ::cont::
+        end
+        resource.produce(self.ent:localToWorld(self.OutputOffset or Vector()), self.ent:getAngles(), inputs)
+    end
+else
+    ---[INTERNAL] [CLIENT] Create font for machine
+    function BaseMachine:createFont()
+        self.FontSize = self.FontSize or 48
+        self.font = render.createFont("Roboto",self.FontSize,500,false,false,false,false,0,false,0)
+    end
+
+    ---@class DrawField
+    ---@field key string
+    ---@field value number|string
+    ---@field maxValue number? Max value
+    ---@field negate boolean? Negate value color
+    ---@field percentage boolean? Show percentage
+    ---@field oneLine boolean? Draw at one line
+
+    ---[CLIENT] Function to draw field with info
+    ---@param x number
+    ---@param y number
+    ---@param key string
+    ---@param value number|string
+    ---@param maxValue number? Max value
+    ---@param negate boolean? Negate value color
+    ---@param percentage boolean? Show percentage
+    ---@param oneLine boolean? Draw at one line
+    ---@return number w Width of info
+    ---@return number h Height of info
+    function BaseMachine:drawField(x, y, key, value, maxValue, negate, percentage, oneLine)
+        render.setFont(self.font)
+        render.enableDepth(false)
+        local function setColor()
+            local col = Color(120, 100, 50):hsvToRGB()
+            if isnumber(value) then
+                ---@cast value number
+                if maxValue then
+                    local percent = negate and (1 - (value / maxValue)) or (value / maxValue)
+                    col = Color(percent * 120, 100, 50):hsvToRGB()
+                end
+                value = math.ceil(value)
+            end
+            render.setColor(col)
+        end
+        local w, h = 0, 0
+        if !oneLine then
+            -- local half = self.FontSize / 2
+            local w1, h1 = render.drawSimpleTextOutlined(x, y + self.FontSize, string.upper(key), 2, Color(0, 0, 0), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            setColor()
+            local w2, h2 = render.drawSimpleTextOutlined(x, y + self.FontSize * 2, string.upper(value) .. (percentage and "%" or ""), 2, Color(0, 0, 0), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            w, h = w1 + w2, h1 + h2
+        else
+            setColor()
+            render.drawSimpleTextOutlined(x, y, string.upper(key) .. ": " .. string.upper(value) .. (percentage and "%" or ""), 2, Color(0, 0, 0), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+        end
+        render.setFont("Default")
+        render.setColor(Color())
+        render.enableDepth(true)
+        return w, h
+    end
+
+
+    ---[CLIENT] Function to draw fields with info
+    ---@param x number Position by X
+    ---@param y number Position by Y
+    ---@param tbl DrawField[] List of fields to draw
+    ---@param horizontal boolean? Draw horizontally
+    ---@param gap number? Gap between fields
+    function BaseMachine:drawFields(x, y, tbl, horizontal, gap)
+        gap = gap or 0
+        local xOffset = 0
+        local yOffset = 0
+        for _, v in ipairs(tbl) do
+            local key = v.key or v[1]
+            local value = v.value or v[2]
+            local maxValue = v.maxValue or v[3]
+            local negate = v.negate or v[4]
+            local percentage = v.percentage or v[5]
+            local oneLine = v.oneLine or v[6]
+            local w, h = self:drawField(x + xOffset, y + yOffset, key, value, maxValue, negate, percentage, oneLine)
+            if horizontal then
+                xOffset = xOffset + w + gap
+            else
+                yOffset = yOffset + h + gap
+            end
+        end
+    end
 end
+
+---[SHARED] Initializing machine
+function BaseMachine:initialize()
+    self.ent.BModMachine = self.Identifier
+    if CLIENT then self:createFont() end
+    self:machineInitialize()
+end
+
+
+---[SHARED] Initialize machine hook
+function BaseMachine:machineInitialize() end
 
 
 ---[SHARED] Get input of machine
@@ -261,6 +487,18 @@ end
 ---@return boolean isTurnedOn
 function BaseMachine:isTurnedOn()
     return self:getNWVar("turnedOn", false)
+end
+
+---[SHARED] Get grade of machine
+---@return number grade
+function BaseMachine:getGrade()
+    return self:getNWVar("grade", 1)
+end
+
+---[SHARED] Get grade multiplier for resources
+---@return number
+function BaseMachine:getGradeMultiplier()
+    return (1 + ((self:getGrade() - 1) * 0.25)) ^ 2
 end
 
 

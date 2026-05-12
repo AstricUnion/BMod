@@ -26,7 +26,7 @@ local unitsInMeter = 39.37008
 local foundRadius = 50 * unitsInMeter
 
 if SERVER then
-    function GroundScanner:initialize()
+    function GroundScanner:machineInitialize()
         self.ent:setMass(25)
         self.nextThink = 0
     end

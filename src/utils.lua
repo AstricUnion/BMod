@@ -15,6 +15,20 @@ if SERVER then
             net.writeString(message)
         net.send(ply)
     end
+
+    net._oldSend = net._oldSend or net.send
+    local tickStart = game.getTickCount
+
+    ---[SERVER] Send message to client optimized
+    ---@param target table|Player|nil
+    ---@param unreliable boolean?
+    function net.send(target, unreliable)
+        if game.getTickCount() == tickStart then
+            pcall(net.abort)
+            return
+        end
+        net._oldSend(target, unreliable)
+    end
 else
     local Ply = player()
     local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
@@ -113,4 +127,19 @@ else
         end
         notification.addLegacy(mes, NOTIFY.HINT, 3)
     end)
+end
+
+---[SHARED] Log BMod message in console
+---@param msg string String to format
+---@param ... any Arguments to format
+function BMod.log(msg, ...)
+    printConsole(Color(90, 150, 220), "[BMod] ", Color(255, 255, 255), string.format(msg, ...))
+end
+
+---[SHARED] Log debug BMod message in console
+---@param msg string String to format
+---@param ... any Arguments to format
+function BMod.logDebug(msg, ...)
+    if !BMod.debug then return end
+    printConsole(Color(220, 220, 90), "[BMod Debug] ", Color(255, 255, 255), string.format(msg, ...))
 end

@@ -398,7 +398,7 @@ if SERVER then
         local time = 1 / prop.spawnRate()
         for id, count in pairs(resources) do
             timer.simple(height * time * math.ceil(count / 100), function()
-                resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, false)
+                resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, true)
             end)
             height = height + 1
         end

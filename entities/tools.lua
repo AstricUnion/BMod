@@ -102,8 +102,7 @@ if SERVER then
             self:equip(ply)
             return
         end
-        local isCrowbar = ply == equippedBy and isValid(ply) and equippedBy:getActiveWeapon():getClass() == "weapon_crowbar" or false
-        if !isCrowbar then return end
+        if !self:isInHands(equippedBy) then return end
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
         if sprinting and key == IN_KEY.RELOAD then
@@ -150,7 +149,8 @@ if SERVER then
     function ToolBox.hooks.Think(self)
         local function salvage()
             local ply = self:getEquippedBy()
-            if !(ply and isValid(ply) and ply:getActiveWeapon():getClass() == "weapon_crowbar") then return end
+            if !ply or !isValid(ply) then return end
+            if !self:isInHands(ply) then return end
             if !ply:keyDown(IN_KEY.ATTACK2) then return end
             local shootPos = ply:getShootPos()
             local eyeAngs = ply:getEyeAngles()
@@ -274,7 +274,7 @@ else
             BMod.displayEnt(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
             return
         end
-        if ply:isAlive() and ply:getActiveWeapon():getClass() ~= "weapon_crowbar" then return end
+        if !self:isInHands(ply) then return end
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
         if craft then
@@ -288,7 +288,7 @@ else
     ---@param self ToolBox
     function ToolBox.hooks.DrawHUD(self)
         local ply = self:getEquippedBy()
-        if !isValid(ply) or !ply:isAlive() or ply:getActiveWeapon():getClass() ~= "weapon_crowbar" then return end
+        if !ply or !self:isInHands(ply) then return end
         local sw, sh = bgui.screenWidth, bgui.screenHeight
         render.setFont("Trebuchet18")
         -- Salvage progress
@@ -303,6 +303,16 @@ else
         end
         render.drawSimpleText(sw * 0.2, sh * 0.5, string.format("Power: %s", self:getPower()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
         render.drawSimpleText(sw * 0.2, sh * 0.5 + 18, string.format("Gas: %s", self:getGas()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+        local pos = ply:getShootPos()
+        local tr = trace.line(pos, pos + ply:getForward() * 96, {ply})
+        if tr.Hit and tr.Entity and tr.Entity.BModMachine then
+            local entInfo = ents.registered[tr.Entity.BModMachine]
+            local ent = ents.inited[tr.Entity:entIndex()]
+            ---@cast ent BaseMachine
+            render.drawSimpleText(sw * 0.8, sh * 0.5, string.format("Machine: %s", entInfo.Name), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+            render.drawSimpleText(sw * 0.8, sh * 0.5 + 18, string.format("Grade: %s", ent:getGrade()), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+            render.drawSimpleText(sw * 0.8, sh * 0.5 + 36, string.format("Durability: %s", 1200), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+        end
         local function textLine(text, lineId)
             render.drawSimpleText(sw * 0.5, sh * 0.9 - lineId * 18, text, TEXT_ALIGN.CENTER, TEXT_ALIGN.BOTTOM)
         end
@@ -364,6 +374,13 @@ else
             input.enableCursor(true)
         end)
     end)
+end
+
+---[SHARED] Is toolbox in player hands
+---@param ply Player
+function ToolBox:isInHands(ply)
+    local activeWeapon = ply and isValid(ply) and ply:getActiveWeapon()
+    return activeWeapon and isValid(activeWeapon) and activeWeapon:getClass() == "weapon_crowbar"
 end
 
 ---[SHARED] Get gas

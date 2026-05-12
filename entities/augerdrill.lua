@@ -58,24 +58,25 @@ AugerDrill.hooks = {}
 
 ---@type table<string, ResourceInput>
 AugerDrill.Inputs = {}
-AugerDrill.Inputs.power = { type = "power", maxCount = 100 }
+AugerDrill.Inputs.power = { affectedByGrade = true, type = "power", maxCount = 100 }
 
 ---@type table<string, ResourceOutput>
 AugerDrill.Outputs = {}
-AugerDrill.Outputs.resource = { maxCount = 100 }
+AugerDrill.Outputs.resource = { affectedByGrade = true, maxCount = 100 }
 
 AugerDrill.OutputOffset = Vector(30, 0, 10)
 
 AugerDrill.WorkCooldown = 1
 
 if SERVER then
-    function AugerDrill:initialize()
+    function AugerDrill:machineInitialize()
         self.ent:setMass(25)
         self.drill = drill:create().bones.origin
         self.drill:setPos(self.ent:getPos())
         self.drill:setAngles(self.ent:getAngles())
         self.drill:setParent(self.ent)
         self:setInput("power", 100)
+        self:setGrade(5)
         self.nextDecal = 0
         self.nextEffect = 0
     end
@@ -85,8 +86,8 @@ if SERVER then
         local pos = self.ent:getPos()
         local tr = trace.line(pos, pos - Vector(0, 0, 32768), {self.ent}, MASK.SOLID_BRUSHONLY)
         if !tr.Hit then return end
-        self:findDeposit()
-        if self:findDeposit() then
+        local found = self:findDeposit()
+        if found then
             self:install()
             self.drill:setLocalAngularVelocity(Angle(0, -400, 0))
             return true
@@ -105,12 +106,9 @@ if SERVER then
         local dep = self:getDeposit()
         if !dep then return false end
         local power = self:getInput("power")
-        if power <= 0 then
-            return false
-        end
-        local count = self:getOutput("resource")
-        self:setInput("power", power - 0.2)
-        self:setOutput("resource", count + 1, dep.resource)
+        if power <= 0 then return false end
+        self:consumeInput("power", 0.2)
+        self:addToOutput("resource", 1, dep.resource)
         if self.nextEffect < cur then
             local pos = self.ent:localToWorld(Vector(8, 2, 0))
             self.effect = beff.create("dirt")
@@ -132,15 +130,18 @@ if CLIENT then
     ---[CLIENT] Draw info about this drill within 3D2D
     ---@param self AugerDrill
     function AugerDrill.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(30, 0, 128), Angle(0, 0, 0), function()
+        BMod.displayEnt(self.ent, Vector(30, 0, 148), Angle(0, 0, 0), function()
             render.setFont("Trebuchet24")
-            render.drawSimpleText(0, 0, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+            local fields = {}
+            fields[#fields+1] = {"Power", self:getInput("power"), 100, false, true}
+            -- render.drawSimpleText(0, 0, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
             local count, resId = self:getOutput("resource")
             if resId then
                 local res = ents.registered[resId]
-                render.drawSimpleText(0, 24, res.Name, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-                render.drawSimpleText(0, 48, count .. "%", TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                fields[#fields+1] = {"Extracting", res.Name}
+                fields[#fields+1] = {"Progress", count, 100, false, true}
             end
+            self:drawFields(0, 0, fields)
         end)
     end
 end

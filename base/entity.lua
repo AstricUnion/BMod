@@ -27,13 +27,20 @@ ents.hooks = {}
 ---@field hooks table<string, function> Hooks to initialize on this entity
 -- Private fields
 ---@field ent Entity Prop or entity with hooks for interactions. Can be nil on client
----@field networkedVariables table<string, any> Networked variables, to network it
+---@field private networkedVariables table<string, any> Networked variables, to network it
+---@field private nwHandles boolean Is network variables found his handler on next tick
 local BModEntity = {}
 BModEntity.__index = BModEntity
 BModEntity.Name = "Base"
 BModEntity.Identifier = "base_entity"
 BModEntity.Model = "models/hunter/blocks/cube05x05x05.mdl"
 BModEntity.hooks = {}
+BModEntity.__tostring = function(self)
+    local meta = getmetatable(self)
+    local id = -1
+    if isValid(self.ent) then id = self.ent:entIndex() end
+    return string.format("BModEntity:%s[%s]", meta.Identifier, id)
+end
 
 if SERVER then
     ---[SERVER] Create new entity object
@@ -122,14 +129,27 @@ if SERVER then
     ---[SERVER] Set networked variable to entity
     ---@param key string Key of a variable
     ---@param value any Value to network
-    function BModEntity:setNWVar(key, value)
+    ---@param changeNow boolean? Don't wait for next tick to change this var
+    function BModEntity:setNWVar(key, value, changeNow)
         if self.networkedVariables[key] == value then return end
         self.networkedVariables[key] = value
-        if isValid(self.ent) then
+        local sendChanges = function()
+            if !isValid(self.ent) or !isValid(self) then return false end
             net.start("BModUpdateNWEntity")
                 net.writeTable(self.networkedVariables)
                 net.writeEntity(self.ent)
             net.send(find.allPlayers())
+            return true
+        end
+        if changeNow then
+            sendChanges()
+        elseif !self.nwHandles then
+            self.nwHandles = true
+            timer.simple(0, function()
+                if sendChanges() then
+                    self.nwHandles = false
+                end
+            end)
         end
     end
 end
@@ -247,6 +267,7 @@ function ents.register(class, inheritFrom)
     local inheritingHooks = table.copy(inheritClass.hooks)
     local inheritedClass = setmetatable(class, inheritClass)
     inheritedClass.__index = class
+    inheritedClass.__tostring = inheritClass.__tostring
     inheritedClass.hooks = table.inherit(inheritedClass.hooks, inheritingHooks)
 
     for name, func in pairs(inheritedClass.hooks) do

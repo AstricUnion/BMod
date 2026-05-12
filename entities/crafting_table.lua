@@ -46,7 +46,6 @@ mdl:add("base", part {
 ---@field nextThink number
 ---@field nextGasParticle number
 ---@field smeltingEffect BEffect
----@field produce Resources
 ---@field craftMenu BPanel
 local CraftingTable = {}
 CraftingTable.Identifier = "crafting_table"
@@ -55,6 +54,10 @@ CraftingTable.Model = function()
     return mdl:create().bones.origin
 end
 CraftingTable.hooks = {}
+
+CraftingTable.WorkCooldown = 1
+CraftingTable.OutputOffset = Vector(0, -46, 50)
+CraftingTable.FontSize = 24
 
 ---@type table<string, ResourceInput>
 CraftingTable.Inputs = {}
@@ -66,14 +69,11 @@ CraftingTable.Inputs.smelting = { maxCount = 50, callback = function (self, res,
 end }
 
 
-
 ---Create new crafting table
 if SERVER then
-    function CraftingTable:initialize()
+    function CraftingTable:machineInitialize()
         local pr = self.ent
-        self.nextThink = 0
         self.nextGasParticle = 0
-        self.produce = {}
         ---@param colData CollisionData
         pr:addCollisionListener(function(colData)
             if colData.HitSpeed:getLength() < 500 then return end
@@ -104,67 +104,56 @@ if SERVER then
         end)
     end
 
-
     ---[SERVER] Open craft menu on click or get smelting resource
-    function CraftingTable:onUse(ply)
-        local _, resToSmelt = self:getInput("smelting")
-        if resToSmelt then
-            self:stopSmelting()
-        else
-            local fuel = self:getInput("fuel")
-            if fuel < 1 then
-                BMod.errorMessage(ply, "You can't craft on empty crafting table! Use coal, wood or other solid fuel")
-                return
-            end
-            net.start("BModCraftingTableOpen")
-                net.writeEntity(self.ent)
-            net.send(ply)
+    function CraftingTable:onUse(ply, isWalking)
+        if isWalking then return end
+        local fuel = self:getInput("fuel")
+        if fuel < 1 then
+            BMod.errorMessage(ply, "You can't craft on empty crafting table! Use coal, wood or other solid fuel")
+            return
         end
+        net.start("BModCraftingTableOpen")
+            net.writeEntity(self.ent)
+        net.send(ply)
     end
 
 
+    function CraftingTable:turnOn() return true end
+
     ---[SERVER] Stop smelting and produce resources
-    function CraftingTable:stopSmelting()
-        print("dsjkl")
-        local currentUnits, resToSmelt = self:getInput("smelting")
-        local height = 0
-        local time = 1 / prop.spawnRate()
-        local pos = self.ent:localToWorld(Vector(0, -24, 10))
-        if resToSmelt then
-            self.produce[resToSmelt] = currentUnits ~= 0 and currentUnits or nil
-        end
-        for id, count in pairs(self.produce) do
-            timer.simple(height * time, function()
-                resource.create(id, pos + Vector(0, 0, height * 12), Angle(), count, false, true)
-            end)
-            height = height + 1
-        end
-        self.produce = {}
-        self:setInput("smelting", 0)
+    function CraftingTable:turnOff()
         if self.smeltingEffect then
             self.smeltingEffect:destroy()
             self.smeltingEffect = nil
         end
+        self:takeInputs()
     end
 
-    ---[SERVER] Think hook. Smelting logic
-    ---@param self CraftingTable
-    function CraftingTable.hooks.Think(self)
+
+    ---[SERVER] Hook on setting input. Smelting to turn crafting table on
+    function CraftingTable:onSetInput(id, count, type)
+        if id == "smelting" and count > 0 then
+            self:turnOnInternal()
+        end
+    end
+
+    ---[SERVER] Smelting logic
+    function CraftingTable:work()
         local cur = timer.curtime()
-        if self.nextThink >= cur then return end
-        local offsetPos = self.ent:localToWorld(Vector(0, -46, 20))
+        local offsetPos = self.ent:localToWorld(self.OutputOffset)
         local currentUnits, resToSmelt = self:getInput("smelting")
-        if !resToSmelt then return end
+        if !resToSmelt then return false end
         local fuel = self:getInput("fuel")
         local res = ents.registered[resToSmelt]
         if !res then return end
         ---@cast res Resource
         for id, multiplier in pairs(res.SmeltResource) do
-            self.produce[id] = (self.produce[id] or 0) + 0.8 * multiplier
+            local currentProduce = self:getCustomProduce(id)
+            self:setCustomProduce(id, currentProduce + 0.8 * multiplier)
         end
         if !self.smeltingEffect then
             local eff = beff.create("oilsmoke")
-            eff:setOrigin(Vector(0, -46, 20))
+            eff:setOrigin(self.OutputOffset - Vector(0, 0, 30))
             eff:setEntity(self.ent)
             eff:play()
             self.smeltingEffect = eff
@@ -176,10 +165,9 @@ if SERVER then
             par:spawn()
             self.nextGasParticle = cur + 10
         end
-        self:setInput("smelting", currentUnits - 0.5)
-        self:setInput("fuel", fuel - 1)
-        if currentUnits - 0.5 <= 0 or fuel - 1 < 1 then self:stopSmelting() end
-        self.nextThink = cur + 1
+        self:consumeInput("smelting", 0.5, resToSmelt)
+        self:consumeInput("fuel", 1)
+        if currentUnits - 0.5 <= 0 or fuel - 1 < 1 then return false end
     end
 end
 
@@ -188,7 +176,7 @@ if CLIENT then
     local bgui = bgui
 
 
-    function CraftingTable:initialize()
+    function CraftingTable:machineInitialize()
         self.ent.craftOffset = Vector(5, 0, 60)
     end
 
@@ -196,15 +184,17 @@ if CLIENT then
     ---@param self CraftingTable
     function CraftingTable.hooks.PostDrawTranslucentRenderables(self)
         BMod.displayEnt(self.ent, Vector(10.5, -50, 18), Angle(), function()
-            render.setFont("Trebuchet24")
-            render.drawSimpleText(0, 0, string.format("Fuel: %s", self:getInput("fuel")), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            local fields = {}
+            fields[#fields+1] = {"Fuel", self:getInput("fuel"), 100, false, true, true}
             local currentUnits, resToSmelt = self:getInput("smelting")
-            if !resToSmelt then return end
-            local res = ents.registered[resToSmelt]
-            if !res then return end
-            render.setFont("Trebuchet18")
-            render.drawSimpleText(0, 32, "Progress: " .. res.Name, TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
-            render.drawSimpleText(0, 54, "Remaining: " .. math.ceil(currentUnits), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            if resToSmelt then
+                local res = ents.registered[resToSmelt]
+                if res then
+                    fields[#fields+1] = {"Progress", res.Name, 100, false, false}
+                    fields[#fields+1] = {"Remaining", currentUnits, 50, true, true}
+                end
+            end
+            self:drawFields(0, 0, fields, false, 8)
         end)
     end
 

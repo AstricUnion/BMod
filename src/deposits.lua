@@ -103,6 +103,7 @@ if SERVER then
     ---@param multiThread boolean? Return corouine
     ---@return function? generate Generate coroutine handler
     function deposit.startGeneration(count, multiThread)
+        BMod.log("Started generating " .. count .. " deposits")
         local depositsLeft = count
         local navAreas = table.copy(globalNavAreas)
         local frequenced = table.copy(deposit.info)
@@ -161,9 +162,14 @@ if SERVER then
                     amount = amount,
                     underwater = isWater
                 }
+                BMod.logDebug(string.format(
+                    "Generated deposit[%s] with resource %s, size: %s, rate or amount: %s, position: %s, underwater: %s",
+                    id, depositInfo.resource, size * 2, rate or amount, tostring(point), isWater
+                ))
                 depositsLeft = depositsLeft - 1
                 ::cont::
             end
+            BMod.log("Deposits generated")
             net.start("BModSyncDeposits")
                 net.writeTable(deposit.inited)
             net.send(find.allPlayers())
