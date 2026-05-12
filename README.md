@@ -13,7 +13,7 @@
     - [ ] Client config commands
 - [ ] Machines
     - [x] Crafting table
-        - [ ] Function to melt ore
+        - [x] Function to melt ore
         - [ ] Add more crafts
     - [ ] Solid fuel generator
     - [ ] Make GUI for machines
@@ -21,7 +21,7 @@
     - [ ] Workbench
     - [ ] Fabricator
     - [ ] Solar panel
-    - [ ] Auger drill
+    - [x] Auger drill
     - [ ] Ground scanner
     - [ ] Liquid fuel generator
     - [ ] Oil rig
@@ -34,12 +34,12 @@
 - [ ] Deposits
     - [ ] Deposits without navmesh
     - [ ] Master-chip for deposits
-    - [ ] Debug with icons for deposits
+    - [x] Debug with icons for deposits
     - [ ] Move deposits info in server configuration
 - [ ] Tools
     - [ ] Toolbox
-        - [ ] Base craft system
-        - [ ] Salvaging
+        - [x] Base craft system
+        - [x] Salvaging
         - [ ] Upgrade machines
     - [x] Bucket
     - [ ] More pretty system for SWEPs, not crowbar
@@ -57,7 +57,7 @@
     - [ ] Both sides mesh and custom materials support
 - [ ] Armor system
     - [ ] Armor creating
-    - [ ] Visual armor system 
+    - [x] Visual armor system 
     - [ ] Armor inventory managing
 - [ ] Plants
 - [ ] Bombs

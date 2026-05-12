@@ -55,7 +55,9 @@ bmodConfig = require("bmod/src/config.lua")
 resource = require("bmod/src/resource.lua")
 
 require("bmod/src/machine.lua")
-require("bmod/src/equippable.lua")
+
+---@class equipment
+equipment = require("bmod/src/equippable.lua")
 
 
 ---@class beff
@@ -117,7 +119,8 @@ if SERVER then
     -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- toolbox:setGas(100)
     -- toolbox:setPower(100)
-    ents.create("hat"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    ents.create("hat"):spawn(chip():getPos() + Vector(0, -5, 12), Angle(), false)
+    ents.create("hat"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
     -- ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- deposit.create("coal", chip():getPos(), 300, 727)
     -- resource.create("coal", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)

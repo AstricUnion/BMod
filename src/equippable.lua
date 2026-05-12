@@ -1,23 +1,113 @@
-
 ---@class ents
 local ents = ents
 
----@class BaseEquippable: BModEntity
+
+---@enum EquipSlot
+local EquipSlot = {
+    head = 1,
+    eyes = 2,
+    mouthAndNose = 3,
+    ears = 4,
+    leftShoulder = 5,
+    leftForearm = 6,
+    leftThigh = 7,
+    leftCalf = 8,
+    chest = 9,
+    back = 10,
+    waist = 11,
+    pelvis = 12,
+    rightShoulder = 13,
+    rightForearm = 14,
+    rightThigh = 15,
+    rightCalf = 16,
+}
+
+---@alias ArmorInfo table<EquipSlot, Equippable>
+
+
+---Class to handle equipment and info about it
+---@class equipment
+---@field players table<Player, ArmorInfo>
+---@field EquipSlot table<EquipSlot, number>
+---@field FullBody table<number, boolean>
+---@field Locational table<number, boolean>
+---@field Biological table<number, boolean>
+---@field Piercing table<number, boolean>
+local equipment = {}
+equipment.players = {}
+equipment.EquipSlot = EquipSlot
+
+equipment.Locational = {
+    [DAMAGE.BULLET] = true, [DAMAGE.BUCKSHOT] = true, [DAMAGE.AIRBOAT] = true, [DAMAGE.SNIPER] = true
+}
+
+equipment.FullBody = {
+    [DAMAGE.CRUSH] = true, [DAMAGE.SLASH] = true, [DAMAGE.BURN] = true,
+    [DAMAGE.VEHICLE] = true, [DAMAGE.BLAST] = true, [DAMAGE.CLUB] = true,
+    [DAMAGE.PLASMA] = true, [DAMAGE.ACID] = true, [DAMAGE.POISON] = true
+}
+
+equipment.Biological = { [DAMAGE.NERVEGAS] = true, [DAMAGE.RADIATION] = true }
+
+equipment.Piercing = {
+    [DAMAGE.BULLET] = true, [DAMAGE.BUCKSHOT] = true, [DAMAGE.AIRBOAT] = true, [DAMAGE.SNIPER] = true, [DAMAGE.SLASH] = true
+}
+
+if SERVER then
+    ---[SERVER] Reserve slots for equippable
+    ---@param ply Player Player to equip
+    ---@param toEquip Equippable Item to equip
+    ---@param force boolean Force equip, drop if reserved
+    ---@return boolean success Is succesfully equipped
+    function equipment.reserveSlot(ply, toEquip, force)
+        local plyEquipment = equipment.players[ply] or {}
+        local newEquipment = {}
+        for v, _ in pairs(toEquip.EquipSlots) do
+            local current = plyEquipment[v]
+            if isValid(current) and !force then
+                return false
+            elseif isValid(current) and force then
+                current:drop()
+            end
+            newEquipment[v] = toEquip
+        end
+        for i, v in pairs(newEquipment) do
+            plyEquipment[i] = v
+        end
+        equipment.players[ply] = plyEquipment
+        return true
+    end
+
+    ---[SERVER] Reserve slots for equippable
+    ---@param ply Player Player to equip
+    ---@param toEquip Equippable Item to equip
+    function equipment.emptySlot(ply, toEquip)
+        local plyEquipment = equipment.players[ply]
+        if !plyEquipment then return end
+        for v, _ in pairs(toEquip.EquipSlots) do
+            plyEquipment[v] = nil
+        end
+    end
+end
+
+---@class Equippable: BModEntity
 ---@field EquippedModel string|fun(): Hologram
 ---@field BoneToEquip string Bone to equip this equippable
 ---@field EquipOffset Vector? Offset for equipped entity
 ---@field EquipAngle Angle? Angle offset for equipped entity
----@field private equippedModel Hologram?
-local BaseEquippable = {}
-BaseEquippable.Identifier = "base_equippable"
-BaseEquippable.Name = "Base equippable"
-BaseEquippable.Model = ""
-BaseEquippable.hooks = {}
+---@field EquipSlots table<EquipSlot, number> Slots to reserve for this equippable. Value is coverage of this equipment
+---@field MaxDurability number? Max durability of this equippable
+---@field private equippedPoint Hologram?
+local Equippable = {}
+Equippable.Identifier = "base_equippable"
+Equippable.Name = "Base equippable"
+Equippable.Model = ""
+Equippable.hooks = {}
 
 
 if SERVER then
     ---[SERVER] Equip on click
-    function BaseEquippable.hooks.KeyPress(self, ply, key)
+    function Equippable.hooks.KeyPress(self, ply, key)
         local walking = ply:keyDown(IN_KEY.WALK)
         if walking and key == IN_KEY.USE then
             local tr = ply:getEyeTrace()
@@ -29,36 +119,117 @@ if SERVER then
         end
     end
 
-    ---[SERVER] Equip this toolbox
+    ---[SERVER] Equip this item
     ---@param ply Player
-    function BaseEquippable:equip(ply)
+    function Equippable:equip(ply)
+        local equipped = self:getEquippedBy()
+        if isValid(equipped) then return end
+        equipment.reserveSlot(ply, self, true)
         self.ent:enableMotion(false)
-        self.ent:setNoDraw(true)
         local bone = ply:lookupBone(self.BoneToEquip)
         if !bone then return end
         local matr = ply:getBoneMatrix(bone)
-        self.equippedModel = isstring(self.EquippedModel) and hologram.create(Vector(), Angle(), self.EquippedModel) or self.EquippedModel()
         local pos, ang = localToWorld(self.EquipOffset or Vector(), self.EquipAngle or Angle(), matr:getTranslation(), matr:getAngles())
-        self.equippedModel:setPos(pos)
-        self.equippedModel:setAngles(ang)
-        self.equippedModel:setParent(ply, nil, bone)
+        self.equippedPoint = hologram.create(pos, ang, "models/hunter/plates/plate.mdl")
+        self.equippedPoint:setParent(ply, nil, bone)
+        self.equippedPoint:setNoDraw(true)
+        self.ent:setPos(pos)
+        self.ent:setAngles(ang)
+        self.ent:setParent(self.equippedPoint)
         self.ent:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
         self.ent:emitSound("items/ammo_pickup.wav")
         self:setNWVar("equippedBy", ply)
     end
 
 
-    function BaseEquippable:onRemove()
-        if !isValid(self.equippedModel) then return end
-        self.equippedModel:remove()
+    ---[SERVER] Drop this item
+    function Equippable:drop()
+        local ply = self:getEquippedBy()
+        if !isValid(ply) then return end
+        local pos = ply:getShootPos()
+        local angs = ply:getEyeAngles()
+        local tr = trace.line(pos, pos + angs:getForward() * 64, {ply})
+        self.ent:setParent(nil)
+        self.ent:setPos(tr.HitPos)
+        self.ent:enableMotion(true)
+        self.ent:setNoDraw(false)
+        self.ent:setCollisionGroup(COLLISION_GROUP.NONE)
+        if isValid(self.equippedPoint) then
+            self.equippedPoint:remove()
+            self.equippedPoint = nil
+        end
+        self:setNWVar("equippedBy", nil)
+        self.ent:emitSound("AI_BaseNPC.BodyDrop_Heavy")
+        equipment.emptySlot(ply, self)
+    end
+
+
+    function Equippable:onRemove()
+        if !isValid(self.equippedPoint) then return end
+        self.equippedPoint:remove()
+    end
+
+
+    ---[SERVER] Set durability of equippable
+    ---@param durability number
+    function Equippable:setDurability(durability)
+        self:setNWVar("durability", math.clamp(durability, 0, self.MaxDurability))
+    end
+
+    local damageMultipliers = {
+        [HITGROUP.HEAD] = { head = 1, eyes = 0.5, mouthAndNose = 0.5 },
+        [HITGROUP.CHEST] = { chest = 1, back = 1 },
+        [HITGROUP.GENERIC] = { chest = 1, back = 1 },
+        [HITGROUP.STOMACH] = { pelvis = 1 },
+        [HITGROUP.RIGHTARM] = { rightShoulder = 1, rightForearm = 1 },
+        [HITGROUP.LEFTARM] = { leftShoulder = 1, leftForearm = 1 },
+        [HITGROUP.RIGHTLEG] = { rightThigh = 1, rightCalf = 1 },
+        [HITGROUP.LEFTLEG] = { leftThigh = 1, leftCalf = 1 },
+    }
+
+    local nonProtective = { EquipSlot.ears, EquipSlot.waist }
+
+    ---[SERVER] Hook to damage equipment
+    ---@param target Entity
+    hook.add("EntityTakeDamage", "BModEquipmentDurability", function(target, attacker, inflictor, amount, type, position, force)
+        ---@type ArmorInfo
+        local plyEquipped = equipment.players[target]
+        local dmgType = inflictor.dmgType or type
+        if !plyEquipped then return end
+        ---@cast target Player
+        local damageSlots = damageMultipliers[target:lastHitGroup()]
+        local protection = 0
+        for armorSlot, armor in pairs(plyEquipped) do
+            for coverageSlot, coverage in pairs(armor.EquipSlots) do
+                for slot, multipliers in pairs(damageSlots) do
+                end
+            end
+        end
+    end)
+else
+    function Equippable.hooks.RenderOffscreen(self)
+        local ply = self:getEquippedBy()
+        if !isValid(ply) then
+            self.ent:setNoDraw(false)
+            return
+        end
+        self.ent:setNoDraw(ply == player() and !ply:shouldDrawLocalPlayer())
     end
 end
 
 ---[SHARED] Is toolbox equipped and who equipped it
----@return Player? owner
-function BaseEquippable:getEquippedBy()
+---@return Player owner
+function Equippable:getEquippedBy()
     return self:getNWVar("equippedBy", nil)
 end
 
-ents.register(BaseEquippable)
+---[SHARED] Get durability of equippable
+---@return number durability
+function Equippable:getDurability()
+    return self:getNWVar("durability", self.MaxDurability)
+end
 
+
+ents.register(Equippable)
+
+return equipment

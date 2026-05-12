@@ -1,7 +1,12 @@
 ---@class ents
 local ents = ents
 
----@class Hat: BaseEquippable
+---@class equipment
+local equipment = equipment
+---@type EquipSlot
+local EquipSlot = equipment.EquipSlot
+
+---@class Hat: Equippable
 ---@field toScan Deposit[]
 ---@field nextEffect number Next effect. Relative to curtime
 ---@field nextDecal number Next decal. Relative to curtime
@@ -15,6 +20,7 @@ Hat.EquippedModel = "models/player/items/humans/top_hat.mdl"
 Hat.BoneToEquip = "ValveBiped.Bip01_Head1"
 Hat.EquipOffset = Vector(0, -1, 0)
 Hat.EquipAngle = Vector(0, 110, 90)
+Hat.EquipSlots = {[EquipSlot.head] = 0.6}
 Hat.hooks = {}
 
 ents.register(Hat, "base_equippable")
