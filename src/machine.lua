@@ -150,8 +150,7 @@ if SERVER then
         if (self.nextThink or 0) >= cur then return end
         local res = self:work()
         if res == false then
-            self:turnOff()
-            self:produce()
+            self:turnOffInternal()
         end
         self.nextThink = cur + (self.WorkCooldown or 0)
     end
