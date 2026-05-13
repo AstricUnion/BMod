@@ -210,16 +210,15 @@ if SERVER then
         equipment.emptySlot(ply, self)
     end
 
-
     function Equippable:onRemove()
         if !isValid(self.equippedPoint) then return end
         self.equippedPoint:remove()
     end
 
-
     ---[SERVER] Set durability of equippable
     ---@param durability number
     function Equippable:setDurability(durability)
+        if durability <= 0 then self:remove() return end
         self:setNWVar("durability", math.clamp(durability, 0, self.MaxDurability))
     end
 
@@ -250,12 +249,16 @@ if SERVER then
         ---@cast target Player
         local damageSlots = damageMultipliers[target:lastHitGroup()]
         local protection = 0
-        for armorSlot, armor in pairs(plyEquipped) do
-            if nonProtective[armorSlot] or !armor.DefenseProfile then goto cont end
+        for armorSlot, damageMultiplier in pairs(damageSlots) do
+            local armor = plyEquipped[armorSlot]
+            if nonProtective[armorSlot] or !isValid(armor) or !armor.DefenseProfile then goto cont end
             local coverage = armor.EquipSlots[armorSlot]
-            local damageMutliplier = damageSlots[armorSlot] or 1
             local damageProtection = armor.Defense and armor.Defense[dmgType] or armor.DefenseProfile[dmgType]
-            protection = protection + damageProtection * coverage * damageMutliplier
+            local currentProtection = damageProtection * coverage * damageMultiplier
+            protection = protection + currentProtection
+            if amount >= 5 then
+                armor:setDurability(armor:getDurability() - amount / 2)
+            end
             ::cont::
         end
         local scale = multiplier * protection

@@ -120,7 +120,7 @@ if SERVER then
     -- toolbox:setGas(100)
     -- toolbox:setPower(100)
     ents.create("hat"):spawn(chip():getPos() + Vector(0, -5, 12), Angle(), false)
-    ents.create("hat"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
+    ents.create("vest_medium"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
     -- ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- deposit.create("coal", chip():getPos(), 300, 727)
     -- resource.create("coal", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)

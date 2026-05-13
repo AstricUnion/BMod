@@ -2,7 +2,59 @@
 ---@author AstricUnion
 
 
+---Class to manipulate hologram models with custom meshes and hitboxes
+---@class model
+---@field registered table<string, ModelInfo>
+---@field mesh table<number, CMesh>
+local model = {}
+model.registered = {}
+model.mesh = {}
+model.rigVisible = false
+
 ---@alias modelfun fun(): (Entity?)
+
+---Class to create custom mesh for holograms
+---@class CMesh
+---@field id number
+---@field url string? [SERVER] URL of custom mesh to load
+---@field mesh Mesh? [CLIENT] Loaded mesh
+local CMesh = {}
+
+if SERVER then
+    ---[SERVER] Create new custom mesh
+    ---@param url string URL or file path to mesh
+    ---@return CMesh
+    function CMesh:new(url)
+        return setmetatable({ url = url }, self)
+    end
+
+    ---[SERVER] Load CMesh to clients
+    ---@return number id
+    function CMesh:load()
+        local id = #model.mesh+1
+        model.mesh[id] = self
+        self.id = id
+        net.start("CustomMeshLoad")
+            net.writeTable({self})
+        net.send(find.allPlayers())
+        return id
+    end
+
+    hook.add("ClientInitialized", "CustomMeshLoad", function(ply)
+        net.start("CustomMeshLoad")
+            net.writeTable(table.add({}, model.mesh))
+        net.send(ply)
+    end)
+else
+    net.receive("CustomMeshLoad", function()
+        local info = net.readTable()
+        for _, msh in ipairs(info) do
+            model.mesh[msh.id] = msh
+        end
+    end)
+end
+
+
 ---@class Bone
 ---@field parent string
 ---@field bone modelfun
@@ -12,11 +64,6 @@
 ---@field bones table<string, Bone>
 local ModelInfo = {}
 ModelInfo.__index = ModelInfo
-
----@class model
----@field registered table<string, ModelInfo>
-local model = {}
-model.rigVisible = false
 
 ---[SHARED] Sets rig visibility on creation. Call before rig()
 ---@param state boolean
@@ -239,7 +286,6 @@ end
 ---@field bones table<string, Entity>
 local Model = {}
 Model.__index = Model
-
 
 
 ---@return Model?
