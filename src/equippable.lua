@@ -2,8 +2,21 @@
 local ents = ents
 
 
+---@alias ArmorInfo table<EquipSlot, Equippable>
+
+
+---Class to handle equipment and info about it
+---@class equipment
+---@field players table<Player, ArmorInfo>
+---@field FullBody table<number, boolean>
+---@field Locational table<number, boolean>
+---@field Biological table<number, boolean>
+---@field Piercing table<number, boolean>
+local equipment = {}
+equipment.players = {}
+
 ---@enum EquipSlot
-local EquipSlot = {
+equipment.EquipSlot = {
     head = 1,
     eyes = 2,
     mouthAndNose = 3,
@@ -22,21 +35,6 @@ local EquipSlot = {
     rightCalf = 16,
 }
 
----@alias ArmorInfo table<EquipSlot, Equippable>
-
-
----Class to handle equipment and info about it
----@class equipment
----@field players table<Player, ArmorInfo>
----@field EquipSlot table<EquipSlot, number>
----@field FullBody table<number, boolean>
----@field Locational table<number, boolean>
----@field Biological table<number, boolean>
----@field Piercing table<number, boolean>
-local equipment = {}
-equipment.players = {}
-equipment.EquipSlot = EquipSlot
-
 equipment.Locational = {
     [DAMAGE.BULLET] = true, [DAMAGE.BUCKSHOT] = true, [DAMAGE.AIRBOAT] = true, [DAMAGE.SNIPER] = true
 }
@@ -52,6 +50,53 @@ equipment.Biological = { [DAMAGE.NERVEGAS] = true, [DAMAGE.RADIATION] = true }
 equipment.Piercing = {
     [DAMAGE.BULLET] = true, [DAMAGE.BUCKSHOT] = true, [DAMAGE.AIRBOAT] = true, [DAMAGE.SNIPER] = true, [DAMAGE.SLASH] = true
 }
+
+---@enum DefenseProfile
+equipment.DefenseProfile = {
+    Basic = {
+        [DAMAGE.BUCKSHOT] = .999,
+        [DAMAGE.CLUB] = .99,
+        [DAMAGE.SLASH] = .99,
+        [DAMAGE.BULLET] = .98,
+        [DAMAGE.BLAST] = .95,
+        [DAMAGE.SNIPER] = .9,
+        [DAMAGE.AIRBOAT] = .85,
+        [DAMAGE.CRUSH] = .75,
+        [DAMAGE.VEHICLE] = .65,
+        [DAMAGE.BURN] = .65,
+        [DAMAGE.PLASMA] = .65,
+        [DAMAGE.ACID] = .55
+    },
+    Poor = {
+        [DAMAGE.BUCKSHOT] = .6,
+        [DAMAGE.CLUB] = .6,
+        [DAMAGE.SLASH] = .6,
+        [DAMAGE.BULLET] = .2,
+        [DAMAGE.BLAST] = .2,
+        [DAMAGE.SNIPER] = .1,
+        [DAMAGE.AIRBOAT] = .2,
+        [DAMAGE.CRUSH] = .3,
+        [DAMAGE.VEHICLE] = .2,
+        [DAMAGE.BURN] = .2,
+        [DAMAGE.PLASMA] = .1,
+        [DAMAGE.ACID] = .1
+    },
+    NonArmor = {
+        [DAMAGE.BUCKSHOT] = .05,
+        [DAMAGE.BLAST] = .05,
+        [DAMAGE.BULLET] = .05,
+        [DAMAGE.SNIPER] = .05,
+        [DAMAGE.AIRBOAT] = .05,
+        [DAMAGE.CLUB] = .05,
+        [DAMAGE.SLASH] = .05,
+        [DAMAGE.CRUSH] = .05,
+        [DAMAGE.VEHICLE] = .05,
+        [DAMAGE.BURN] = .05,
+        [DAMAGE.PLASMA] = .05,
+        [DAMAGE.ACID] = .05
+    }
+}
+local EquipSlot = equipment.EquipSlot
 
 if SERVER then
     ---[SERVER] Reserve slots for equippable
@@ -96,6 +141,8 @@ end
 ---@field EquipOffset Vector? Offset for equipped entity
 ---@field EquipAngle Angle? Angle offset for equipped entity
 ---@field EquipSlots table<EquipSlot, number> Slots to reserve for this equippable. Value is coverage of this equipment
+---@field DefenseProfile DefenseProfile? Defense profile for this equipment. Sets default reaction to any damage types. If nil, then no defense
+---@field Defense table<number, number>? Defense by damage types
 ---@field MaxDurability number? Max durability of this equippable
 ---@field private equippedPoint Hologram?
 local Equippable = {}
@@ -177,17 +224,20 @@ if SERVER then
     end
 
     local damageMultipliers = {
-        [HITGROUP.HEAD] = { head = 1, eyes = 0.5, mouthAndNose = 0.5 },
-        [HITGROUP.CHEST] = { chest = 1, back = 1 },
-        [HITGROUP.GENERIC] = { chest = 1, back = 1 },
-        [HITGROUP.STOMACH] = { pelvis = 1 },
-        [HITGROUP.RIGHTARM] = { rightShoulder = 1, rightForearm = 1 },
-        [HITGROUP.LEFTARM] = { leftShoulder = 1, leftForearm = 1 },
-        [HITGROUP.RIGHTLEG] = { rightThigh = 1, rightCalf = 1 },
-        [HITGROUP.LEFTLEG] = { leftThigh = 1, leftCalf = 1 },
+        [HITGROUP.HEAD] = { [EquipSlot.head] = 1, [EquipSlot.eyes] = 0.5, [EquipSlot.mouthAndNose] = 0.5 },
+        [HITGROUP.CHEST] = { [EquipSlot.chest] = 1, [EquipSlot.back] = 1 },
+        [HITGROUP.GENERIC] = { [EquipSlot.chest] = 1, [EquipSlot.back] = 1 },
+        [HITGROUP.STOMACH] = { [EquipSlot.pelvis] = 1 },
+        [HITGROUP.RIGHTARM] = { [EquipSlot.rightShoulder] = 1, [EquipSlot.rightForearm] = 1 },
+        [HITGROUP.LEFTARM] = { [EquipSlot.leftShoulder] = 1, [EquipSlot.leftForearm] = 1 },
+        [HITGROUP.RIGHTLEG] = { [EquipSlot.rightThigh] = 1, [EquipSlot.rightCalf] = 1 },
+        [HITGROUP.LEFTLEG] = { [EquipSlot.leftThigh] = 1, [EquipSlot.leftCalf] = 1 },
     }
 
-    local nonProtective = { EquipSlot.ears, EquipSlot.waist }
+    local nonProtective = {
+        [EquipSlot.ears] = true,
+        [EquipSlot.waist] = true
+    }
 
     ---[SERVER] Hook to damage equipment
     ---@param target Entity
@@ -196,15 +246,20 @@ if SERVER then
         local plyEquipped = equipment.players[target]
         local dmgType = inflictor.dmgType or type
         if !plyEquipped then return end
+        local multiplier = 1
         ---@cast target Player
         local damageSlots = damageMultipliers[target:lastHitGroup()]
         local protection = 0
         for armorSlot, armor in pairs(plyEquipped) do
-            for coverageSlot, coverage in pairs(armor.EquipSlots) do
-                for slot, multipliers in pairs(damageSlots) do
-                end
-            end
+            if nonProtective[armorSlot] or !armor.DefenseProfile then goto cont end
+            local coverage = armor.EquipSlots[armorSlot]
+            local damageMutliplier = damageSlots[armorSlot] or 1
+            local damageProtection = armor.Defense and armor.Defense[dmgType] or armor.DefenseProfile[dmgType]
+            protection = protection + damageProtection * coverage * damageMutliplier
+            ::cont::
         end
+        local scale = multiplier * protection
+        target:setHealth(target:getHealth() + amount * scale)
     end)
 else
     function Equippable.hooks.RenderOffscreen(self)
