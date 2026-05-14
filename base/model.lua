@@ -2,63 +2,150 @@
 ---@author AstricUnion
 
 
+---@class ToNetwork
+---@field holo Hologram
+---@field meshId string?
+---@field meshPart string?
+---@field materialId string?
+
 ---Class to manipulate hologram models with custom meshes and hitboxes
 ---@class model
 ---@field registered table<string, ModelInfo>
+---@field toNetwork ToNetwork[]
+---@field networked ToNetwork[]
 ---@field mesh table<number, CMesh>
 local model = {}
 model.registered = {}
 model.mesh = {}
+model.toNetwork = {}
+model.networked = {}
 model.rigVisible = false
 
 ---@alias modelfun fun(): (Entity?)
 
+---@class MeshPretend
+---@field holo Hologram
+---@field part string
+
 ---Class to create custom mesh for holograms
 ---@class CMesh
----@field id number
+---@field id string
 ---@field url string? [SERVER] URL of custom mesh to load
+---@field data string? [CLIENT] OBJ data of custom mesh
+---@field download boolean [CLIENT] Is mesh downloads
 ---@field mesh Mesh? [CLIENT] Loaded mesh
+---@field pretendsToIt MeshPretend[] [CLIENT] Holograms, that pretends to this mesh, when it not loaded
 local CMesh = {}
+CMesh.__index = CMesh
 
 if SERVER then
     ---[SERVER] Create new custom mesh
+    ---@param id string
     ---@param url string URL or file path to mesh
     ---@return CMesh
-    function CMesh:new(url)
-        return setmetatable({ url = url }, self)
+    function CMesh:new(id, url)
+        return setmetatable({ id = id, url = url }, self)
     end
 
     ---[SERVER] Load CMesh to clients
-    ---@return number id
     function CMesh:load()
-        local id = #model.mesh+1
-        model.mesh[id] = self
-        self.id = id
+        model.mesh[self.id] = self
         net.start("CustomMeshLoad")
             net.writeTable({self})
         net.send(find.allPlayers())
-        return id
     end
-
-    hook.add("ClientInitialized", "CustomMeshLoad", function(ply)
-        net.start("CustomMeshLoad")
-            net.writeTable(table.add({}, model.mesh))
-        net.send(ply)
-    end)
-
     ---[SERVER] Create new shared mesh (will be initialized on server and sent to clients)
+    ---@param id string
     ---@param url string URL or file path to mesh
     ---@return CMesh
-    function model.newMesh(url)
-        return CMesh:new(url)
+    function model.newMesh(id, url)
+        return CMesh:new(id, url)
     end
+
+    ---[SERVER] Sync holograms to clients
+    ---@param ply Player? Player to send
+    function model.sync(ply)
+        net.start("NetworkHolograms")
+            net.writeTable(model.toNetwork)
+        net.send(ply or find.allPlayers())
+    end
+
+    hook.add("ClientInitialized", "InitializeHologramsAndCustom", function(ply)
+        local meshes = table.add({}, model.mesh)
+        net.start("CustomMeshLoad")
+            net.writeTable(meshes)
+        net.send(ply)
+        model.sync(ply)
+    end)
 else
+    local meshLoadCoroutine = coroutine.wrap(function()
+        while true do
+            coroutine.yield()
+            for _, v in pairs(model.mesh) do
+                if v.mesh then goto cont end
+                if !v.data then
+                    if !v.download then
+                        http.get(v.url, function(data)
+                            v.data = data
+                            v.download = false
+                        end)
+                    end
+                    v.download = true
+                    goto cont
+                end
+                v.mesh = mesh.createFromObj(v.data, true)
+                for _, pretendent in ipairs(v.pretendsToIt) do
+                    pretendent.holo:setMesh(v.mesh[pretendent.part])
+                end
+                v.pretendsToIt = {}
+                ::cont::
+            end
+        end
+    end)
+
     net.receive("CustomMeshLoad", function()
         local info = net.readTable()
         for _, msh in ipairs(info) do
-            model.mesh[msh.id] = msh
+            msh.pretendsToIt = {}
+            model.mesh[msh.id] = setmetatable(msh, CMesh)
         end
     end)
+
+    local getNetworkedHolograms = coroutine.wrap(function()
+        while true do
+            coroutine.yield()
+            for _, v in ipairs(model.networked) do
+                if !isValid(v.holo) then goto cont end
+                local msh = model.mesh[v.meshId]
+                if !msh then goto cont end
+                ---@cast msh CMesh
+                msh:setTo(v.holo, v.meshPart)
+                ::cont::
+            end
+        end
+    end)
+
+    net.receive("NetworkHolograms", function()
+        model.networked = net.readTable()
+    end)
+
+    hook.add("Think", "CustomMeshLoad", function()
+        for _=1, 3 do
+            meshLoadCoroutine()
+        end
+        getNetworkedHolograms()
+    end)
+
+    ---[CLIENT] Set this mesh to hologram
+    ---@param holo Hologram Hologram to set
+    ---@param part string Part to set (mesh table key)
+    function CMesh:setTo(holo, part)
+        if self.mesh then
+            holo:setMesh(self.mesh[part])
+            return
+        end
+        self.pretendsToIt[#self.pretendsToIt+1] = {holo = holo, part = part}
+    end
 end
 
 
@@ -132,17 +219,6 @@ function ModelInfo:add(parent, bone, mdl)
     return self
 end
 
-
----@class HoloParameters
----@field pos Vector?
----@field ang Angle?
----@field model string?
----@field scale Vector?
----@field size Vector?
----@field submaterial number?
----@field material string?
----@field color Color?
----@field light boolean?
 
 ---@alias VertexType
 ---| '"cube"'
@@ -234,11 +310,11 @@ function model.hitbox(tbl)
         local pr = prop.createCustom(Vector(), Angle(), vertexes, true)
         local phys = pr:getPhysicsObject()
         pr:setFrozen(freeze)
-        pr:setNoDraw(!visible)
         timer.simple(0, function()
             if !isValid(phys) then return end
             phys:setMass(mass)
             phys:setMaterial(mat)
+            pr:setNoDraw(!visible)
         end)
         return pr
     end
@@ -263,6 +339,19 @@ function model.part(tbl)
     end
 end
 
+---@class HoloParameters
+---@field pos Vector?
+---@field ang Angle?
+---@field model string?
+---@field scale Vector?
+---@field size Vector?
+---@field submaterial number?
+---@field material string?
+---@field color Color?
+---@field noLight boolean?
+---@field mesh string?
+---@field meshPart string?
+---@field materialId string?
 
 ---[SHARED] Create hologram with extended parameters
 ---@param tbl HoloParameters
@@ -276,18 +365,26 @@ function model.holo(tbl)
     local submat = tbl.submaterial or tbl[6] or 0
     local mat = tbl.material or tbl[7]
     local color = tbl.color or tbl[8] or Color(255, 255, 255, 255)
-    local suppressLight = !(tbl.light or tbl[9] or true)
+    local noLight = tbl.noLight or tbl[9] or false
+    local meshId = tbl.mesh or tbl[10]
+    local meshPart = tbl.meshPart or tbl[11]
+    local materialId = tbl.materialId or tbl[12]
     return function()
         local holo = hologram.create(pos, ang, mdl, scale)
         if !holo then return end
-        holo:suppressEngineLighting(suppressLight)
+        holo:suppressEngineLighting(noLight)
         if size then holo:setSize(size) end
         if mat then holo:setSubMaterial(submat, mat) end
         holo:setColor(color)
+        model.toNetwork[#model.toNetwork+1] = {
+            holo = holo,
+            meshId = meshId,
+            meshPart = meshPart,
+            materialId = materialId
+        }
         return holo
     end
 end
-
 
 ---@class Model
 ---@field bones table<string, Entity>
@@ -319,6 +416,7 @@ function ModelInfo:create()
         end
         holo:setParent(parentHolo)
     end
+    model.sync()
     return mdl
 end
 
@@ -336,5 +434,6 @@ end
 function model.get(identifier)
     return model.registered[identifier]
 end
+
 
 return model

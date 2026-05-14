@@ -6,6 +6,25 @@ local equipment = equipment
 local EquipSlot = equipment.EquipSlot
 local DefenseProfile = equipment.DefenseProfile
 
+---@class model
+local model = model
+local hitbox = model.hitbox
+local vertex = model.vertex
+local part = model.part
+local holo = model.holo
+local rig = model.rig
+
+if SERVER then
+    model.newMesh("vest_medium", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/mesh/armor.obj")
+        :load()
+end
+
+local mdl = model.create(hitbox {
+    vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
+    mass = 30
+})
+mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "vest_medium", meshPart = "AR_Gjel_lod0"} )
+
 ---@class VestMedium: Equippable
 ---@field toScan Deposit[]
 ---@field nextEffect number Next effect. Relative to curtime
@@ -15,7 +34,9 @@ local DefenseProfile = equipment.DefenseProfile
 local VestMedium = {}
 VestMedium.Identifier = "vest_medium"
 VestMedium.Name = "Vest Medium"
-VestMedium.Model = "models/player/armor_gjel/gjel.mdl" -- used from original jmod, just to test
+VestMedium.Model = function()
+    return mdl:create().bones.origin
+end
 VestMedium.BoneToEquip = "ValveBiped.Bip01_Spine2"
 VestMedium.EquipOffset = Vector(-7, 3, 0)
 VestMedium.EquipAngle = Vector(0, 88, 90)
