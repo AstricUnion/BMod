@@ -45,6 +45,13 @@ if SERVER then
             net.writeTable(table.add({}, model.mesh))
         net.send(ply)
     end)
+
+    ---[SERVER] Create new shared mesh (will be initialized on server and sent to clients)
+    ---@param url string URL or file path to mesh
+    ---@return CMesh
+    function model.newMesh(url)
+        return CMesh:new(url)
+    end
 else
     net.receive("CustomMeshLoad", function()
         local info = net.readTable()

@@ -26,13 +26,14 @@ equipment.EquipSlot = {
     leftThigh = 7,
     leftCalf = 8,
     chest = 9,
-    back = 10,
-    waist = 11,
-    pelvis = 12,
-    rightShoulder = 13,
-    rightForearm = 14,
-    rightThigh = 15,
-    rightCalf = 16,
+    abdomen = 10,
+    back = 11,
+    waist = 12,
+    pelvis = 13,
+    rightShoulder = 14,
+    rightForearm = 15,
+    rightThigh = 16,
+    rightCalf = 17,
 }
 
 equipment.Locational = {
@@ -226,7 +227,7 @@ if SERVER then
         [HITGROUP.HEAD] = { [EquipSlot.head] = 1, [EquipSlot.eyes] = 0.5, [EquipSlot.mouthAndNose] = 0.5 },
         [HITGROUP.CHEST] = { [EquipSlot.chest] = 1, [EquipSlot.back] = 1 },
         [HITGROUP.GENERIC] = { [EquipSlot.chest] = 1, [EquipSlot.back] = 1 },
-        [HITGROUP.STOMACH] = { [EquipSlot.pelvis] = 1 },
+        [HITGROUP.STOMACH] = { [EquipSlot.pelvis] = 1, [EquipSlot.abdomen] = 1 },
         [HITGROUP.RIGHTARM] = { [EquipSlot.rightShoulder] = 1, [EquipSlot.rightForearm] = 1 },
         [HITGROUP.LEFTARM] = { [EquipSlot.leftShoulder] = 1, [EquipSlot.leftForearm] = 1 },
         [HITGROUP.RIGHTLEG] = { [EquipSlot.rightThigh] = 1, [EquipSlot.rightCalf] = 1 },
@@ -253,7 +254,7 @@ if SERVER then
             local armor = plyEquipped[armorSlot]
             if nonProtective[armorSlot] or !isValid(armor) or !armor.DefenseProfile then goto cont end
             local coverage = armor.EquipSlots[armorSlot]
-            local damageProtection = armor.Defense and armor.Defense[dmgType] or armor.DefenseProfile[dmgType]
+            local damageProtection = armor.Defense and armor.Defense[dmgType] or armor.DefenseProfile[dmgType] or 1
             local currentProtection = damageProtection * coverage * damageMultiplier
             protection = protection + currentProtection
             if amount >= 5 then
@@ -261,8 +262,8 @@ if SERVER then
             end
             ::cont::
         end
-        local scale = multiplier * protection
-        target:setHealth(target:getHealth() + amount * scale)
+        local scale = multiplier * (1 - protection)
+        target:setHealth(target:getHealth() + amount * (1 - scale))
     end)
 else
     function Equippable.hooks.RenderOffscreen(self)
