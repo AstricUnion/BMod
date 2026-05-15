@@ -19,10 +19,10 @@ if CLIENT then
         :load()
 
     local mat = model.newMaterial("vest_medium", "VertexLitGeneric")
-    mat:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/vest_medium_old.jpg")
-    mat:setInt("$realwidth", 256)
-    mat:setInt("$realheight", 256)
-    mat:recompute()
+    local matrix = Matrix()
+    matrix:setScale(Vector(0.25, 0.25, 0))
+    mat:setMatrix("$basetexturetransform", matrix)
+    mat:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/vest_medium.jpg")
 end
 
 local mdl = model.create(hitbox {
