@@ -100,7 +100,15 @@ else
         if !isValid(tr.Entity) then return end
         local centerW, centerH = bgui.screenWidth / 2, bgui.screenHeight / 2
         render.setColor(Color(50, 50, 50))
-        render.drawRoundedBox(4, centerW + 16, centerH + 16, 128, 64)
+        render.drawRoundedBox(4, centerW + 16, centerH + 16, 196, 128)
+        render.setColor(bgui.COLORS.bg)
+        render.drawRoundedBox(4, centerW + 20, centerH + 20, 196, 24)
+        render.setFont("CenterPrintText")
+        render.setColor(Color())
+        if tr.Entity.BModMachine then
+            local class = ents.registered[tr.Entity.BModMachine]
+            render.drawSimpleText(centerW + 24, centerH + 24, class.Name)
+        end
     end)
 
 
