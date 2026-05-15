@@ -15,9 +15,11 @@
 ---@field toNetwork ToNetwork[]
 ---@field networked ToNetwork[]
 ---@field mesh table<number, CMesh>
+---@field materials table<string, Material>
 local model = {}
 model.registered = {}
 model.mesh = {}
+model.materials = {}
 model.toNetwork = {}
 model.networked = {}
 model.rigVisible = false
@@ -154,6 +156,25 @@ else
             return
         end
         self.pretendsToIt[#self.pretendsToIt+1] = {holo = holo, part = part}
+    end
+
+    ---@alias MaterialShader
+    ---| '"UnlitGeneric"'"
+    ---| '"VertexLitGeneric"'"
+    ---| '"Refract_DX90"'"
+    ---| '"Water_DX90"'"
+    ---| '"Sky_DX9"'
+    ---| '"gmodscreenspace"'
+    ---| '"Modulate_DX9"'
+
+    ---[CLIENT] Create new custom material
+    ---@param id string
+    ---@param shader MaterialShader
+    ---@return Material
+    function model.newMaterial(id, shader)
+        local mat = material.create(shader)
+        model.materials[id] = mat
+        return mat
     end
 end
 
