@@ -14,7 +14,7 @@ local part = model.part
 local holo = model.holo
 local rig = model.rig
 
-if SERVER then
+if CLIENT then
     model.newMesh("vest_medium", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/mesh/armor.obj")
         :load()
 end
@@ -35,10 +35,10 @@ local VestMedium = {}
 VestMedium.Identifier = "vest_medium"
 VestMedium.Name = "Vest Medium"
 VestMedium.Model = function()
-    return mdl:create().bones.origin
+    return mdl:create()
 end
 VestMedium.BoneToEquip = "ValveBiped.Bip01_Spine2"
-VestMedium.EquipOffset = Vector(-7, 3, 0)
+VestMedium.EquipOffset = Vector(-6.5, 3, 0)
 VestMedium.EquipAngle = Vector(0, 88, 90)
 VestMedium.EquipSlots = {[EquipSlot.chest] = 1, [EquipSlot.abdomen] = 1}
 VestMedium.DefenseProfile = DefenseProfile.Basic

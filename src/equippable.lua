@@ -160,6 +160,7 @@ if SERVER then
         if walking and key == IN_KEY.USE then
             local tr = ply:getEyeTrace()
             ---@cast tr TraceResult
+            print(tr.Entity)
             if tr.Entity ~= self.ent then return end
             if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
             self:equip(ply)

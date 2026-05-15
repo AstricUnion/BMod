@@ -4,6 +4,7 @@
 
 ---@class ToNetwork
 ---@field holo Hologram
+---@field origin boolean? Is this origin of entity
 ---@field meshId string?
 ---@field meshPart string?
 ---@field materialId string?
@@ -32,36 +33,24 @@ model.rigVisible = false
 ---@field id string
 ---@field url string? [SERVER] URL of custom mesh to load
 ---@field data string? [CLIENT] OBJ data of custom mesh
----@field download boolean [CLIENT] Is mesh downloads
 ---@field mesh Mesh? [CLIENT] Loaded mesh
 ---@field pretendsToIt MeshPretend[] [CLIENT] Holograms, that pretends to this mesh, when it not loaded
 local CMesh = {}
 CMesh.__index = CMesh
 
+---Override methods of entity to work with models
+---@param ent Entity
+local function methodsOverride(ent)
+    ent.__setNoDrawOld = ent.__setNoDrawOld or ent.setNoDraw
+
+    function ent:setNoDraw(state)
+        for _, v in ipairs(ent:getChildren()) do
+            v:setNoDraw(state)
+        end
+    end
+end
+
 if SERVER then
-    ---[SERVER] Create new custom mesh
-    ---@param id string
-    ---@param url string URL or file path to mesh
-    ---@return CMesh
-    function CMesh:new(id, url)
-        return setmetatable({ id = id, url = url }, self)
-    end
-
-    ---[SERVER] Load CMesh to clients
-    function CMesh:load()
-        model.mesh[self.id] = self
-        net.start("CustomMeshLoad")
-            net.writeTable({self})
-        net.send(find.allPlayers())
-    end
-    ---[SERVER] Create new shared mesh (will be initialized on server and sent to clients)
-    ---@param id string
-    ---@param url string URL or file path to mesh
-    ---@return CMesh
-    function model.newMesh(id, url)
-        return CMesh:new(id, url)
-    end
-
     ---[SERVER] Sync holograms to clients
     ---@param ply Player? Player to send
     function model.sync(ply)
@@ -78,24 +67,41 @@ if SERVER then
         model.sync(ply)
     end)
 else
+    ---[CLIENT] Create new custom mesh
+    ---@param id string
+    ---@param url string URL or file path to mesh
+    ---@return CMesh
+    function CMesh:new(id, url)
+        return setmetatable({ id = id, pretendsToIt = {}, url = url }, self)
+    end
+
+    ---[CLIENT] Load CMesh
+    function CMesh:load()
+        model.mesh[self.id] = self
+        http.get(self.url, function(data)
+            self.data = data
+        end)
+    end
+
+    ---[CLIENT] Create new mesh
+    ---@param id string
+    ---@param url string URL or file path to mesh
+    ---@return CMesh
+    function model.newMesh(id, url)
+        return CMesh:new(id, url)
+    end
+
     local meshLoadCoroutine = coroutine.wrap(function()
         while true do
             coroutine.yield()
             for _, v in pairs(model.mesh) do
                 if v.mesh then goto cont end
-                if !v.data then
-                    if !v.download then
-                        http.get(v.url, function(data)
-                            v.data = data
-                            v.download = false
-                        end)
-                    end
-                    v.download = true
-                    goto cont
-                end
+                if !v.data then goto cont end
                 v.mesh = mesh.createFromObj(v.data, true)
                 for _, pretendent in ipairs(v.pretendsToIt) do
+                    if !isValid(pretendent.holo) then goto cont end
                     pretendent.holo:setMesh(v.mesh[pretendent.part])
+                    ::cont::
                 end
                 v.pretendsToIt = {}
                 ::cont::
@@ -103,25 +109,25 @@ else
         end
     end)
 
-    net.receive("CustomMeshLoad", function()
-        local info = net.readTable()
-        for _, msh in ipairs(info) do
-            msh.pretendsToIt = {}
-            model.mesh[msh.id] = setmetatable(msh, CMesh)
-        end
-    end)
-
     local getNetworkedHolograms = coroutine.wrap(function()
         while true do
             coroutine.yield()
+            local newNetworked = {}
             for _, v in ipairs(model.networked) do
-                if !isValid(v.holo) then goto cont end
-                local msh = model.mesh[v.meshId]
-                if !msh then goto cont end
-                ---@cast msh CMesh
-                msh:setTo(v.holo, v.meshPart)
+                do
+                    if !isValid(v.holo) then goto cont end
+                    if v.origin then methodsOverride(v.holo) end
+                    local msh = model.mesh[v.meshId]
+                    if !msh then goto cont1 end
+                    ---@cast msh CMesh
+                    msh:setTo(v.holo, v.meshPart)
+                    goto cont1
+                end
                 ::cont::
+                newNetworked[#newNetworked+1] = v
+                ::cont1::
             end
+            model.networked = newNetworked
         end
     end)
 
@@ -130,7 +136,10 @@ else
     end)
 
     hook.add("Think", "CustomMeshLoad", function()
-        for _=1, 3 do
+        local maxQuota = quotaMax() / 2
+        local currentQuota = quotaAverage()
+        if currentQuota > maxQuota then return end
+        for _=1, math.ceil(maxQuota / currentQuota) do
             meshLoadCoroutine()
         end
         getNetworkedHolograms()
@@ -149,22 +158,11 @@ else
 end
 
 
----@class Bone
----@field parent string
----@field bone modelfun
-
----@class ModelInfo
----@field origin Vector()
----@field bones table<string, Bone>
-local ModelInfo = {}
-ModelInfo.__index = ModelInfo
-
 ---[SHARED] Sets rig visibility on creation. Call before rig()
 ---@param state boolean
 function model.setRigVisible(state)
     model.rigVisible = state
 end
-
 
 local rigScale = Vector(0.2, 0.2, 0.2)
 ---[SHARED] Create rig hologram (invisible with static model)
@@ -182,43 +180,6 @@ function model.rig(pos, ang)
         return holo
     end
 end
-
----[SHARED] Create new model info
----@param origin Vector|modelfun? Origin of this entity
----@return ModelInfo
-function model.create(origin)
-    local rig = isfunction(origin) and origin or model.rig(origin)
-    return setmetatable(
-        { origin = rig, bones = {} },
-        ModelInfo
-    )
-end
-
-
----[SHARED] Add new bone to model
----@param parent string Identifier of bone to parent
----@param bone string|modelfun Identifier of bone
----@param mdl modelfun? Function to create model
----@return ModelInfo
-function ModelInfo:add(parent, bone, mdl)
-    local outName
-    local outModel
-    local outParent
-    if !mdl then
-        outName = parent
-        outModel = bone
-    else
-        outParent = parent
-        outName = bone
-        outModel = mdl
-    end
-    self.bones[outName] = {
-        parent = outParent,
-        bone = outModel
-    }
-    return self
-end
-
 
 ---@alias VertexType
 ---| '"cube"'
@@ -310,11 +271,11 @@ function model.hitbox(tbl)
         local pr = prop.createCustom(Vector(), Angle(), vertexes, true)
         local phys = pr:getPhysicsObject()
         pr:setFrozen(freeze)
+        pr:setNoDraw(!visible)
         timer.simple(0, function()
             if !isValid(phys) then return end
             phys:setMass(mass)
             phys:setMaterial(mat)
-            pr:setNoDraw(!visible)
         end)
         return pr
     end
@@ -386,40 +347,86 @@ function model.holo(tbl)
     end
 end
 
----@class Model
----@field bones table<string, Entity>
-local Model = {}
-Model.__index = Model
 
 
----@return Model?
+---@class Bone
+---@field parent string
+---@field bone modelfun
+
+---@class ModelInfo
+---@field origin fun()
+---@field bones table<string, Bone>
+local ModelInfo = {}
+ModelInfo.__index = ModelInfo
+
+
+---[SHARED] Add new bone to model
+---@param parent string Identifier of bone to parent
+---@param bone string|modelfun Identifier of bone
+---@param mdl modelfun? Function to create model
+---@return ModelInfo
+function ModelInfo:add(parent, bone, mdl)
+    local outName
+    local outModel
+    local outParent
+    if !mdl then
+        outName = parent
+        outModel = bone
+    else
+        outParent = parent
+        outName = bone
+        outModel = mdl
+    end
+    self.bones[outName] = {
+        parent = outParent,
+        bone = outModel
+    }
+    return self
+end
+
+
+---@return Entity?
 function ModelInfo:create()
-    local mdl = setmetatable({ bones = {} }, Model)
+    ---@type table<string, Entity>
+    local bones = {}
     local originHolo = self.origin()
     if !originHolo then
         throw("Can't create origin")
         return
     end
-    mdl.bones.origin = originHolo
+    bones.origin = originHolo
     for name, part in pairs(self.bones) do
         local holo = part.bone()
         if !holo then
             throw("Can't create bone " .. name)
             return
         end
-        mdl.bones[name] = holo
+        bones[name] = holo
         local parent = part.parent
-        local parentHolo = mdl.bones[parent] or !parent and originHolo
+        local parentHolo = bones[parent] or !parent and originHolo
         if !parentHolo then
             throw(string.format("Parent \"%s\" for \"%s\" not found! Maybe you placed it in incorrect sequence?", parent, name))
             return
         end
         holo:setParent(parentHolo)
     end
+    originHolo.bones = bones
+    methodsOverride(originHolo)
+    model.toNetwork[#model.toNetwork+1] = { holo = originHolo, origin = true }
     model.sync()
-    return mdl
+    return originHolo
 end
 
+---[SHARED] Create new model info
+---@param origin Vector|modelfun? Origin of this entity
+---@return ModelInfo
+function model.create(origin)
+    local rig = isfunction(origin) and origin or model.rig(origin)
+    return setmetatable(
+        { origin = rig, bones = {} },
+        ModelInfo
+    )
+end
 
 ---[SHARED] Register new model to use it after
 ---@param identifier string Identifier of the model
