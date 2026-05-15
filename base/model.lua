@@ -123,6 +123,10 @@ else
                     if !msh then goto cont1 end
                     ---@cast msh CMesh
                     msh:setTo(v.holo, v.meshPart)
+                    local mat = model.materials[v.materialId]
+                    if !mat then goto cont end
+                    ---@cast mat Material
+                    v.holo:setSubMaterial(0, "!" .. mat:getName())
                     goto cont1
                 end
                 ::cont::

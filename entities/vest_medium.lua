@@ -17,13 +17,19 @@ local rig = model.rig
 if CLIENT then
     model.newMesh("vest_medium", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/mesh/armor.obj")
         :load()
+
+    local mat = model.newMaterial("vest_medium", "VertexLitGeneric")
+    mat:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/vest_medium_old.jpg")
+    mat:setInt("$realwidth", 256)
+    mat:setInt("$realheight", 256)
+    mat:recompute()
 end
 
 local mdl = model.create(hitbox {
     vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
     mass = 30
 })
-mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "vest_medium", meshPart = "AR_Gjel_lod0"} )
+mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "vest_medium", materialId = "vest_medium", meshPart = "AR_Gjel_lod0"} )
 
 ---@class VestMedium: Equippable
 ---@field toScan Deposit[]
