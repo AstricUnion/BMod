@@ -22,7 +22,7 @@
     - [ ] Fabricator
     - [ ] Solar panel
     - [x] Auger drill
-    - [ ] Ground scanner
+    - [x] Ground scanner
     - [ ] Liquid fuel generator
     - [ ] Oil rig
     - [ ] Oil refinery
@@ -35,7 +35,6 @@
     - [ ] Deposits without navmesh
     - [ ] Master-chip for deposits
     - [x] Debug with icons for deposits
-    - [ ] Move deposits info in server configuration
 - [ ] Tools
     - [ ] Toolbox
         - [x] Base craft system
@@ -52,9 +51,9 @@
     - [ ] Make headphones for local chatting (can't make voice, so I should make PR to Starfall with PlayerCanHearVoice hook)
 - [ ] Holomodels library
     - [x] Base modeling system
-    - [ ] Client and server support
+    - [x] Client and server support
     - [ ] Tweens for animations (not related to BMod)
-    - [ ] Both sides mesh and custom materials support
+    - [x] Both sides mesh and custom materials support
 - [ ] Armor system
     - [ ] Armor creating
     - [x] Visual armor system 

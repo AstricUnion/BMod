@@ -69,9 +69,7 @@ if SERVER then
     ---@param ply Player?
     function BaseMachine:turnOnInternal(ply)
         local res = self:turnOn(ply)
-        if !res then
-            self:turnOnInternal(ply)
-        else
+        if res then
             self:setNWVar("turnedOn", true)
             BMod.logDebug("(%s) Turned machine on", tostring(self))
         end

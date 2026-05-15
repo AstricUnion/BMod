@@ -153,6 +153,11 @@ Equippable.Model = ""
 Equippable.hooks = {}
 
 
+---[SHARED] Initialize equippable
+function Equippable:initialize()
+    self.ent.BModEquippable = self.Identifier
+end
+
 if SERVER then
     ---[SERVER] Equip on click
     function Equippable.hooks.KeyPress(self, ply, key)
@@ -186,9 +191,11 @@ if SERVER then
         if !bone then return end
         local matr = ply:getBoneMatrix(bone)
         local pos, ang = localToWorld(self.EquipOffset or Vector(), self.EquipAngle or Angle(), matr:getTranslation(), matr:getAngles())
-        self.equippedPoint = hologram.create(pos, ang, "models/hunter/plates/plate.mdl")
+        if !isValid(self.equippedPoint) then
+            self.equippedPoint = hologram.create(pos, ang, "models/hunter/plates/plate.mdl")
+            self.equippedPoint:setNoDraw(true)
+        end
         self.equippedPoint:setParent(ply, nil, bone)
-        self.equippedPoint:setNoDraw(true)
         self.ent:setPos(pos)
         self.ent:setAngles(ang)
         self.ent:setParent(self.equippedPoint)
@@ -202,18 +209,16 @@ if SERVER then
     function Equippable:drop()
         local ply = self:getEquippedBy()
         if !isValid(ply) then return end
-        local pos = ply:getShootPos()
         local angs = ply:getEyeAngles()
-        local spawnAt = ply:isAlive() and pos or trace.line(pos, pos + angs:getForward() * 64, {ply}).HitPos
+        local shootPos = ply:getShootPos()
         self.ent:setParent(nil)
-        self.ent:setPos(spawnAt)
-        self.ent:enableMotion(true)
-        self.ent:setNoDraw(false)
-        self.ent:setCollisionGroup(COLLISION_GROUP.NONE)
-        if isValid(self.equippedPoint) then
-            self.equippedPoint:remove()
-            self.equippedPoint = nil
+        if ply:isAlive() then
+            local pos = trace.line(shootPos, shootPos + angs:getForward() * 64, {ply}).HitPos
+            self.ent:setPos(pos)
+            self.ent:setAngles(angs)
         end
+        self.ent:enableMotion(true)
+        self.ent:setCollisionGroup(COLLISION_GROUP.NONE)
         self:setNWVar("equippedBy", nil)
         self.ent:emitSound("AI_BaseNPC.BodyDrop_Heavy")
         equipment.emptySlot(ply, self)
@@ -250,6 +255,12 @@ if SERVER then
     ---[SERVER] Hook to damage equipment
     ---@param target Entity
     hook.add("EntityTakeDamage", "BModEquipmentDurability", function(target, attacker, inflictor, amount, type, position, force)
+        if target.BModEquippable then
+            local ent = ents.inited[target:entIndex()]
+            if !ent then return end
+            ---@cast ent Equippable
+            ent:setDurability(ent:getDurability() - amount / 2)
+        end
         ---@type ArmorInfo
         local plyEquipped = equipment.players[target]
         local dmgType = inflictor.dmgType or type
