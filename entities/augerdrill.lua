@@ -33,7 +33,7 @@ mdl:add("base", part {
 })
 
 local drillMat = "models/props_canal/canal_bridge_railing_01a"
-local drill = model.create(part {
+local drillMdl = model.create(part {
     rig(),
     holo { Vector(0, 0, 56), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.15, 0.15), material = drillMat },
     holo { Vector(0, 0, 32), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.15, 0.15), material = drillMat  },
@@ -52,7 +52,7 @@ local AugerDrill = {}
 AugerDrill.Identifier = "augerdrill"
 AugerDrill.Name = "Auger Drill"
 AugerDrill.Model = function()
-    return mdl:create().bones.origin
+    return mdl:create()
 end
 AugerDrill.hooks = {}
 
@@ -71,12 +71,12 @@ AugerDrill.WorkCooldown = 1
 if SERVER then
     function AugerDrill:machineInitialize()
         self.ent:setMass(25)
-        self.drill = drill:create().bones.origin
-        self.drill:setPos(self.ent:getPos())
-        self.drill:setAngles(self.ent:getAngles())
-        self.drill:setParent(self.ent)
-        self:setInput("power", 100)
-        self:setGrade(5)
+        local drill = drillMdl:create()
+        if !drill then return end
+        drill:setPos(self.ent:getPos())
+        drill:setAngles(self.ent:getAngles())
+        drill:setParent(self.ent)
+        self.drill = drill
         self.nextDecal = 0
         self.nextEffect = 0
     end

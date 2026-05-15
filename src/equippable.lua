@@ -160,11 +160,18 @@ if SERVER then
         if walking and key == IN_KEY.USE then
             local tr = ply:getEyeTrace()
             ---@cast tr TraceResult
-            print(tr.Entity)
             if tr.Entity ~= self.ent then return end
             if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
             self:equip(ply)
             return
+        end
+    end
+
+    ---@param self ToolBox
+    ---@param ply Player
+    function Equippable.hooks.PlayerDeath(self, ply, _, _)
+        if self:getEquippedBy() == ply then
+            self:drop()
         end
     end
 
@@ -197,9 +204,9 @@ if SERVER then
         if !isValid(ply) then return end
         local pos = ply:getShootPos()
         local angs = ply:getEyeAngles()
-        local tr = trace.line(pos, pos + angs:getForward() * 64, {ply})
+        local spawnAt = ply:isAlive() and pos or trace.line(pos, pos + angs:getForward() * 64, {ply}).HitPos
         self.ent:setParent(nil)
-        self.ent:setPos(tr.HitPos)
+        self.ent:setPos(spawnAt)
         self.ent:enableMotion(true)
         self.ent:setNoDraw(false)
         self.ent:setCollisionGroup(COLLISION_GROUP.NONE)

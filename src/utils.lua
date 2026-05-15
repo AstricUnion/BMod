@@ -92,6 +92,17 @@ else
         render.popMatrix()
     end
 
+    hook.add("DrawHUD", "BModEntityInfo", function()
+        if !bgui.screenWidth then return end
+        local ply = player()
+        local shootPos = ply:getShootPos()
+        local tr = trace.line(shootPos, shootPos + ply:getEyeAngles():getForward() * 96, {ply})
+        if !isValid(tr.Entity) then return end
+        local centerW, centerH = bgui.screenWidth / 2, bgui.screenHeight / 2
+        render.setColor(Color(50, 50, 50))
+        render.drawRoundedBox(4, centerW + 16, centerH + 16, 128, 64)
+    end)
+
 
     ---@type Bass?
     local hintSound
