@@ -56,6 +56,13 @@ if SERVER then
     ---[SERVER] Sync holograms to clients
     ---@param ply Player? Player to send
     function model.sync(ply)
+        local newToNetwork = {}
+        for _, v in ipairs(model.toNetwork) do
+            if !isValid(v.holo) then goto cont end
+            newToNetwork[#newToNetwork+1] = v
+            ::cont::
+        end
+        model.toNetwork = newToNetwork
         net.start("NetworkHolograms")
             net.writeTable(model.toNetwork)
         net.send(ply or find.allPlayers())

@@ -20,8 +20,10 @@ if CLIENT then
 
     local mat = model.newMaterial("vest_medium", "VertexLitGeneric")
     local matrix = Matrix()
-    matrix:setScale(Vector(0.25, 0.25, 0))
+    matrix:setScale(Vector(0.225, 0.225, 0))
     mat:setMatrix("$basetexturetransform", matrix)
+    mat:setInt("$realwidth", 256)
+    mat:setInt("$realheight", 256)
     mat:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/vest_medium.jpg")
 end
 

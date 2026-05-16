@@ -84,7 +84,7 @@ if SERVER then
                 ent:enableMotion(false)
                 if self.inProcess then return end
                 self.inProcess = ent
-                timer.simple(0.01, function()
+                timer.simple(0.05, function()
                     local res = resource.salvage(ent)
                     local pos = ent:getPos()
                     ent:remove()
@@ -94,6 +94,7 @@ if SERVER then
                     eff:setScale(0.6)
                     eff:play()
                     timer.simple(0.5, function()
+                        print(res)
                         for id, count in pairs(res) do
                             resource.create(id, pos, angs, count, false)
                         end
