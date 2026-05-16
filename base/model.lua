@@ -3,7 +3,7 @@
 
 
 ---@class ToNetwork
----@field holo Hologram
+---@field holoId number Entindex of holo or origin
 ---@field origin boolean? Is this origin of entity
 ---@field meshId string?
 ---@field meshPart string?
@@ -56,9 +56,10 @@ if SERVER then
     ---[SERVER] Sync holograms to clients
     ---@param ply Player? Player to send
     function model.sync(ply)
+        if next(model.toNetwork) == nil then return end
         local newToNetwork = {}
         for _, v in ipairs(model.toNetwork) do
-            if !isValid(v.holo) then goto cont end
+            if !isValid(entity(v.holoId)) then goto cont end
             newToNetwork[#newToNetwork+1] = v
             ::cont::
         end
@@ -124,16 +125,18 @@ else
             local newNetworked = {}
             for _, v in ipairs(model.networked) do
                 do
-                    if !isValid(v.holo) then goto cont end
-                    if v.origin then methodsOverride(v.holo) end
+                    local ent = entity(v.holoId)
+                    if !isValid(ent) then goto cont end
+                    if v.origin then methodsOverride(ent) end
+                    ---@cast ent Hologram
                     local msh = model.mesh[v.meshId]
                     if !msh then goto cont1 end
                     ---@cast msh CMesh
-                    msh:setTo(v.holo, v.meshPart)
+                    msh:setTo(ent, v.meshPart)
                     local mat = model.materials[v.materialId]
                     if !mat then goto cont end
                     ---@cast mat Material
-                    v.holo:setSubMaterial(0, "!" .. mat:getName())
+                    ent:setSubMaterial(0, "!" .. mat:getName())
                     goto cont1
                 end
                 ::cont::
@@ -287,6 +290,7 @@ end
 ---@field visible boolean?
 
 
+-- TODO: i can set mesh for custom prop. maybe can make less holos
 ---[SHARED] Create new vertex
 ---@param tbl HitboxParameters
 ---@return modelfun
@@ -370,7 +374,7 @@ function model.holo(tbl)
         if mat then holo:setSubMaterial(submat, mat) end
         holo:setColor(color)
         model.toNetwork[#model.toNetwork+1] = {
-            holo = holo,
+            holoId = holo:entIndex(),
             meshId = meshId,
             meshPart = meshPart,
             materialId = materialId
@@ -444,7 +448,7 @@ function ModelInfo:create()
     end
     originHolo.bones = bones
     methodsOverride(originHolo)
-    model.toNetwork[#model.toNetwork+1] = { holo = originHolo, origin = true }
+    model.toNetwork[#model.toNetwork+1] = { holoId = originHolo:entIndex(), origin = true }
     model.sync()
     return originHolo
 end

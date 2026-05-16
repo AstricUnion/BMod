@@ -30,7 +30,7 @@ if CLIENT then
 
     function OilSmoke:think()
         local cur = timer.curtime()
-        if self.nextParticle >= cur then return end
+        if self.emmiter:getParticlesLeft() <= 1 or self.nextParticle >= cur then return end
         local entity = self:getEntity()
         local originStart = self:getOrigin()
         local origin = isValid(entity) and entity:localToWorld(originStart) or originStart
@@ -48,7 +48,7 @@ if CLIENT then
         end
         local size = !isFire and math.rand(20, 30) or math.rand(10, 20)
         local particle = self.emmiter:add(
-            sprite, origin, size - 8, size + 5,
+            sprite, origin, size - 10, size + 5,
             0, 0, isFire and 100 or 255, 0, 1
         )
         if particle then

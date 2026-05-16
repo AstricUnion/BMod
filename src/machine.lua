@@ -146,7 +146,7 @@ if SERVER then
         local cur = timer.curtime()
         if !self:isTurnedOn() then return end
         if (self.nextThink or 0) >= cur then return end
-        local res = self:work()
+        local res = self:work(cur)
         if res == false then
             self:turnOffInternal()
         end
@@ -155,8 +155,9 @@ if SERVER then
 
 
     ---[SERVER] When machine works. Return false to turn machine off
+    ---@param cur number
     ---@return false? end
-    function BaseMachine:work() end
+    function BaseMachine:work(cur) end
 
 
     ---[SERVER] Install this machine on ground
@@ -326,8 +327,8 @@ if SERVER then
         local entStr = tostring(self)
         for id, output in pairs(self.Outputs) do
             local res, type = self:getOutput(id)
-            if !type then goto cont end
             type = type or output.type
+            if !type then goto cont end
             outputs[type] = res
             BMod.logDebug("(%s) Produced %s of %s", entStr, res, type)
             self:setOutput(id, 0, type)

@@ -7,11 +7,6 @@ local EquipSlot = equipment.EquipSlot
 local DefenseProfile = equipment.DefenseProfile
 
 ---@class Hat: Equippable
----@field toScan Deposit[]
----@field nextEffect number Next effect. Relative to curtime
----@field nextDecal number Next decal. Relative to curtime
----@field effect BEffect
----@field drill Entity
 local Hat = {}
 Hat.Identifier = "hat"
 Hat.Name = "Hat"

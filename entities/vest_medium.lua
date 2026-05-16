@@ -20,7 +20,7 @@ if CLIENT then
 
     local mat = model.newMaterial("vest_medium", "VertexLitGeneric")
     local matrix = Matrix()
-    matrix:setScale(Vector(0.225, 0.225, 0))
+    matrix:setScale(Vector(0.25, 0.25, 0))
     mat:setMatrix("$basetexturetransform", matrix)
     mat:setInt("$realwidth", 256)
     mat:setInt("$realheight", 256)
@@ -34,11 +34,6 @@ local mdl = model.create(hitbox {
 mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "vest_medium", materialId = "vest_medium", meshPart = "AR_Gjel_lod0"} )
 
 ---@class VestMedium: Equippable
----@field toScan Deposit[]
----@field nextEffect number Next effect. Relative to curtime
----@field nextDecal number Next decal. Relative to curtime
----@field effect BEffect
----@field drill Entity
 local VestMedium = {}
 VestMedium.Identifier = "vest_medium"
 VestMedium.Name = "Vest Medium"

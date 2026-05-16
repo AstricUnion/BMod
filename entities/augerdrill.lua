@@ -70,7 +70,6 @@ AugerDrill.WorkCooldown = 1
 
 if SERVER then
     function AugerDrill:machineInitialize()
-        self.ent:setMass(25)
         local drill = drillMdl:create()
         if !drill then return end
         drill:setPos(self.ent:getPos())
@@ -83,9 +82,6 @@ if SERVER then
 
     function AugerDrill:turnOn(ply)
         if self:getInput("power") < 1 then return end
-        local pos = self.ent:getPos()
-        local tr = trace.line(pos, pos - Vector(0, 0, 32768), {self.ent}, MASK.SOLID_BRUSHONLY)
-        if !tr.Hit then return end
         local found = self:findDeposit()
         if found then
             self:install()
