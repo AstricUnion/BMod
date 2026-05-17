@@ -24,14 +24,17 @@ LiquidFuelGenerator.Inputs.fuel = { affectedByGrade = true, rateField = "LiquidF
 
 ---@type table<string, ResourceOutput>
 LiquidFuelGenerator.Outputs = {}
-LiquidFuelGenerator.Outputs.power = { affectedByGrade = true, type = "power", maxCount = 400 }
+LiquidFuelGenerator.Outputs.power = { affectedByGrade = true, type = "power", maxCount = 100 }
 
 LiquidFuelGenerator.OutputOffset = Vector(0, 30, 10)
 
 LiquidFuelGenerator.WorkCooldown = 1
+LiquidFuelGenerator.FontSize = 24
+
 
 if SERVER then
     function LiquidFuelGenerator:machineInitialize()
+        self.ent:setMass(250)
         self.nextGas = 0
     end
 
@@ -56,8 +59,11 @@ if SERVER then
     function LiquidFuelGenerator:work(cur)
         local fuel = self:getInput("fuel")
         if fuel <= 0 then return false end
-        self:consumeInput("fuel", 0.2)
-        self:addToOutput("power", 1)
+        local grade = self:getGrade()
+        local speedMultiplier = 0.5
+        local actually = self:consumeInput("fuel", speedMultiplier)
+        local fuelEfficiency = (0.2 + ((grade - 1) * 0.075)) * 20
+        self:addToOutput("power", actually * fuelEfficiency)
         if self.nextGas <= cur then
             local offsetPos = self.ent:localToWorld(Vector(8, -8, 81))
             local par = gas.create("carbonmonoxide")
@@ -83,10 +89,9 @@ if CLIENT then
     ---[CLIENT] Draw info about this drill within 3D2D
     ---@param self LiquidFuelGenerator
     function LiquidFuelGenerator.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(12, 0, 66), Angle(0, 0, 0), function()
+        BMod.displayEnt(self.ent, Vector(-65, 12, 66), Angle(0, 180, 0), function()
             local fields = {}
-            local power = self:getOutput("power")
-            fields[#fields+1] = {"Progress", (power / 400) * 100, 100, false, true}
+            fields[#fields+1] = {"Progress", self:getOutput("power"), 100, false, true}
             fields[#fields+1] = {"Fuel", self:getInput("fuel"), 100, false, true}
             self:drawFields(0, 0, fields, false, 16)
         end)

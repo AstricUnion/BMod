@@ -152,10 +152,10 @@ else
     end)
 
     hook.add("Think", "CustomMeshLoad", function()
-        local maxQuota = quotaMax() / 2
+        local maxQuota = quotaMax() / 4
         local currentQuota = quotaAverage()
         if currentQuota > maxQuota then return end
-        for _=1, math.ceil(maxQuota / currentQuota) do
+        for _=1, math.floor(maxQuota / currentQuota) do
             meshLoadCoroutine()
         end
         getNetworkedHolograms()
@@ -336,6 +336,10 @@ function model.part(tbl)
     end
 end
 
+---@class Clip
+---@field [1] Vector Offset of clip, relative to entity
+---@field [2] Vector Normal of clip, relative to entity
+
 ---@class HoloParameters
 ---@field pos Vector?
 ---@field ang Angle?
@@ -349,6 +353,7 @@ end
 ---@field mesh string?
 ---@field meshPart string?
 ---@field materialId string?
+---@field clips Clip[]?
 
 ---[SHARED] Create hologram with extended parameters
 ---@param tbl HoloParameters
@@ -366,6 +371,7 @@ function model.holo(tbl)
     local meshId = tbl.mesh or tbl[10]
     local meshPart = tbl.meshPart or tbl[11]
     local materialId = tbl.materialId or tbl[12]
+    local clips = tbl.clips or tbl[13] or {}
     return function()
         local holo = hologram.create(pos, ang, mdl, scale)
         if !holo then return end
@@ -373,12 +379,17 @@ function model.holo(tbl)
         if size then holo:setSize(size) end
         if mat then holo:setSubMaterial(submat, mat) end
         holo:setColor(color)
-        model.toNetwork[#model.toNetwork+1] = {
-            holoId = holo:entIndex(),
-            meshId = meshId,
-            meshPart = meshPart,
-            materialId = materialId
-        }
+        if meshId or meshPart or materialId then
+            model.toNetwork[#model.toNetwork+1] = {
+                holoId = holo:entIndex(),
+                meshId = meshId,
+                meshPart = meshPart,
+                materialId = materialId
+            }
+        end
+        for i, v in ipairs(clips) do
+            holo:setClip(i, true, v[1], v[2], holo)
+        end
         return holo
     end
 end

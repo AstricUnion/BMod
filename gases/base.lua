@@ -65,6 +65,37 @@ if CLIENT then
 end
 
 gas.register(CarbonMonoxide)
+
+
+---Fumigant for fumigator. NFPA 704 from JMod similar to CH3Br
+---@class Fumigant: Gas
+local Fumigant = {}
+Fumigant.Identifier = "fumigant"
+Fumigant.ThinkRate = 1
+Fumigant.MaxVelocity = 100
+Fumigant.MaxLife = 120
+Fumigant.Gravity = Vector(0, 0, -8)
+Fumigant.AirResistance = Vector(1, 1, 1)
+Fumigant.BounceMultiplier = 1
+Fumigant.VelocityMultiplier = 4
+if SERVER then
+    Fumigant.Effect = true
+    Fumigant.EffectRadius = 200
+    Fumigant.Effects = {
+        gas.getEffect("poisoning")
+    }
+end
+Fumigant.DamageChance = 0.1
+Fumigant.PoisonDamage = {3, 10}
+Fumigant.CoughRate = 0.5
+
+if CLIENT then
+    function Fumigant:getColor()
+        return Color(math.random(120, 120), math.random(120, 150), 75, 25)
+    end
+end
+
+gas.register(Fumigant)
 if SERVER then
     --[[
     timer.create("", 2, 0, function()

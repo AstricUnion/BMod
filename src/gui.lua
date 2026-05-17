@@ -75,7 +75,7 @@ if CLIENT then
     end
 
     if player() == owner() then
-        enableHud(nil, true)
+        -- enableHud(nil, true)
     end
 
     return bguiElements

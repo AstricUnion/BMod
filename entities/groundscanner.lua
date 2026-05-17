@@ -15,7 +15,7 @@ local resource = resource
 ---@field nextThink number Next think. Relative to curtime
 local GroundScanner = {}
 GroundScanner.Identifier = "groundscanner"
-GroundScanner.Name = "Resource Crate"
+GroundScanner.Name = "Ground Scanner"
 GroundScanner.Model = "models/props_silo/launch_button.mdl"
 GroundScanner.hooks = {}
 ---@type table<string, ResourceInput>

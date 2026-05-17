@@ -6,6 +6,7 @@
 ---@include bmod/base/gas.lua
 ---@include bmod/base/utils.lua
 ---@include bmod/base/remote.lua
+---@include bmod/base/safeparticle.lua
 ---@include bmod/base/icons.lua
 ---@include bmod/base/model.lua
 ---@include bmod/src/resource.lua
@@ -42,6 +43,8 @@ bicons = require("bmod/base/icons.lua")
 
 ---@class model
 model = require("bmod/base/model.lua")
+
+require("bmod/base/safeparticle.lua")
 
 require("bmod/src/utils.lua")
 
@@ -120,14 +123,15 @@ if SERVER then
     -- toolbox:setGas(100)
     -- toolbox:setPower(100)
     -- timer.simple(2, function()
-    --     ents.create("vest_medium"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
+    -- ents.create("vest_medium"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
     -- end)
-    local mach = ents.create("liquid_fuel_generator")
-    mach:setInput("fuel", 100)
-    mach:spawn(chip():getPos() + Vector(0, -5, 20), Angle(), false)
-    -- ents.create("groundscanner"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- local mach = ents.create("solid_fuel_generator")
+    -- mach:setInput("fuel", 100)
+    -- mach:spawn(chip():getPos() + Vector(0, -5, 20), Angle(), false)
+    ents.create("fumigator"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- deposit.create("coal", chip():getPos(), 300, 727)
-    -- resource.create("power", chip():getPos() + Vector(0, 20, 12), Angle(), 100, true)
+    -- resource.create("wood", chip():getPos() + Vector(0, 50, 24), Angle(), 100, false)
+    -- resource.create("water", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
     local cor = deposit.startGeneration(20, true)
     if !cor then return end
     hook.add("Think", "BModDepositGeneration", function()

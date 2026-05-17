@@ -10,11 +10,9 @@ local iconsU, iconsV, icons
 if CLIENT then
     icons = material.create("UnlitGeneric")
     icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
-    icons:setInt("$realwidth", 1024)
-    icons:setInt("$realheight", 1024)
+    -- icons:setInt("$realwidth", 1024)
+    -- icons:setInt("$realheight", 1024)
     icons:setInt("$flags", 256)
-    -- iconsU = 0.1125
-    -- iconsV = 0.1125
     iconsU = 0.125
     iconsV = 0.125
 
@@ -283,7 +281,7 @@ local Fuel = resource.fastRegister(
     "Fuel", "fuel", "models/props_junk/gascan001a.mdl", Vector(4, 0, -1), nil,
     "ambient/water/water_spray1.wav", "physics/surfaces/underwater_impact_bullet1.wav"
 )
-Fuel.LiquidFuelInUnit = 20
+Fuel.LiquidFuelInUnit = 0.5
 
 
 ---@class Plastic: Resource

@@ -102,7 +102,7 @@ if SERVER then
             self:equip(ply)
             return
         end
-        if !self:isInHands(equippedBy) then return end
+        if equippedBy ~= ply or !self:isInHands(equippedBy) then return end
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
         if sprinting and key == IN_KEY.RELOAD then

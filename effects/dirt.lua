@@ -35,6 +35,7 @@ if CLIENT then
                 255, 0,
                 math.random(3, 5)
             )
+            if !part then return end
             part:setVelocity(norm * math.random(10, 150) + gas.randVector() * math.random(10, 120))
             part:setAirResistance(10)
             part:setRoll(math.rand(-3, 3))

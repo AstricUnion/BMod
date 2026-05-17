@@ -58,7 +58,7 @@ AugerDrill.hooks = {}
 
 ---@type table<string, ResourceInput>
 AugerDrill.Inputs = {}
-AugerDrill.Inputs.power = { affectedByGrade = true, type = "power", maxCount = 100 }
+AugerDrill.Inputs.power = { affectedByGrade = true, type = "power", maxCount = 400 }
 
 ---@type table<string, ResourceOutput>
 AugerDrill.Outputs = {}
@@ -103,7 +103,7 @@ if SERVER then
         if !dep then return false end
         local power = self:getInput("power")
         if power <= 0 then return false end
-        self:consumeInput("power", 0.2)
+        self:consumeInput("power", 0.8)
         self:addToOutput("resource", 1, dep.resource)
         if self.nextEffect < cur then
             local pos = self.ent:localToWorld(Vector(8, 2, 0))
@@ -129,7 +129,7 @@ if CLIENT then
         BMod.displayEnt(self.ent, Vector(30, 0, 148), Angle(0, 0, 0), function()
             render.setFont("Trebuchet24")
             local fields = {}
-            fields[#fields+1] = {"Power", self:getInput("power"), 100, false, true}
+            fields[#fields+1] = {"Power", self:getInput("power"), 400, false, true}
             -- render.drawSimpleText(0, 0, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
             local count, resId = self:getOutput("resource")
             if resId then

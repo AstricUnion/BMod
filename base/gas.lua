@@ -253,16 +253,19 @@ end
 
 if CLIENT then
     -- yeeeep, i use particles. This is more economic and shared variant, than Render. But, sad, there is limits to particles
-    local gasEmmiter = particle.create(Vector(), true)
+    local gasEmmiter = particle.create(Vector(), false)
     local mat = material.load("particle/smokestack")
 
+    local gravity = Vector(0, 0, -1 * 10^-10)
 
     ---@param obj Gas
     local function createParticle(obj)
         if gasEmmiter:getParticlesLeft() <= 0 then return end
         local size = math.random(50, 150)
         local particle = gasEmmiter:add(mat, obj.position, size, size, size, size, 25, 25, math.clamp(obj.dieTime - timer.curtime(), 0, 60))
+        if !particle then return end
         particle:setColor(obj:getColor())
+        particle:setGravity(gravity)
         obj.particle = particle
     end
 
@@ -315,18 +318,14 @@ if CLIENT then
 
     local lerpVector = math.lerpVector
     local tickInterval = game.getTickInterval
-    local getAngles = render.getAngles
-    local subAngs = Angle(180, 0, 0)
     hook.add("RenderOffscreen", "BModGasGraphics", function()
-        if cpuAverage() > cpuMax() / 2 then return end
-        local eyeAngles = getAngles() - subAngs
+        if quotaAverage() > quotaMax() / 2 then return end
         local delta = tickInterval() / 3
         for _, v in pairs(gas.inited) do
             local part = v.particle
             if !part then goto cont end
             local pos = lerpVector(delta, v.visualPosition, v.position)
             part.setPos(part, pos)
-            part.setAngles(part, eyeAngles)
             v.visualPosition = pos
             ::cont::
         end

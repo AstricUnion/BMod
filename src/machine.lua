@@ -265,6 +265,7 @@ if SERVER then
     ---@param identifier string Identifier of the input
     ---@param delta number Count to consume
     ---@param type string? Type of resource for flex. Can be nil
+    ---@return number count Number actually consumed
     function BaseMachine:consumeInput(identifier, delta, type)
         local input = self.Inputs[identifier]
         if !input then
@@ -274,9 +275,11 @@ if SERVER then
         local currentCount = self:getInput(identifier)
         local count = currentCount - delta
         if input.affectedByGrade then
-            count = currentCount - (delta * self:getGradeMultiplier())
+            delta = (delta * self:getGradeMultiplier())
+            count = currentCount - delta
         end
         self:setInput(identifier, count, type)
+        return delta
     end
 
 
@@ -394,8 +397,12 @@ else
             if isnumber(value) then
                 ---@cast value number
                 if maxValue then
-                    local percent = negate and (1 - (value / maxValue)) or (value / maxValue)
-                    col = Color(percent * 120, 100, 50):hsvToRGB()
+                    local percent = (value / maxValue)
+                    if percentage then
+                        value = percent * 100
+                    end
+                    local colPercent = negate and (1 - percent) or percent
+                    col = Color(colPercent * 120, 100, 50):hsvToRGB()
                 end
                 value = math.ceil(value)
             end
