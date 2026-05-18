@@ -47,7 +47,7 @@ if SERVER then
                 turr:remove()
                 goto cont
             end
-            if !turr.toFire then goto cont end
+            if !isValid(turr) or !turr.toFire then goto cont end
             local pos = ply:getPos()
             -- PROBLEM: can hit other players, if player moving too fast
             turr:setAngles((pos - turr:getPos()):getAngle())
@@ -73,17 +73,12 @@ else
         render.createRenderTarget("BModScreenEffect")
         local mat = material.create("VertexLitGeneric")
         mat:setTextureRenderTarget("$basetexture", "BModScreenEffect")
-        screenEffect:setRenderGroup(RENDERGROUP.TRANSLUCENT)
+        screenEffect:setRenderGroup(RENDERGROUP.VIEWMODEL_TRANSLUCENT)
         screenEffect:suppressEngineLighting(true)
         screenEffect:setSubMaterial(0, "!" .. mat:getName())
         local lastSW, lastSH = 0, 0
 
         hook.add("RenderOffscreen", "BModScreenEffect", function()
-            local sw, sh = render.getGameResolution()
-            if sw ~= lastSW and sh ~= lastSH then
-                screenEffect:setScale(Vector(1, sw / sh, 1))
-                lastSW, lastSH = sw, sh
-            end
             render.selectRenderTarget("BModScreenEffect")
                 local draw = hook.run("DrawBModScreenEffect", screenEffect)
                 screenEffect:setNoDraw(!draw)
@@ -99,10 +94,21 @@ else
                 pos = Ply:getEyePos()
                 angs = Ply:getEyeAngles()
             end
-            screenEffect:setPos(pos + angs:getForward() * (670 / Ply:getFOV()))
+            ---@type ViewSetup
+            local viewSetup = render.getViewSetup(true)
+            local holoSize = 36 -- Original size is 12 for all holograms
+            local viewmodelView = math.tan(math.rad(viewSetup.fovviewmodel) / 2) * (holoSize / 2)
+            pos = pos + angs:getForward() * (54.333 - viewmodelView)
             angs = angs:rotateAroundAxis(angs:getRight(), 90)
             angs = angs:rotateAroundAxis(angs:getUp(), 180)
-            screenEffect:setAngles(angs)
+            local matr = Matrix(angs, pos)
+            local sw, sh = render.getGameResolution()
+            if sw ~= lastSW and sh ~= lastSH then
+                lastSW, lastSH = sw, sh
+            end
+            local scale = holoSize / 12
+            matr:setScale(Vector(scale, (sw / sh) * scale, scale))
+            screenEffect:setRenderMatrix(matr)
         end)
     end
 end

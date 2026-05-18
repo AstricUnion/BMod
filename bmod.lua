@@ -132,11 +132,12 @@ if SERVER then
     -- deposit.create("coal", chip():getPos(), 300, 727)
     -- resource.create("wood", chip():getPos() + Vector(0, 50, 24), Angle(), 100, false)
     -- resource.create("water", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
-    local cor = deposit.startGeneration(20, true)
-    if !cor then return end
-    hook.add("Think", "BModDepositGeneration", function()
-        if cor() == true then
-            hook.remove("Think", "BModDepositGeneration")
-        end
-    end)
+    -- local cor = deposit.startGeneration(20, true)
+    -- if !cor then return end
+    -- hook.add("Think", "BModDepositGeneration", function()
+    --     if quotaAverage() > quotaMax() / 4 then return end
+    --     if cor() == true then
+    --         hook.remove("Think", "BModDepositGeneration")
+    --     end
+    -- end)
 end

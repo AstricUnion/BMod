@@ -59,17 +59,17 @@ if SERVER then
     gas.registerEffect(Blinding)
 else
     local ang = 0
-    local screenSpace = material.load("models/spawn_effect")
+    local screenSpace = material.load("pp/blurscreen")
 
     net.receive("BModScreenEffectBlind", function()
         hook.add("DrawBModScreenEffect", "BModScreenEffectBlind", function()
             render.setMaterial(screenSpace)
             render.drawTexturedRect(0, 0, 1024, 1024)
             local sin = math.sin(math.rad(ang))
-            if sin > 0.05 then
+            if sin > 0.1 then
                 render.drawBlurEffect(sin * 3, sin * 3, 1)
             end
-            ang = ang + 5
+            ang = ang + 70 * game.serverFrameTime()
             if ang >= 360 then
                 hook.remove("DrawBModScreenEffect", "BModScreenEffectBlind")
                 ang = 0
