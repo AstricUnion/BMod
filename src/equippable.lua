@@ -185,6 +185,7 @@ if SERVER then
     function Equippable:equip(ply)
         local equipped = self:getEquippedBy()
         if isValid(equipped) then return end
+        if !ply:isHUDActive() then return end
         equipment.reserveSlot(ply, self, true)
         self.ent:enableMotion(false)
         local bone = ply:lookupBone(self.BoneToEquip)

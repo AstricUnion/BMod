@@ -119,6 +119,7 @@ else
     local errorSound
 
     net.receive("BModErrorMessage", function()
+        if !render.isHUDActive() then return end
         local mes = net.readString()
         if errorSound then
             errorSound:setTime(0)
@@ -134,6 +135,7 @@ else
 
 
     net.receive("BModHintMessage", function()
+        if !render.isHUDActive() then return end
         local mes = net.readString()
         if hintSound then
             hintSound:setTime(0)

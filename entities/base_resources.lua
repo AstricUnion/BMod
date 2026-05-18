@@ -10,8 +10,6 @@ local iconsU, iconsV, icons
 if CLIENT then
     icons = material.create("UnlitGeneric")
     icons:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/resources.png")
-    -- icons:setInt("$realwidth", 1024)
-    -- icons:setInt("$realheight", 1024)
     icons:setInt("$flags", 256)
     iconsU = 0.125
     iconsV = 0.125

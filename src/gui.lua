@@ -74,8 +74,8 @@ if CLIENT then
         input.enableCursor(true)
     end
 
-    if player() == owner() then
-        -- enableHud(nil, true)
+    if OWNER then
+        enableHud(nil, true)
     end
 
     return bguiElements

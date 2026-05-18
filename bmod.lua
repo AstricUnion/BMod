@@ -128,9 +128,9 @@ if SERVER then
     -- local mach = ents.create("solid_fuel_generator")
     -- mach:setInput("fuel", 100)
     -- mach:spawn(chip():getPos() + Vector(0, -5, 20), Angle(), false)
-    ents.create("fumigator"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- ents.create("solid_fuel_generator"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- deposit.create("coal", chip():getPos(), 300, 727)
-    -- resource.create("wood", chip():getPos() + Vector(0, 50, 24), Angle(), 100, false)
+    resource.create("wood", chip():getPos() + Vector(0, 50, 24), Angle(), 100, false)
     -- resource.create("water", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
     -- local cor = deposit.startGeneration(20, true)
     -- if !cor then return end

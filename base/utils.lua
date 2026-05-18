@@ -88,9 +88,10 @@ else
             render.selectRenderTarget()
             local pos, angs
             if Ply:shouldDrawLocalPlayer() then
-                pos = render.getEyePos()
-                angs = render.getAngles()
+                screenEffect:setNoDraw(true)
+                return
             else
+                screenEffect:setNoDraw(false)
                 pos = Ply:getEyePos()
                 angs = Ply:getEyeAngles()
             end
@@ -99,9 +100,8 @@ else
             local holoSize = 36 -- Original size is 12 for all holograms
             local viewmodelView = math.tan(math.rad(viewSetup.fovviewmodel) / 2) * (holoSize / 2)
             pos = pos + angs:getForward() * (54.333 - viewmodelView)
-            angs = angs:rotateAroundAxis(angs:getRight(), 90)
-            angs = angs:rotateAroundAxis(angs:getUp(), 180)
             local matr = Matrix(angs, pos)
+            matr:rotate(Angle(90, 180, 0))
             local sw, sh = render.getGameResolution()
             if sw ~= lastSW and sh ~= lastSH then
                 lastSW, lastSH = sw, sh

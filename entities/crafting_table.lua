@@ -200,6 +200,7 @@ if CLIENT then
     end
 
     net.receive("BModCraftingTableOpen", function()
+        if !render.isHUDActive() then return end
         net.readEntity(function(ent)
             local tbl = ents.inited[ent:entIndex()]
             ---@cast tbl CraftingTable
