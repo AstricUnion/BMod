@@ -68,43 +68,43 @@ if SERVER then
 else
     local Ply = player()
 
-    -- local screenEffect = hologram.create(Vector(), Angle(), "models/holograms/plane.mdl", Vector(1, 1, 1))
-    -- if screenEffect then
-    --     render.createRenderTarget("BModScreenEffect")
-    --     local mat = material.create("VertexLitGeneric")
-    --     mat:setTextureRenderTarget("$basetexture", "BModScreenEffect")
-    --     screenEffect:setRenderGroup(RENDERGROUP.VIEWMODEL_TRANSLUCENT)
-    --     screenEffect:suppressEngineLighting(true)
-    --     screenEffect:setSubMaterial(0, "!" .. mat:getName())
-    --     screenEffect:setColor(Color(255, 255, 255, 200))
-    --     -- local ang = 0
-    --     local screenSpace = material.load("models/spawn_effect")
-    --
-    --     hook.add("RenderOffscreen", "BModScreenEffect", function()
-    --         render.selectRenderTarget("BModScreenEffect")
-    --             render.setMaterial(screenSpace)
-    --             render.drawTexturedRect(0, 0, 1024, 1024)
-    --         render.selectRenderTarget()
-    --         local pos, angs
-    --         if Ply:shouldDrawLocalPlayer() then
-    --             pos = render.getEyePos()
-    --             angs = render.getAngles()
-    --         else
-    --             pos = Ply:getEyePos()
-    --             angs = Ply:getEyeAngles()
-    --         end
-    --         screenEffect:setPos(pos + angs:getForward() * 13)
-    --         angs = angs:rotateAroundAxis(angs:getRight(), 90)
-    --         angs = angs:rotateAroundAxis(angs:getUp(), 180)
-    --         screenEffect:setAngles(angs)
-    --         -- local sin = (1 - math.sin(math.rad(ang)))
-    --         -- screenEffect:setScale(Vector(5 + (sin * 30), 5 + (sin * 30), 1))
-    --         -- ang = ang + 5
-    --         -- if ang >= 360 then
-    --         --     screenEffect:setNoDraw(true)
-    --         -- end
-    --     end)
-    -- end
+    local screenEffect = hologram.create(Vector(), Angle(), "models/holograms/plane.mdl", Vector(1, 1, 1))
+    if screenEffect then
+        render.createRenderTarget("BModScreenEffect")
+        local mat = material.create("VertexLitGeneric")
+        mat:setTextureRenderTarget("$basetexture", "BModScreenEffect")
+        screenEffect:setRenderGroup(RENDERGROUP.TRANSLUCENT)
+        screenEffect:suppressEngineLighting(true)
+        screenEffect:setSubMaterial(0, "!" .. mat:getName())
+        local lastSW, lastSH = 0, 0
+
+        hook.add("RenderOffscreen", "BModScreenEffect", function()
+            local sw, sh = render.getGameResolution()
+            if sw ~= lastSW and sh ~= lastSH then
+                screenEffect:setScale(Vector(1, sw / sh, 1))
+                lastSW, lastSH = sw, sh
+            end
+            render.selectRenderTarget("BModScreenEffect")
+                local draw = hook.run("DrawBModScreenEffect", screenEffect)
+                screenEffect:setNoDraw(!draw)
+                if !draw then
+                    return
+                end
+            render.selectRenderTarget()
+            local pos, angs
+            if Ply:shouldDrawLocalPlayer() then
+                pos = render.getEyePos()
+                angs = render.getAngles()
+            else
+                pos = Ply:getEyePos()
+                angs = Ply:getEyeAngles()
+            end
+            screenEffect:setPos(pos + angs:getForward() * (670 / Ply:getFOV()))
+            angs = angs:rotateAroundAxis(angs:getRight(), 90)
+            angs = angs:rotateAroundAxis(angs:getUp(), 180)
+            screenEffect:setAngles(angs)
+        end)
+    end
 end
 
 return butils

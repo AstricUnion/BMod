@@ -32,8 +32,52 @@ if SERVER then
     end
 
     gas.registerEffect(Poisoning)
+end
 
-    gas.Base.Effect = true
+
+if SERVER then
+    ---Blinding effect, eyes irritation
+    ---@class Blinding: GasEffect
+    ---@field nextBlind table<Player, number>
+    local Blinding = setmetatable({}, gas.EffectBase)
+    Blinding.__index = Blinding
+    Blinding.Identifier = "blinding"
+
+    function Blinding:initialize()
+        self.nextBlind = {}
+    end
+
+    function Blinding:effect(ply, particle)
+        local next = self.nextBlind[ply] or 0
+        local cur = timer.curtime()
+        if next > cur then return end
+        net.start("BModScreenEffectBlind")
+        net.send(ply)
+        self.nextBlind[ply] = cur + 2
+    end
+
+    gas.registerEffect(Blinding)
+else
+    local ang = 0
+    local screenSpace = material.load("models/spawn_effect")
+
+    net.receive("BModScreenEffectBlind", function()
+        hook.add("DrawBModScreenEffect", "BModScreenEffectBlind", function()
+            render.setMaterial(screenSpace)
+            render.drawTexturedRect(0, 0, 1024, 1024)
+            local sin = math.sin(math.rad(ang))
+            if sin > 0.05 then
+                render.drawBlurEffect(sin * 3, sin * 3, 1)
+            end
+            ang = ang + 5
+            if ang >= 360 then
+                hook.remove("DrawBModScreenEffect", "BModScreenEffectBlind")
+                ang = 0
+                return
+            end
+            return true
+        end)
+    end)
 end
 
 ---Carbon monoxide gas (CO)
@@ -80,9 +124,10 @@ Fumigant.BounceMultiplier = 1
 Fumigant.VelocityMultiplier = 4
 if SERVER then
     Fumigant.Effect = true
-    Fumigant.EffectRadius = 200
+    Fumigant.EffectRadius = 300
     Fumigant.Effects = {
-        gas.getEffect("poisoning")
+        gas.getEffect("poisoning"),
+        gas.getEffect("blinding")
     }
 end
 Fumigant.DamageChance = 0.1
