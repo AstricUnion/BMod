@@ -14,7 +14,7 @@
 ---@field registered table<string, ModelInfo>
 ---@field toNetwork ToNetwork[]
 ---@field networked ToNetwork[]
----@field mesh table<number, CMesh>
+---@field mesh table<string, CMesh>
 ---@field materials table<string, Material>
 local model = {}
 model.registered = {}
@@ -36,6 +36,7 @@ model.rigVisible = false
 ---@field url string? [SERVER] URL of custom mesh to load
 ---@field data string? [CLIENT] OBJ data of custom mesh
 ---@field mesh Mesh? [CLIENT] Loaded mesh
+---@field material string [CLIENT] Material to set
 ---@field pretendsToIt MeshPretend[] [CLIENT] Holograms, that pretends to this mesh, when it not loaded
 local CMesh = {}
 CMesh.__index = CMesh
@@ -85,6 +86,12 @@ else
         return setmetatable({ id = id, pretendsToIt = {}, url = url }, self)
     end
 
+    ---[CLIENT] Set material ID to set for all parts of this mesh
+    ---@param id string Identifier of material
+    function CMesh:setMaterial(id)
+        self.material = id
+    end
+
     ---[CLIENT] Load CMesh
     function CMesh:load()
         model.mesh[self.id] = self
@@ -110,7 +117,7 @@ else
                 v.mesh = mesh.createFromObj(v.data, true)
                 for _, pretendent in ipairs(v.pretendsToIt) do
                     if !isValid(pretendent.holo) then goto cont end
-                    pretendent.holo:setMesh(v.mesh[pretendent.part])
+                    v:setTo(pretendent.holo, pretendent.part)
                     ::cont::
                 end
                 v.pretendsToIt = {}
@@ -167,6 +174,10 @@ else
     function CMesh:setTo(holo, part)
         if self.mesh then
             holo:setMesh(self.mesh[part])
+            local mat = model.materials[self.material]
+            if mat then
+                holo:setMeshMaterial(mat)
+            end
             return
         end
         self.pretendsToIt[#self.pretendsToIt+1] = {holo = holo, part = part}

@@ -14,24 +14,11 @@ local part = model.part
 local holo = model.holo
 local rig = model.rig
 
-if CLIENT then
-    model.newMesh("vest_medium", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/mesh/armor.obj")
-        :load()
-
-    local mat = model.newMaterial("vest_medium", "VertexLitGeneric")
-    local matrix = Matrix()
-    matrix:setScale(Vector(0.25, 0.25, 0))
-    mat:setMatrix("$basetexturetransform", matrix)
-    mat:setInt("$realwidth", 256)
-    mat:setInt("$realheight", 256)
-    mat:setTextureURL("$basetexture", "https://raw.githubusercontent.com/AstricUnion/BMod/refs/heads/main/textures/vest_medium.jpg")
-end
-
 local mdl = model.create(hitbox {
     vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
     mass = 30
 })
-mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "vest_medium", materialId = "vest_medium", meshPart = "AR_Gjel_lod0"} )
+mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "medium_vest"} )
 
 ---@class VestMedium: Equippable
 local VestMedium = {}

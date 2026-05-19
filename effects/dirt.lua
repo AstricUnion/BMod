@@ -24,7 +24,7 @@ if CLIENT then
         local origin = self:getOrigin()
         local norm = self:getNormal()
         -- Fleck particles
-        for _=1, 5 do
+        for _=1, 20 do
             if emm:getParticlesLeft() < 1 then return end
             local startSize = math.random(8, 12)
             local part = emm:add(
@@ -45,7 +45,7 @@ if CLIENT then
             part:setBounce(math.rand(0, 0.5))
         end
         -- Smoke particles
-        for _=1, 5 do
+        for _=1, 8 do
             if emm:getParticlesLeft() < 1 then return end
             local startSize = math.random(3, 5)
             local part = emm:add(
