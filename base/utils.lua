@@ -78,6 +78,7 @@ else
         screenEffect:setSubMaterial(0, "!" .. mat:getName())
         local lastSW, lastSH = 0, 0
 
+        --BUG: it not works without "motion blur" in settings. Maybe add method to update screen refract?
         hook.add("RenderOffscreen", "BModScreenEffect", function()
             render.selectRenderTarget("BModScreenEffect")
                 local draw = hook.run("DrawBModScreenEffect", screenEffect)

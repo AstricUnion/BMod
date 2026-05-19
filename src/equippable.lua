@@ -134,6 +134,27 @@ if SERVER then
             plyEquipment[v] = nil
         end
     end
+
+
+    -- TODO: Optimize with empty/reserve slot hook
+    ---[SERVER] Get all armor biological resistance
+    ---@param ply Player
+    ---@param dmgType number DAMAGE enum
+    ---@return number inhale
+    ---@return number skin
+    ---@return number eyes
+    function equipment.getBiologicalResistance(ply, dmgType)
+        local plyEquipment = equipment.players[ply]
+        if !plyEquipment then return 0, 0, 0 end
+        local inhale, skin, eyes = 0, 0, 0
+        for _, armor in pairs(plyEquipment) do
+            local def = armor:getDefense(dmgType)
+            skin = skin + def * ((armor.EquipSlots[EquipSlot.chest] or 0) + (armor.EquipSlots[EquipSlot.abdomen] or 0)) / 2
+            inhale = inhale + def * (armor.EquipSlots[EquipSlot.mouthAndNose] or 0)
+            eyes = eyes + def * (armor.EquipSlots[EquipSlot.eyes] or 0)
+        end
+        return inhale, skin, eyes
+    end
 end
 
 ---@class Equippable: BModEntity
@@ -237,6 +258,12 @@ if SERVER then
         self:setNWVar("durability", math.clamp(durability, 0, self.MaxDurability))
     end
 
+    ---[SERVER] Set defense of equippable for damage
+    ---@param dmgType number
+    function Equippable:getDefense(dmgType)
+        return self.Defense and self.Defense[dmgType] or self.DefenseProfile[dmgType] or 0
+    end
+
     local damageMultipliers = {
         [HITGROUP.HEAD] = { [EquipSlot.head] = 1, [EquipSlot.eyes] = 0.5, [EquipSlot.mouthAndNose] = 0.5 },
         [HITGROUP.CHEST] = { [EquipSlot.chest] = 1, [EquipSlot.back] = 1 },
@@ -274,7 +301,7 @@ if SERVER then
             local armor = plyEquipped[armorSlot]
             if nonProtective[armorSlot] or !isValid(armor) or !armor.DefenseProfile then goto cont end
             local coverage = armor.EquipSlots[armorSlot]
-            local damageProtection = armor.Defense and armor.Defense[dmgType] or armor.DefenseProfile[dmgType] or 1
+            local damageProtection = armor:getDefense(dmgType)
             local currentProtection = damageProtection * coverage * damageMultiplier
             protection = protection + currentProtection
             if amount >= 5 then

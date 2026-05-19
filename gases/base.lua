@@ -5,6 +5,8 @@
 local gas = gas
 ---@class butils
 local butils = butils
+---@class equipment
+local equipment = equipment
 
 
 -- Gas effects
@@ -24,11 +26,13 @@ if SERVER then
         local next = self.nextCough[ply] or 0
         local cur = timer.curtime()
         if next > cur then return end
+        local inhale, _, _ = equipment.getBiologicalResistance(ply, DAMAGE.NERVEGAS)
+        if inhale >= 0.75 then return end
         ply:emitSound("ambient/voices/cough" .. math.random(1, 4) .. ".wav", 75, math.random(90, 110), 0.6)
         if math.random(1, math.round(1 / (particle.DamageChance or 0.1))) == 1 then
             butils.applyDamage(ply, math.random(unpack(particle.PoisonDamage or {3, 10})))
         end
-        self.nextCough[ply] = cur + (particle.CoughRate or 2)
+        self.nextCough[ply] = cur + (particle.CoughRate or 2) * math.rand(0.8, 1.2)
     end
 
     gas.registerEffect(Poisoning)
@@ -132,7 +136,7 @@ if SERVER then
 end
 Fumigant.DamageChance = 0.1
 Fumigant.PoisonDamage = {3, 10}
-Fumigant.CoughRate = 0.5
+Fumigant.CoughRate = 0.8
 
 if CLIENT then
     function Fumigant:getColor()
