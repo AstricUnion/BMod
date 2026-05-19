@@ -123,7 +123,7 @@ if SERVER then
     -- toolbox:setPower(100)
     -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- timer.simple(2, function()
-    ents.create("vest_medium"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
+    ents.create("respirator"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
     -- resource.create("water", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
     -- local cor = deposit.startGeneration(20, true)
     -- if !cor then return end
