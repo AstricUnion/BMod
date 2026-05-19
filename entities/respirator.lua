@@ -20,12 +20,12 @@ mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl
 
 ---@class Respirator: Equippable
 local Respirator = {}
-Respirator.Identifier = "vest_medium"
-Respirator.Name = "Vest Medium"
+Respirator.Identifier = "respirator"
+Respirator.Name = "Respirator"
 Respirator.Model = function()
     return mdl:create()
 end
-Respirator.BoneToEquip = "ValveBiped.Bip01_Spine2"
+Respirator.BoneToEquip = "ValveBiped.Bip01_Head1"
 Respirator.EquipOffset = Vector(-7, 3.5, 0)
 Respirator.EquipAngle = Vector(0, 88, 90)
 Respirator.EquipSlots = {[EquipSlot.chest] = 1, [EquipSlot.abdomen] = 1}
