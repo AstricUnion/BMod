@@ -210,7 +210,7 @@ if SERVER then
         self.ent:enableMotion(false)
         self.ent:setNoDraw(true)
         self.ent:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
-        prop.createSent(ply:getPos(), Angle(), "weapon_crowbar", true)
+        prop.createSent(ply:getPos(), Angle(), "weapon_fists", true)
         ply.EquippedToolbox = self
         self:setNWVar("equippedBy", ply)
         self.ent:emitSound("items/ammo_pickup.wav")
@@ -336,7 +336,7 @@ else
             local ply = vars.equippedBy
             if oldVars.equippedBy == ply or player() ~= ply then return end
             ---@cast ply Player
-            input.selectWeapon(ply:getWeapon("weapon_crowbar"))
+            input.selectWeapon(ply:getWeapon("weapon_fists"))
         end
 
         local function craft()
@@ -380,7 +380,7 @@ end
 ---@param ply Player
 function ToolBox:isInHands(ply)
     local activeWeapon = ply and isValid(ply) and ply:getActiveWeapon()
-    return activeWeapon and isValid(activeWeapon) and activeWeapon:getClass() == "weapon_crowbar"
+    return activeWeapon and isValid(activeWeapon) and activeWeapon:getClass() == "weapon_fists"
 end
 
 ---[SHARED] Get gas

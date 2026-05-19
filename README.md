@@ -4,7 +4,7 @@
 
 ## TODO:
 - [x] BGUI Library
-    - [ ] Fix bugs with focus
+    - [x] Fix bugs with focus
     - [x] BGUI redesign
     - [ ] Make skins system like Derma
     - [ ] Tooltips
@@ -15,7 +15,7 @@
     - [x] Crafting table
         - [x] Function to melt ore
         - [ ] Add more crafts
-    - [ ] Solid fuel generator
+    - [x] Solid fuel generator
     - [ ] Make GUI for machines
     - [ ] Make interfaces to connect machines
     - [ ] Try to make Wire outputs (maybe transfer some entities to StarfallEX chip? Or make chip with Wire spawning on button?)
@@ -24,7 +24,7 @@
     - [ ] Solar panel
     - [x] Auger drill
     - [x] Ground scanner
-    - [ ] Liquid fuel generator
+    - [x] Liquid fuel generator
     - [ ] Oil rig
     - [ ] Oil refinery
     - [ ] Pumpjack
