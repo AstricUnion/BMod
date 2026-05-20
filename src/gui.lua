@@ -64,13 +64,31 @@ if CLIENT then
             buttons[#buttons+1] = btn
         end
 
-        local pnl3 = bgui.create("BModelPanel", pnl)
+        local pnl3 = bgui.create("BPanel", pnl)
         pnl3:dock(DOCK.LEFT)
         pnl3:dockPadding(4, 4, 4, 4)
+        pnl3:setSize(96, 0)
+        for name, id in pairs(equipment.EquipSlot) do
+            local slot = bgui.create("BButton", pnl3)
+            slot:setSize(0, 36)
+            slot:dockMargin(0, 0, 0, 4)
+            slot:dock(DOCK.TOP)
+            slot:setText(name)
+        end
+
+        local pnl4 = bgui.create("BModelPanel", pnl)
+        pnl4:dock(DOCK.LEFT)
+        pnl4:dockPadding(4, 4, 4, 4)
         timer.simple(0.1, function()
-            pnl3:setModel(player():getModel())
-            pnl3.entity:setAnimation(3)
+            pnl4:setModel(player():getModel())
+            pnl4.entity:setAnimation(3)
         end)
+
+        local pnl5 = bgui.create("BPanel", pnl)
+        pnl5:dock(DOCK.LEFT)
+        pnl5:dockPadding(4, 4, 4, 4)
+        pnl5:setSize(96, 0)
+
         input.enableCursor(true)
     end
 

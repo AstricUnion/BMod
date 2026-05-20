@@ -148,10 +148,12 @@ if SERVER then
         if !plyEquipment then return 0, 0, 0 end
         local inhale, skin, eyes = 0, 0, 0
         for _, armor in pairs(plyEquipment) do
+            if !isValid(armor) then goto cont end
             local def = armor:getDefense(dmgType)
             skin = skin + def * ((armor.EquipSlots[EquipSlot.chest] or 0) + (armor.EquipSlots[EquipSlot.abdomen] or 0)) / 2
             inhale = inhale + def * (armor.EquipSlots[EquipSlot.mouthAndNose] or 0)
             eyes = eyes + def * (armor.EquipSlots[EquipSlot.eyes] or 0)
+            ::cont::
         end
         return inhale, skin, eyes
     end
