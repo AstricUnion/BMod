@@ -99,8 +99,9 @@ else
             ---@type ViewSetup
             local viewSetup = render.getViewSetup(true)
             local holoSize = 36 -- Original size is 12 for all holograms
-            local viewmodelView = math.tan(math.rad(viewSetup.fovviewmodel) / 2) * (holoSize / 2)
-            pos = pos + angs:getForward() * (54.333 - viewmodelView)
+            local angTan = math.tan(math.rad(viewSetup.fovviewmodel) / 2)
+            local viewmodelView = angTan * holoSize
+            pos = pos + angs:getForward() * (69 - viewmodelView)
             local matr = Matrix(angs, pos)
             matr:rotate(Angle(90, 180, 0))
             local sw, sh = render.getGameResolution()

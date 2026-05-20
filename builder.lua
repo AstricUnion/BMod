@@ -1,5 +1,5 @@
 -- This is NOT a Starfall script. This is builder for BMod (WIP)
---
+
 local pattern_escape_replacements = {
 	["("] = "%(",
 	[")"] = "%)",
@@ -96,8 +96,15 @@ end
 
 local _, content = requireAll("bmod.lua")
 if not content then return end
+local chipName = string.match(content, "-%-+ *@name (.-)\n")
+local chipAuthor = string.match(content, "-%-+ *@author (.-)\n")
+local chipSide = string.match(content, "-%-+ *@(shared|server|servermain|client|clientmain)$") or "shared"
+content = string.gsub(content, "-%-+%[%[.-%]%]", "")
 content = string.gsub(content, "-%-.-\n", "\n")
-content = string.gsub(content, "([^\n]) *\n", "%1")
+-- remove empty lines. this is from DuckDuckGo AI, so TODO: make it simpler
+content = string.gsub(content, "(\r?\n)%s*\r?\n", "%1")
+content = string.gsub(content, "\n *", "\n")
+content = string.format("---@name %s\n---@author %s\n---@%s\n%s", chipName, chipAuthor, chipSide, content)
 
 local output = io.open("builded.lua", "wb")
 if not output then return end
