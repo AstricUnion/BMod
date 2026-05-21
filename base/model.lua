@@ -3,18 +3,15 @@
 
 
 ---@class ToNetwork
----@field holoId number Entindex of holo or origin
----@field origin boolean? Is this origin of entity
----@field meshId string?
----@field meshPart string?
----@field materialId string?
+---@field modelId string Identifier of model
+---@field originId number Entity index of origin of model to parent (from server)
 
 ---Class to manipulate hologram models with custom meshes and hitboxes
 ---@class model
 ---@field registered table<string, ModelInfo>
+---@field mesh table<string, CMesh>
 ---@field toNetwork ToNetwork[]
 ---@field networked ToNetwork[]
----@field mesh table<string, CMesh>
 ---@field materials table<string, Material>
 local model = {}
 model.registered = {}
@@ -73,29 +70,21 @@ if SERVER then
         if next(model.toNetwork) == nil then return end
         local newToNetwork = {}
         for _, v in ipairs(model.toNetwork) do
-            if !isValid(entity(v.holoId)) then goto cont end
+            if !isValid(entity(v.originId)) then goto cont end
             newToNetwork[#newToNetwork+1] = v
             ::cont::
         end
         model.toNetwork = newToNetwork
-        net.start("NetworkHolograms")
+        net.start("NetworkModels")
             net.writeTable(model.toNetwork)
         net.send(ply or find.allPlayers())
     end
 
-    hook.add("ClientInitialized", "InitializeHologramsAndCustom", function(ply)
+    hook.add("ClientInitialized", "InitializeModels", function(ply)
         if table.isEmpty(model.toNetwork) then return end
         model.sync(ply)
     end)
 else
-    ---[CLIENT] Create new custom mesh
-    ---@param id string
-    ---@param url string URL or file path to mesh
-    ---@return CMesh
-    function CMesh:new(id, url)
-        return setmetatable({ id = id, pretendsToIt = {}, url = url }, self)
-    end
-
     ---[CLIENT] Set material ID to set for all parts of this mesh
     ---@param id string Identifier of material
     function CMesh:setMaterial(id)
@@ -115,7 +104,7 @@ else
     ---@param url string URL or file path to mesh
     ---@return CMesh
     function model.newMesh(id, url)
-        return CMesh:new(id, url)
+        return setmetatable({ id = id, pretendsToIt = {}, url = url }, CMesh)
     end
 
     local meshLoadCoroutine = coroutine.wrap(function()
@@ -136,35 +125,28 @@ else
         end
     end)
 
-    local getNetworkedHolograms = coroutine.wrap(function()
+    local getNetworkedModels = coroutine.wrap(function()
         while true do
             coroutine.yield()
             local newNetworked = {}
             for _, v in ipairs(model.networked) do
-                do
-                    local ent = entity(v.holoId)
-                    if !isValid(ent) then goto cont end
-                    if v.origin then methodsOverride(ent) end
-                    ---@cast ent Hologram
-                    local msh = model.mesh[v.meshId]
-                    if !msh then goto cont1 end
-                    ---@cast msh CMesh
-                    msh:setTo(ent, v.meshPart)
-                    local mat = model.materials[v.materialId]
-                    if !mat then goto cont end
-                    ---@cast mat Material
-                    ent:setSubMaterial(0, "!" .. mat:getName())
-                    goto cont1
+                local addedId = #newNetworked+1
+                newNetworked[addedId] = v
+                local ent = entity(v.originId)
+                if !isValid(ent) then goto cont end
+                local mdl = model.registered[v.modelId]
+                if ent then
+                    mdl:create(ent)
                 end
+                methodsOverride(ent)
+                newNetworked[addedId] = nil
                 ::cont::
-                newNetworked[#newNetworked+1] = v
-                ::cont1::
             end
             model.networked = newNetworked
         end
     end)
 
-    net.receive("NetworkHolograms", function()
+    net.receive("NetworkModels", function()
         model.networked = net.readTable()
     end)
 
@@ -175,7 +157,7 @@ else
         for _=1, math.floor(maxQuota / currentQuota) do
             meshLoadCoroutine()
         end
-        getNetworkedHolograms()
+        getNetworkedModels()
     end)
 
     ---[CLIENT] Set this mesh to hologram
@@ -363,21 +345,22 @@ end
 ---@field [2] Vector Normal of clip, relative to entity
 
 ---@class HoloParameters
----@field pos Vector?
----@field ang Angle?
----@field model string?
----@field scale Vector?
----@field size Vector?
----@field submaterial number?
----@field material string?
----@field color Color?
----@field noLight boolean?
----@field mesh string?
----@field meshPart string?
----@field materialId string?
----@field clips Clip[]?
+---@field pos Vector? Position offset to spawn this holo. Relative to model
+---@field ang Angle? Angle offset to spawn this holo. Relative to model
+---@field model string? Model of this holo
+---@field scale Vector? Scale of this holo
+---@field size Vector? Hologram size. Scale multiplies start size of holo, when size sets... size :D
+---@field submaterial number? Submaterial append holo to
+---@field material string|table? Material to set. Can be identifier for custom material, or material file, or table of submaterials
+---@field color Color? Color of holo
+---@field noLight boolean? Suppress engine lighting for holo
+---@field mesh string? Mesh for holo
+---@field meshPart string? Mesh part. You can found this lines in obj file: `o name_of_part`
+---@field clips Clip[]? Clips of holo
 
----[SHARED] Create hologram with extended parameters
+local emptyFunction = function() end
+
+---[SHARED] Create hologram with extended parameters. On server does nothing
 ---@param tbl HoloParameters
 ---@return modelfun
 function model.holo(tbl)
@@ -387,30 +370,44 @@ function model.holo(tbl)
     local scale = tbl.scale or tbl[4]
     local size = tbl.size or tbl[5]
     local submat = tbl.submaterial or tbl[6] or 0
-    local mat = tbl.material or tbl[7]
+    local matName = tbl.material or tbl[7]
     local color = tbl.color or tbl[8] or Color(255, 255, 255, 255)
     local noLight = tbl.noLight or tbl[9] or false
     local meshId = tbl.mesh or tbl[10]
     local meshPart = tbl.meshPart or tbl[11]
-    local materialId = tbl.materialId or tbl[12]
-    local clips = tbl.clips or tbl[13] or {}
+    local clips = tbl.clips or tbl[12] or {}
+    local funcToMat = emptyFunction
+    if matName then
+        local function setMaterial(holo, index, funcMatName)
+            local mat = model.materials[funcMatName]
+            local matToSet = mat and "!" .. mat:getName() or funcMatName
+            -- Submaterial fixes bug with client material reset
+            holo:setSubMaterial(index, matToSet)
+        end
+        if isstring(matName) then
+            funcToMat = function(holo) setMaterial(holo, 0, matName) end
+        elseif istable(matName) then
+            funcToMat = function(holo)
+                ---@cast matName table<number, string>
+                for index, v in pairs(matName) do
+                    setMaterial(holo, index, v)
+                end
+            end
+        end
+    end
     return function()
         local holo = hologram.create(pos, ang, mdl, scale)
         if !holo then return end
         holo:suppressEngineLighting(noLight)
         if size then holo:setSize(size) end
-        if mat then holo:setSubMaterial(submat, mat) end
+        funcToMat(holo)
         holo:setColor(color)
-        if meshId or meshPart or materialId then
-            model.toNetwork[#model.toNetwork+1] = {
-                holoId = holo:entIndex(),
-                meshId = meshId,
-                meshPart = meshPart,
-                materialId = materialId
-            }
-        end
         for i, v in ipairs(clips) do
             holo:setClip(i, true, v[1], v[2], holo)
+        end
+        if CLIENT then
+            local msh = model.mesh[meshId]
+            if msh then msh:setTo(holo, meshPart) end
         end
         return holo
     end
@@ -425,6 +422,7 @@ end
 ---@class ModelInfo
 ---@field origin fun()
 ---@field bones table<string, Bone>
+---@field identifier string
 local ModelInfo = {}
 ModelInfo.__index = ModelInfo
 
@@ -454,15 +452,24 @@ function ModelInfo:add(parent, bone, mdl)
 end
 
 
+---@param origin Entity? Origin to parent
 ---@return Entity?
-function ModelInfo:create()
-    ---@type table<string, Entity>
-    local bones = {}
-    local originHolo = self.origin()
-    if !originHolo then
+function ModelInfo:create(origin)
+    local originHolo = origin or self.origin()
+    if !originHolo or !isValid(originHolo) then
         throw("Can't create origin")
         return
     end
+    if SERVER then
+        model.toNetwork[#model.toNetwork+1] = {
+            modelId = self.identifier,
+            originId = originHolo:entIndex()
+        }
+        model.sync()
+        return originHolo
+    end
+    ---@type table<string, Entity>
+    local bones = {}
     bones.origin = originHolo
     for name, part in pairs(self.bones) do
         local holo = part.bone()
@@ -477,38 +484,36 @@ function ModelInfo:create()
             throw(string.format("Parent \"%s\" for \"%s\" not found! Maybe you placed it in incorrect sequence?", parent, name))
             return
         end
+        holo:setPos(parentHolo:localToWorld(holo:getPos()))
+        holo:setAngles(parentHolo:localToWorldAngles(holo:getAngles()))
         holo:setParent(parentHolo)
     end
     originHolo.bones = bones
     methodsOverride(originHolo)
-    model.toNetwork[#model.toNetwork+1] = { holoId = originHolo:entIndex(), origin = true }
-    model.sync()
     return originHolo
 end
 
+
 ---[SHARED] Create new model info
----@param origin Vector|modelfun? Origin of this entity
+---@param identifier string Identifier of model
+---@param origin Vector|modelfun Origin of this entity
 ---@return ModelInfo
-function model.create(origin)
+function model.new(identifier, origin)
     local rig = isfunction(origin) and origin or model.rig(origin)
-    return setmetatable(
-        { origin = rig, bones = {} },
+    local obj = setmetatable(
+        { origin = rig, bones = {}, identifier = identifier },
         ModelInfo
     )
+    model.registered[identifier] = obj
+    return obj
 end
 
----[SHARED] Register new model to use it after
+---[SHARED] Create model by registered model info
 ---@param identifier string Identifier of the model
----@param info ModelInfo Info
-function model.register(identifier, info)
-    model.registered[identifier] = info
-end
-
----[SHARED] Get model info
----@param identifier string Identifier of the model
----@return ModelInfo
-function model.get(identifier)
-    return model.registered[identifier]
+---@return Entity?
+function model.create(identifier)
+    local mdl = model.registered[identifier]
+    return mdl:create()
 end
 
 

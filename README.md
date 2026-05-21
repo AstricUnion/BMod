@@ -67,9 +67,9 @@
     - [ ] Resource and item crates
     - [ ] Medkit
 - [ ] Make wiki about libraries
-- [ ] Build system (make your BMod build with modules in one file)
-    - [ ] GitHub releases
-    - [ ] GitHub CI for BMod (maybe for other chips)
+- [x] (BETA) Build system (make your BMod build with modules in one file)
+- [ ] GitHub releases
+- [ ] GitHub CI for BMod (maybe for other chips)
 
 ## Recommended options
 `sf_props_burstmax 10`

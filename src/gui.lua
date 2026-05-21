@@ -85,23 +85,16 @@ if CLIENT then
         timer.simple(0.1, function()
             pnl4:setModel(player():getModel())
             pnl4.entity:setAnimation(3)
+            local plyEquipment = equipment.players[player()]
+            if !plyEquipment then return end
             pnl4.entity.__drawOld = pnl4.entity.__drawOld or pnl4.entity.draw
             function pnl4.entity:draw()
                 self:__drawOld()
-                local plyEquipment = equipment.players[player()]
-                if !plyEquipment then return end
-                for _, armor in pairs(plyEquipment) do
-                    -- shot
-                    local armEnt = ents.registered[armor.ent.BModEquippable]
-                    if !isValid(armEnt) then goto cont end
-                    local armHolo = armEnt:createModel()
-                    local boneId = pnl4.entity:lookupBone(armEnt.BoneToEquip)
-                    if !boneId then goto cont end
-                    local mat = pnl4.entity:getBoneMatrix(boneId)
-                    print(armHolo)
-                    armHolo:setParent(pnl4.entity)
-                    armHolo:draw()
-                    ::cont::
+                -- local boneId = pnl4.entity:lookupBone(armEnt.BoneToEquip)
+                -- if !boneId then goto cont end
+                -- local mat = pnl4.entity:getBoneMatrix(boneId)
+                for _, toDraw in pairs(plyEquipment) do
+                    toDraw.ent:draw()
                 end
             end
         end)

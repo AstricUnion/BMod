@@ -27,17 +27,17 @@ local vertex = model.vertex
 local part = model.part
 local holo = model.holo
 
-local mdl = model.create(hitbox {
+local mdl = model.new("crafting_table", hitbox {
     vertex {"cube", Vector(0, 0, 18), nil, Vector(24, 36, 18)},
     vertex {"cube", Vector(-12, 0, 43), nil, Vector(8, 36, 7)},
     vertex {"cube", Vector(0, -50, 10), nil, Vector(10, 10, 10)},
     mass = 250
 })
-mdl:add("base", part {
-    holo { Vector(0, 0, 18), Angle(), "models/props_c17/furnituretable002a.mdl", Vector(1.2, 1.2, 1) },
-    holo { Vector(-12, 0, 42), Angle(), "models/props_wasteland/cafeteria_table001a.mdl", Vector(0.4, 0.6, 0.5) },
-    holo { Vector(0, -50, 10), Angle(), "models/props_wasteland/laundry_basket002.mdl", Vector(0.4, 0.4, 0.5) }
-})
+    :add("base", part {
+        holo { Vector(0, 0, 18), Angle(), "models/props_c17/furnituretable002a.mdl", Vector(1.2, 1.2, 1) },
+        holo { Vector(-12, 0, 42), Angle(), "models/props_wasteland/cafeteria_table001a.mdl", Vector(0.4, 0.6, 0.5) },
+        holo { Vector(0, -50, 10), Angle(), "models/props_wasteland/laundry_basket002.mdl", Vector(0.4, 0.4, 0.5) }
+    })
 
 
 ---@class CraftingTable: BaseMachine
@@ -51,7 +51,7 @@ local CraftingTable = {}
 CraftingTable.Identifier = "crafting_table"
 CraftingTable.Name = "Crafting table"
 CraftingTable.Model = function()
-    return mdl:create().bones.origin
+    return mdl:create()
 end
 CraftingTable.hooks = {}
 

@@ -12,11 +12,11 @@ local hitbox = model.hitbox
 local vertex = model.vertex
 local holo = model.holo
 
-local mdl = model.create(hitbox {
+local mdl = model.new("respirator", hitbox {
     vertex {"cube", Vector(0, 0, 2), Angle(0, 30, 0), Vector(4, 4, 3)},
     mass = 10,
 })
-mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "respirator"} )
+    :add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "respirator"} )
 
 ---@class Respirator: Equippable
 local Respirator = {}

@@ -14,11 +14,11 @@ local part = model.part
 local holo = model.holo
 local rig = model.rig
 
-local mdl = model.create(hitbox {
+local mdl = model.new("medium_vest", hitbox {
     vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
     mass = 10
 })
-mdl:add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "medium_vest"} )
+    :add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "medium_vest"} )
 
 ---@class VestMedium: Equippable
 local VestMedium = {}

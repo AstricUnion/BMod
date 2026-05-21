@@ -18,22 +18,23 @@ local part = model.part
 local holo = model.holo
 local rig = model.rig
 
-local mdl = model.create(hitbox {
+local mdl = model.new("augerdrill", hitbox {
     vertex {"cube", Vector(-8, 36, 96), Angle(-60, 0, 0), Vector(35, 118, 5)},
     vertex {"cube", Vector(-8, -36, 96), Angle(60, 0, 0), Vector(35, 118, 5)},
     vertex {"cube", Vector(0, 0, 128), Angle(0, 0, 0), Vector(30, 30, 24)},
     mass = 2000,
     visible = false
 })
-mdl:add("base", part {
-    holo { Vector(-8, -36, 96), Angle(30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
-    holo { Vector(-8, 36, 96), Angle(-30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
-    holo { Vector(0, 0, 128), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(4.8, 4.8, 4), material = "models/props_c17/metalladder001" },
-    holo { Vector(0, 0, 86), Angle(0, 0, 0), "models/holograms/hq_cylinder.mdl", Vector(2.5, 2.5, 3), material = "models/props_c17/metalladder001" },
-})
+    :add("base", part {
+        holo { Vector(-8, -36, 96), Angle(30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
+        holo { Vector(-8, 36, 96), Angle(-30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
+        holo { Vector(0, 0, 128), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(4.8, 4.8, 4), material = "models/props_c17/metalladder001" },
+        holo { Vector(0, 0, 86), Angle(0, 0, 0), "models/holograms/hq_cylinder.mdl", Vector(2.5, 2.5, 3), material = "models/props_c17/metalladder001" },
+    })
+
 
 local drillMat = "models/props_canal/canal_bridge_railing_01a"
-local drillMdl = model.create(part {
+local drillMdl = model.new("augerdrilldrill", part {
     rig(),
     holo { Vector(0, 0, 56), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat },
     holo { Vector(0, 0, 32), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat  },
