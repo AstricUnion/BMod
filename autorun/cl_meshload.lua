@@ -2,7 +2,7 @@ if SERVER then return end
 
 local armorMat = model.newMaterial("armor", "VertexLitGeneric")
 local mat = Matrix()
-mat:setScale(Vector(0.75, 0.75, 0.75))
+mat:setScale(Vector(1, 1, 1))
 armorMat:setMatrix("$basetexturetransform", mat)
 armorMat:setInt("$realwidth", 1024)
 armorMat:setInt("$realheight", 1024)

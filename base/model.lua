@@ -44,11 +44,24 @@ CMesh.__index = CMesh
 ---Override methods of entity to work with models
 ---@param ent Entity
 local function methodsOverride(ent)
+    -- I can use ent, not self, because this is method only for this entity
     ent.__setNoDrawOld = ent.__setNoDrawOld or ent.setNoDraw
 
     function ent:setNoDraw(state)
         for _, v in ipairs(ent:getChildren()) do
             v:setNoDraw(state)
+        end
+    end
+
+
+    if SERVER then
+    else
+        ent.__drawOld = ent.__drawOld or ent.draw
+
+        function ent:draw()
+            for _, v in ipairs(ent:getChildren()) do
+                v:draw()
+            end
         end
     end
 end
@@ -71,10 +84,7 @@ if SERVER then
     end
 
     hook.add("ClientInitialized", "InitializeHologramsAndCustom", function(ply)
-        local meshes = table.add({}, model.mesh)
-        net.start("CustomMeshLoad")
-            net.writeTable(meshes)
-        net.send(ply)
+        if table.isEmpty(model.toNetwork) then return end
         model.sync(ply)
     end)
 else
@@ -306,6 +316,7 @@ end
 ---@param tbl HitboxParameters
 ---@return modelfun
 function model.hitbox(tbl)
+    if CLIENT then return model.rig(Vector()) end
     local freeze = tbl.freeze or (isbool(tbl[1]) and tbl[1]) or false
     local mass = tbl.mass or (isnumber(tbl[2]) and tbl[2]) or 30
     local mat = tbl.material or (isstring(tbl[3]) and tbl[3]) or ""

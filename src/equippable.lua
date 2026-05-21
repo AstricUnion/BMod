@@ -100,6 +100,15 @@ equipment.DefenseProfile = {
 local EquipSlot = equipment.EquipSlot
 
 if SERVER then
+    ---[SERVER] Sync armor with clients
+    ---@param ply Player? Ply to send or nil, to all
+    function equipment.sync(ply)
+        if table.isEmpty(equipment.players) then return end
+        net.start("BModEquippablesUpdate")
+            net.writeTable(equipment.players)
+        net.send(ply or find.allPlayers())
+    end
+
     ---[SERVER] Reserve slots for equippable
     ---@param ply Player Player to equip
     ---@param toEquip Equippable Item to equip
@@ -121,6 +130,7 @@ if SERVER then
             plyEquipment[i] = v
         end
         equipment.players[ply] = plyEquipment
+        equipment.sync()
         return true
     end
 
@@ -133,7 +143,13 @@ if SERVER then
         for v, _ in pairs(toEquip.EquipSlots) do
             plyEquipment[v] = nil
         end
+        equipment.sync()
     end
+
+
+    hook.add("ClientInitialized", "BModEquippablesUpdate", function(ply)
+        equipment.sync(ply)
+    end)
 
 
     -- TODO: Optimize with empty/reserve slot hook
@@ -157,6 +173,10 @@ if SERVER then
         end
         return inhale, skin, eyes
     end
+else
+    net.receive("BModEquippablesUpdate", function()
+        equipment.players = net.readTable()
+    end)
 end
 
 ---@class Equippable: BModEntity
