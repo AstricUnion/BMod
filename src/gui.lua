@@ -86,16 +86,28 @@ if CLIENT then
             pnl4:setModel(player():getModel())
             pnl4.entity:setAnimation(3)
             local plyEquipment = equipment.players[player()]
+            local equipmentToDraw = {}
             if !plyEquipment then return end
+            for _, toDraw in pairs(plyEquipment) do
+                local ent = ents.registered[toDraw.ent.BModEquippable]
+                local boneId = pnl4.entity:lookupBone(ent.BoneToEquip)
+                if !boneId then goto cont end
+                local holo = isfunction(ent.Model) and ent.Model() or hologram.create(Vector(), Angle(), ent.Model)
+                if !holo then goto cont end
+                equipmentToDraw[#equipmentToDraw+1] = {boneId, holo}
+                ::cont::
+            end
             pnl4.entity.__drawOld = pnl4.entity.__drawOld or pnl4.entity.draw
             function pnl4.entity:draw()
-                self:__drawOld()
-                -- local boneId = pnl4.entity:lookupBone(armEnt.BoneToEquip)
-                -- if !boneId then goto cont end
-                -- local mat = pnl4.entity:getBoneMatrix(boneId)
-                for _, toDraw in pairs(plyEquipment) do
-                    toDraw.ent:draw()
+                for _, toDraw in ipairs(equipmentToDraw) do
+                    local mat = pnl4.entity:getBoneMatrix(toDraw[1])
+                    if !mat then goto cont end
+                    -- toDraw[2]:setPos(mat:getTranslation())
+                    -- toDraw[2]:setPos(mat:getAngles())
+                    toDraw[2]:draw()
+                    ::cont::
                 end
+                self:__drawOld()
             end
         end)
 

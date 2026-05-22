@@ -58,6 +58,7 @@ local function methodsOverride(ent)
         function ent:draw()
             for _, v in ipairs(ent:getChildren()) do
                 v:draw()
+                v:setPos(Vector())
             end
         end
     end
@@ -143,6 +144,16 @@ else
                 ::cont::
             end
             model.networked = newNetworked
+        end
+    end)
+
+    hook.add("EntityRemoved", "ModelRemove", function(ent, fullupdate)
+        if ent.bones then
+            for _, v in pairs(ent.bones) do
+                if v == ent then goto cont end
+                v:remove()
+                ::cont::
+            end
         end
     end)
 
@@ -328,13 +339,26 @@ end
 function model.part(tbl)
     return function()
         local parent
+        local toRemove = {}
         for _, fn in ipairs(tbl) do
             if !parent then
                 parent = fn()
                 goto cont
             end
-            fn():setParent(parent)
+            local holo = fn()
+            if !holo then goto cont end
+            holo:setParent(parent)
+            toRemove[#toRemove+1] = holo
             ::cont::
+        end
+        if CLIENT then
+            parent.__removeOld = parent.__removeOld or parent.remove
+            function parent:remove()
+                self:__removeOld()
+                for _, v in ipairs(toRemove) do
+                    v:remove()
+                end
+            end
         end
         return parent
     end
