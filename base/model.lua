@@ -55,10 +55,9 @@ local function methodsOverride(ent)
     else
         ent.__drawOld = ent.__drawOld or ent.draw
 
-        function ent:draw()
+        function ent:draw(noTint)
             for _, v in ipairs(ent:getChildren()) do
-                v:draw()
-                v:setPos(Vector())
+                v:draw(noTint)
             end
         end
     end
@@ -148,9 +147,9 @@ else
     end)
 
     hook.add("EntityRemoved", "ModelRemove", function(ent, fullupdate)
-        if ent.bones then
+        if isValid(ent) and ent.bones then
             for _, v in pairs(ent.bones) do
-                if v == ent then goto cont end
+                if !isValid(ent) or v == ent then goto cont end
                 v:remove()
                 ::cont::
             end

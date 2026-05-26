@@ -1,0 +1,4 @@
+---Library for chat commands
+---@name Chat commands
+---@author AstricUnion
+---@shared

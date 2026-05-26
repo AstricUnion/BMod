@@ -101,12 +101,25 @@ local EquipSlot = equipment.EquipSlot
 
 if SERVER then
     ---[SERVER] Sync armor with clients
-    ---@param ply Player? Ply to send or nil, to all
-    function equipment.sync(ply)
+    ---@param target (Player[]|Player)? Ply to send or nil, to all
+    function equipment.sync(target)
         if table.isEmpty(equipment.players) then return end
+        local equipmentIds = {}
+        for ply, plyEquipment in pairs(equipment.players) do
+            local plyEquipmentIds = {}
+            equipmentIds[ply] = plyEquipmentIds
+            for slot, armor in pairs(plyEquipment) do
+                if !isValid(armor) then
+                    plyEquipment[slot] = nil
+                    goto cont
+                end
+                plyEquipmentIds[slot] = armor.ent:entIndex()
+                ::cont::
+            end
+        end
         net.start("BModEquippablesUpdate")
-            net.writeTable(equipment.players)
-        net.send(ply or find.allPlayers())
+            net.writeTable(equipmentIds)
+        net.send(target or find.allPlayers())
     end
 
     ---[SERVER] Reserve slots for equippable
@@ -134,7 +147,7 @@ if SERVER then
         return true
     end
 
-    ---[SERVER] Reserve slots for equippable
+    ---[SERVER] Empty slots from equippable
     ---@param ply Player Player to equip
     ---@param toEquip Equippable Item to equip
     function equipment.emptySlot(ply, toEquip)
@@ -173,9 +186,38 @@ if SERVER then
         end
         return inhale, skin, eyes
     end
+
+    net.receive("BModDropEquippable", function(_, ply)
+        local slot = net.readUInt(8)
+        local plyEquipment = equipment.players[ply]
+        if !plyEquipment then return end
+        local slotInfo = plyEquipment[slot]
+        if !isValid(slotInfo) then return end
+        slotInfo:drop()
+    end)
 else
+    ---[CLIENT] Drop equippable
+    ---@param slot EquipSlot
+    function equipment.dropEquippable(slot)
+        net.start("BModDropEquippable")
+            net.writeUInt(slot, 8)
+        net.send()
+    end
+
     net.receive("BModEquippablesUpdate", function()
-        equipment.players = net.readTable()
+        local players = net.readTable()
+        for _, plyEquipment in pairs(players) do
+            for slot, armorId in pairs(plyEquipment) do
+                local ent = ents.inited[armorId]
+                if !isValid(ent) then
+                    plyEquipment[slot] = nil
+                    goto cont
+                end
+                plyEquipment[slot] = ent
+                ::cont::
+            end
+        end
+        equipment.players = players
     end)
 end
 
@@ -189,6 +231,8 @@ end
 ---@field Defense table<number, number>? Defense by damage types
 ---@field MaxDurability number? Max durability of this equippable
 ---@field private equippedPoint Hologram?
+---@field private toDraw Hologram? Client-side hologram to draw. For inventory model panel. Removes on next frame, if no draw
+---@field private lastDraw number Last frame, when drew hologram
 local Equippable = {}
 Equippable.Identifier = "base_equippable"
 Equippable.Name = "Base equippable"
@@ -199,6 +243,18 @@ Equippable.hooks = {}
 ---[SHARED] Initialize equippable
 function Equippable:initialize()
     self.ent.BModEquippable = self.Identifier
+end
+
+---[SHARED] Get attach position and angles
+---@return Vector position
+---@return Angle angles
+---@return number bone
+function Equippable:getAttachPos(ply)
+    local bone = ply:lookupBone(self.BoneToEquip)
+    if !bone then return ply:getPos(), ply:getAngles() end
+    local matr = ply:getBoneMatrix(bone)
+    local pos, ang = localToWorld(self.EquipOffset or Vector(), self.EquipAngle or Angle(), matr:getTranslation(), matr:getAngles())
+    return pos, ang, bone
 end
 
 if SERVER then
@@ -230,11 +286,8 @@ if SERVER then
         if isValid(equipped) then return end
         if !ply:isHUDActive() then return end
         equipment.reserveSlot(ply, self, true)
+        local pos, ang, bone = self:getAttachPos(ply)
         self.ent:enableMotion(false)
-        local bone = ply:lookupBone(self.BoneToEquip)
-        if !bone then return end
-        local matr = ply:getBoneMatrix(bone)
-        local pos, ang = localToWorld(self.EquipOffset or Vector(), self.EquipAngle or Angle(), matr:getTranslation(), matr:getAngles())
         if !isValid(self.equippedPoint) then
             self.equippedPoint = hologram.create(pos, ang, "models/hunter/plates/plate.mdl")
             self.equippedPoint:setNoDraw(true)
@@ -263,6 +316,9 @@ if SERVER then
         end
         self.ent:enableMotion(true)
         self.ent:setCollisionGroup(COLLISION_GROUP.NONE)
+        self.ent:setPos(self.ent:getPos())
+        self.ent:setAngles(self.ent:getAngles())
+        self.ent:setVelocity(ply:getVelocity())
         self:setNWVar("equippedBy", nil)
         self.ent:emitSound("AI_BaseNPC.BodyDrop_Heavy")
         equipment.emptySlot(ply, self)
@@ -271,6 +327,7 @@ if SERVER then
     function Equippable:onRemove()
         if !isValid(self.equippedPoint) then return end
         self.equippedPoint:remove()
+        equipment.sync()
     end
 
     ---[SERVER] Set durability of equippable
@@ -304,18 +361,19 @@ if SERVER then
 
     ---[SERVER] Hook to damage equipment
     ---@param target Entity
-    hook.add("EntityTakeDamage", "BModEquipmentDurability", function(target, attacker, inflictor, amount, type, position, force)
+    hook.add("PostEntityTakeDamage", "BModEquipmentDurability", function(target, attacker, inflictor, amount, type, position, force)
         if target.BModEquippable then
             local ent = ents.inited[target:entIndex()]
             if !ent then return end
             ---@cast ent Equippable
+            if amount < 5 then return end
             ent:setDurability(ent:getDurability() - amount / 2)
+            return
         end
         ---@type ArmorInfo
         local plyEquipped = equipment.players[target]
         local dmgType = inflictor.dmgType or type
         if !plyEquipped then return end
-        local multiplier = 1
         ---@cast target Player
         local damageSlots = damageMultipliers[target:lastHitGroup()]
         local protection = 0
@@ -326,13 +384,12 @@ if SERVER then
             local damageProtection = armor:getDefense(dmgType)
             local currentProtection = damageProtection * coverage * damageMultiplier
             protection = protection + currentProtection
-            if amount >= 5 then
-                armor:setDurability(armor:getDurability() - amount / 2)
-            end
+            armor:setDurability(armor:getDurability() - amount / 2)
             ::cont::
         end
-        local scale = multiplier * (1 - protection)
-        target:setHealth(target:getHealth() + amount * (1 - scale))
+        if protection == 0 then return end
+        target:emitSound("MetalGrate.BulletImpact")
+        target:setHealth(target:getHealth() + amount * (1 - protection))
     end)
 else
     function Equippable.hooks.RenderOffscreen(self)
@@ -342,6 +399,28 @@ else
             return
         end
         self.ent:setNoDraw(ply == player() and !ply:shouldDrawLocalPlayer())
+    end
+
+    ---[CLIENT] Draw equippable at model
+    ---@param model Entity Model to draw it
+    function Equippable:draw(model)
+        local pos, ang, _ = self:getAttachPos(model)
+        if !isValid(self.toDraw) then
+            timer.simple(0, function()
+                if isValid(self.toDraw) then return end
+                self.toDraw = isfunction(self.Model) and self.Model() or hologram.create(Vector(), Angle(), self.Model)
+                self.toDraw:setNoDraw(true)
+            end)
+            return
+        end
+        self.toDraw:setPos(pos)
+        self.toDraw:setAngles(ang)
+        self.toDraw:draw()
+    end
+
+    function Equippable:onRemove()
+        if !isValid(self.toDraw) then return end
+        self.toDraw:remove()
     end
 end
 

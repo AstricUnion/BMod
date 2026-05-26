@@ -77,6 +77,22 @@ function bgui.create(classname, parent)
     return bgui.registered[classname]:new(parent or bgui.canvas)
 end
 
+---Change focus for BGUI
+---@param pnl BPanel Panel change focus to
+function bgui.changeFocus(pnl)
+    if !isValid(pnl) then return end
+    local fcs = bgui.focus
+    if fcs and fcs.onFocusChanged then
+        fcs.onFocusChanged(fcs, false)
+    end
+    if pnl.onFocusChanged then
+        pnl.onFocusChanged(pnl, true)
+    end
+    fcs.hovered = false
+    pnl.hovered = true
+    bgui.focus = pnl
+end
+
 local function mouseMoved(x, y)
     local oldX, oldY = bgui.cursorX, bgui.cursorY
     bgui.cursorX = x
@@ -92,14 +108,17 @@ local function mouseMoved(x, y)
         local isNewHover = v.testHover(v, x, y, true)
         if !isPressed and isNewHover and !isOldHover then
             v.onCursorEntered(v)
-            bgui.focus = v
-            v.hovered = true
+            bgui.changeFocus(v)
             return
         elseif !isNewHover and isOldHover then
             v.onCursorExited(v)
             v.hovered = false
+        elseif isNewHover and isOldHover and bgui.focus ~= v then
+            bgui.changeFocus(v)
+            return
         elseif bgui.focus == v then
             v.onCursorMoved(v, x - v.globalX, y - v.globalY)
+            return
         else
             v.hovered = false
         end
@@ -200,7 +219,7 @@ hook.add("InputPressed", "BInputPressed", function(key)
                 if focus == v then
                     if v:onMousePressed(key) then return end
                 elseif v:testHover(x, y) then
-                    bgui.focus = v
+                    bgui.changeFocus(v)
                     v:onMousePressed(key)
                     return
                 end
@@ -480,7 +499,7 @@ end
 ---Focuses the panel and enables it to receive input
 function BPanel:makePopup()
     self.mouseInput = true
-    bgui.focus = self
+    bgui.changeFocus(self)
 end
 
 
@@ -713,6 +732,11 @@ end
 function BPanel:hasFocus()
     return bgui.focus == self
 end
+
+
+---Called whenever the panel gained or lost focus
+---@param gained boolean
+function BPanel:onFocusChanged(gained) end
 
 
 ---On panel initialize

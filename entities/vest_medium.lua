@@ -28,7 +28,7 @@ VestMedium.Model = function()
     return mdl:create()
 end
 VestMedium.BoneToEquip = "ValveBiped.Bip01_Spine2"
-VestMedium.EquipOffset = Vector(-7, 3.5, 0)
+VestMedium.EquipOffset = Vector(-6, 3, 0)
 VestMedium.EquipAngle = Vector(0, 88, 90)
 VestMedium.EquipSlots = {[EquipSlot.chest] = 0.7, [EquipSlot.abdomen] = 0.7}
 VestMedium.DefenseProfile = DefenseProfile.Basic

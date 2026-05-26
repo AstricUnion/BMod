@@ -94,7 +94,6 @@ if SERVER then
                     eff:setScale(0.6)
                     eff:play()
                     timer.simple(0.5, function()
-                        print(res)
                         for id, count in pairs(res) do
                             resource.create(id, pos, angs, count, false)
                         end

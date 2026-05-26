@@ -29,6 +29,8 @@ BMod = {}
 BMod.debug = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
+require("bmod/base/safeparticle.lua")
+
 ---@class ents
 ents = require("bmod/base/entity.lua")
 
@@ -43,8 +45,6 @@ bicons = require("bmod/base/icons.lua")
 
 ---@class model
 model = require("bmod/base/model.lua")
-
-require("bmod/base/safeparticle.lua")
 
 require("bmod/src/utils.lua")
 
