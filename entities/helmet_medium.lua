@@ -18,7 +18,7 @@ local mdl = model.new("helmet_medium", hitbox {
     vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
     mass = 10
 })
-    :add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "helmet_medium"} )
+    :add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "helmet_light"} )
 
 ---@class HelmetMedium: Equippable
 local HelmetMedium = {}
