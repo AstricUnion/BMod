@@ -9,13 +9,17 @@
 ---Class to manipulate hologram models with custom meshes and hitboxes
 ---@class model
 ---@field registered table<string, ModelInfo>
----@field mesh table<string, CMesh>
----@field toNetwork ToNetwork[]
----@field networked ToNetwork[]
+---@field inited table<number, ModelEntity>
+---@field mesh table<string, CMesh> Hashmap with mesh to get
+---@field meshToLoad CMesh[] List with mesh to load
+---@field toNetwork table<number, string>
+---@field networked table<number, string>
 ---@field materials table<string, Material>
 local model = {}
 model.registered = {}
+model.inited = {}
 model.mesh = {}
+model.meshToLoad = {}
 model.materials = {}
 model.toNetwork = {}
 model.networked = {}
@@ -23,24 +27,12 @@ model.rigVisible = false
 
 ---@alias modelfun fun(): (Entity?)
 
----@class MeshPretend
----@field holo Hologram
----@field part string
-
----Class to create custom mesh for holograms
----@class CMesh
----@field id string
----@field url string? [SERVER] URL of custom mesh to load
----@field data string? [CLIENT] OBJ data of custom mesh
----@field mesh Mesh? [CLIENT] Loaded mesh
----@field material string [CLIENT] Material to set
----@field pretendsToIt MeshPretend[] [CLIENT] Holograms, that pretends to this mesh, when it not loaded
-local CMesh = {}
-CMesh.__index = CMesh
-
 ---Override methods of entity to work with models
 ---@param ent Entity
+---@return ModelEntity
 local function methodsOverride(ent)
+    ---@class ModelEntity
+    local ent = ent
     -- I can use ent, not self, because this is method only for this entity
     ent.__setNoDrawOld = ent.__setNoDrawOld or ent.setNoDraw
 
@@ -50,28 +42,79 @@ local function methodsOverride(ent)
         end
     end
 
+    ent.__lookupBoneOld = ent.__lookupBoneOld or ent.lookupBone
+    ---[SHARED] Lookup for bone in entity
+    ---@param name string Name of the bone
+    ---@return number? id
+    function ent:lookupBone(name)
+        return ent.modelInfo.bonesIDs[name]
+    end
+
+    ent.__lookupSequenceOld = ent.__lookupSequenceOld or ent.lookupSequence
+    ---[SHARED] Lookup for sequence in entity
+    ---@param name string Name of the sequence
+    ---@return number? id
+    function ent:lookupSequence(name)
+        return ent.modelInfo.sequencesIDs[name]
+    end
+
+    ent.__getSequenceOld = ent.__getSequenceOld or ent.getSequence
+    ---[SHARED] Returns current entity sequence
+    ---@return number id
+    function ent:getSequence()
+        return ent.sequence or 0
+    end
 
     if SERVER then
+        ent.__setSequenceOld = ent.__setSequenceOld or ent.setSequence
+        ---[SHARED] Returns current entity sequence
+        ---@param id number Sequence ID
+        function ent:setSequence(id)
+            net.start("ModelSetSequence")
+                net.writeUInt(id, 8)
+                net.writeEntity(ent)
+            net.send(find.allPlayers())
+        end
     else
-        ent.__drawOld = ent.__drawOld or ent.draw
+        ent.__setSequenceOld = ent.__setSequenceOld or ent.setSequence
+        ---[SHARED] Returns current entity sequence
+        ---@param id number Sequence ID
+        function ent:setSequence(id)
+            local seq = ent.modelInfo.sequences[id]
+            if !seq then return end
+            ent.sequence = id
+            seq.startFun(ent)
+            if seq.duration <= 0 then return end
+            ent.sequenceStart = timer.curtime()
+        end
 
+        ent.__drawOld = ent.__drawOld or ent.draw
         function ent:draw(noTint)
             for _, v in ipairs(ent:getChildren()) do
                 v:draw(noTint)
             end
         end
+
+        ---[CLIENT] Get entity of the bone
+        ---@param id number Index of the bone
+        ---@return Entity?
+        function ent:getBoneEntity(id)
+            return ent.modelBones[id]
+        end
     end
+
+    return ent
 end
 
 if SERVER then
     ---[SERVER] Sync holograms to clients
-    ---@param ply Player? Player to send
+    ---@param ply Player? Player to send. False to prevent send (to clear toNetwork)
     function model.sync(ply)
-        if next(model.toNetwork) == nil then return end
         local newToNetwork = {}
-        for _, v in ipairs(model.toNetwork) do
-            if !isValid(entity(v.originId)) then goto cont end
-            newToNetwork[#newToNetwork+1] = v
+        for id, modelId in pairs(model.toNetwork) do
+            local origin = entity(id)
+            if !isValid(origin) then goto cont end
+            newToNetwork[id] = modelId
             ::cont::
         end
         model.toNetwork = newToNetwork
@@ -85,6 +128,22 @@ if SERVER then
         model.sync(ply)
     end)
 else
+    ---@class MeshPretend
+    ---@field holo Hologram
+    ---@field part string
+
+    ---Class to create custom mesh for holograms
+    ---@class CMesh
+    ---@field id string
+    ---@field url string? [SERVER] URL of custom mesh to load
+    ---@field data string? [CLIENT] OBJ data of custom mesh
+    ---@field mesh Mesh? [CLIENT] Loaded mesh
+    ---@field material string [CLIENT] Material to set
+    ---@field pretendsToIt MeshPretend[] [CLIENT] Holograms, that pretends to this mesh, when it not loaded
+    local CMesh = {}
+    CMesh.__index = CMesh
+
+
     ---[CLIENT] Set material ID to set for all parts of this mesh
     ---@param id string Identifier of material
     function CMesh:setMaterial(id)
@@ -94,6 +153,7 @@ else
     ---[CLIENT] Load CMesh
     function CMesh:load()
         model.mesh[self.id] = self
+        model.meshToLoad[#model.meshToLoad+1] = self
         http.get(self.url, function(data)
             self.data = data
         end)
@@ -110,49 +170,25 @@ else
     local meshLoadCoroutine = coroutine.wrap(function()
         while true do
             coroutine.yield()
-            for _, v in pairs(model.mesh) do
-                if v.mesh then goto cont end
-                if !v.data then goto cont end
-                v.mesh = mesh.createFromObj(v.data, true)
-                for _, pretendent in ipairs(v.pretendsToIt) do
-                    if !isValid(pretendent.holo) then goto cont end
-                    v:setTo(pretendent.holo, pretendent.part)
-                    ::cont::
+            local newToLoad = {}
+            for _, v in ipairs(model.meshToLoad) do
+                do
+                    if v.mesh then goto cont end
+                    if !v.data then goto cont end
+                    v.mesh = mesh.createFromObj(v.data, true)
+                    for _, pretendent in ipairs(v.pretendsToIt) do
+                        if !isValid(pretendent.holo) then goto cont end
+                        v:setTo(pretendent.holo, pretendent.part)
+                        ::cont::
+                    end
+                    v.pretendsToIt = {}
+                    goto cont1
                 end
-                v.pretendsToIt = {}
                 ::cont::
+                newToLoad[#newToLoad+1] = v
+                ::cont1::
             end
-        end
-    end)
-
-    local getNetworkedModels = coroutine.wrap(function()
-        while true do
-            coroutine.yield()
-            local newNetworked = {}
-            for _, v in ipairs(model.networked) do
-                local addedId = #newNetworked+1
-                newNetworked[addedId] = v
-                local ent = entity(v.originId)
-                if !isValid(ent) then goto cont end
-                local mdl = model.registered[v.modelId]
-                if ent then
-                    mdl:create(ent)
-                end
-                methodsOverride(ent)
-                newNetworked[addedId] = nil
-                ::cont::
-            end
-            model.networked = newNetworked
-        end
-    end)
-
-    hook.add("EntityRemoved", "ModelRemove", function(ent, fullupdate)
-        if isValid(ent) and ent.bones then
-            for _, v in pairs(ent.bones) do
-                if !isValid(ent) or v == ent then goto cont end
-                v:remove()
-                ::cont::
-            end
+            model.meshToLoad = newToLoad
         end
     end)
 
@@ -161,13 +197,14 @@ else
     end)
 
     hook.add("Think", "CustomMeshLoad", function()
-        local maxQuota = quotaMax() / 4
-        local currentQuota = quotaAverage()
-        if currentQuota > maxQuota then return end
-        for _=1, math.floor(maxQuota / currentQuota) do
-            meshLoadCoroutine()
+        if next(model.meshToLoad) ~= nil then
+            local maxQuota = quotaMax() / 4
+            local currentQuota = quotaAverage()
+            if currentQuota > maxQuota then return end
+            for _=1, math.floor(maxQuota / currentQuota) do
+                meshLoadCoroutine()
+            end
         end
-        getNetworkedModels()
     end)
 
     ---[CLIENT] Set this mesh to hologram
@@ -203,7 +240,61 @@ else
         model.materials[id] = mat
         return mat
     end
+
+    hook.add("NetworkEntityCreated", "NetworkedModels", function(ent)
+        local modelId = model.networked[ent:entIndex()]
+        if !modelId then return end
+        local mdl = model.registered[modelId]
+        if !mdl then return end
+        mdl:create(ent)
+        methodsOverride(ent)
+    end)
+
+    hook.add("RenderOffscreen", "ModelSequences", function()
+        local cur = timer.curtime()
+        for _, v in pairs(model.inited) do
+            if !isValid(v) then goto cont end
+            if v.sequenceStart then
+                local process = cur - v.sequenceStart
+                local seq = v.modelInfo.sequences[v.sequence]
+                if process > seq.duration then
+                    seq.endFun(v)
+                    v.sequenceStart = nil
+                    goto cont
+                end
+                seq.processFun(v, process)
+            end
+            ::cont::
+        end
+    end)
+
+    net.receive("ModelSetSequence", function()
+        local id = net.readUInt(8)
+        net.readEntity(function(ent)
+            ent:setSequence(id)
+        end)
+    end)
 end
+
+local function recursiveRemove(ent)
+    if !isValid(ent) then return end
+    for _, v in ipairs(ent:getChildren()) do
+        recursiveRemove(v)
+    end
+    ent:remove()
+end
+
+hook.add("EntityRemoved", "ModelRemove", function(ent, fullupdate)
+    if CLIENT then
+        if isValid(ent) and ent.modelBones then
+            for _, v in pairs(ent.modelBones) do
+                if !isValid(ent) or v == ent then goto cont end
+                recursiveRemove(v)
+                ::cont::
+            end
+        end
+    end
+end)
 
 
 ---[SHARED] Sets rig visibility on creation. Call before rig()
@@ -441,10 +532,21 @@ end
 ---@class Bone
 ---@field parent string
 ---@field bone modelfun
+---@field name string
+
+---@class ModelSequence
+---@field name string
+---@field startFun fun(ent: ModelEntity)
+---@field processFun fun(ent: ModelEntity, delta: number)
+---@field endFun fun(ent: ModelEntity)
+---@field duration number
 
 ---@class ModelInfo
 ---@field origin fun()
----@field bones table<string, Bone>
+---@field bones Bone[]
+---@field bonesIDs table<string, number>
+---@field sequences ModelSequence[]
+---@field sequencesIDs table<string, number>
 ---@field identifier string
 local ModelInfo = {}
 ModelInfo.__index = ModelInfo
@@ -467,52 +569,93 @@ function ModelInfo:add(parent, bone, mdl)
         outName = bone
         outModel = mdl
     end
-    self.bones[outName] = {
+    local id = #self.bones+1
+    self.bones[id] = {
+        name = outName,
         parent = outParent,
         bone = outModel
     }
+    self.bonesIDs[outName] = id
+    return self
+end
+
+---[SHARED] Add sequence info to model
+---@param name string Identifier of sequence
+---@param duration number Duration of sequence
+---@param startFun fun(ent: ModelEntity) Start function
+---@param processFun fun(ent: ModelEntity, process: number) Sequence process
+---@param endFun fun(ent: ModelEntity) End function
+---@return ModelInfo
+function ModelInfo:addSequence(name, duration, startFun, processFun, endFun)
+    local id = #self.sequences+1
+    self.sequences[id] = {
+        startFun = startFun,
+        processFun = processFun,
+        endFun = endFun,
+        duration = duration,
+        name = name
+    }
+    self.sequencesIDs[name] = id
     return self
 end
 
 
+---@class ModelEntity: Entity
+---@field identifier string Identifier of model
+---@field modelInfo ModelInfo Model info
+---@field modelBones Entity[] [CLIENT] Model bones entities, by number
+---@field sequence number Current sequence ID
+---@field sequenceStart number Relative to curtime
+
+
 ---@param origin Entity? Origin to parent
----@return Entity?
+---@return ModelEntity?
 function ModelInfo:create(origin)
     local originHolo = origin or self.origin()
     if !originHolo or !isValid(originHolo) then
         throw("Can't create origin")
         return
     end
+    local id = originHolo:entIndex()
     if SERVER then
-        model.toNetwork[#model.toNetwork+1] = {
-            modelId = self.identifier,
-            originId = originHolo:entIndex()
-        }
+        model.toNetwork[id] = self.identifier
         model.sync()
+        originHolo = methodsOverride(originHolo)
+        originHolo.identifier = self.identifier
+        originHolo.modelBones = {}
+        originHolo.modelInfo = self
+        originHolo.sequence = 0
+        model.inited[id] = originHolo
         return originHolo
     end
     ---@type table<string, Entity>
     local bones = {}
-    bones.origin = originHolo
-    for name, part in pairs(self.bones) do
+    for i, part in ipairs(self.bones) do
+        if !part then goto cont end
         local holo = part.bone()
         if !holo then
-            throw("Can't create bone " .. name)
+            throw("Can't create bone " .. part.name)
             return
         end
-        bones[name] = holo
+        bones[i] = holo
         local parent = part.parent
-        local parentHolo = bones[parent] or !parent and originHolo
+        local parentHolo = bones[parent] or (!parent and originHolo)
         if !parentHolo then
-            throw(string.format("Parent \"%s\" for \"%s\" not found! Maybe you placed it in incorrect sequence?", parent, name))
+            throw(string.format("Parent \"%s\" for \"%s\" not found! Maybe you placed it in incorrect sequence?", parent, part.name))
             return
         end
-        holo:setPos(parentHolo:localToWorld(holo:getPos()))
-        holo:setAngles(parentHolo:localToWorldAngles(holo:getAngles()))
+        local pos, ang = localToWorld(holo:getPos(), holo:getAngles(), parentHolo:getPos(), parentHolo:getAngles())
+        holo:setPos(pos)
+        holo:setAngles(ang)
         holo:setParent(parentHolo)
+        ::cont::
     end
-    originHolo.bones = bones
-    methodsOverride(originHolo)
+    originHolo = methodsOverride(originHolo)
+    originHolo.identifier = self.identifier
+    originHolo.modelBones = bones
+    originHolo.modelInfo = self
+    originHolo.sequence = 0
+    model.inited[id] = originHolo
     return originHolo
 end
 
@@ -524,7 +667,7 @@ end
 function model.new(identifier, origin)
     local rig = isfunction(origin) and origin or model.rig(origin)
     local obj = setmetatable(
-        { origin = rig, bones = {}, identifier = identifier },
+        { origin = rig, bones = {}, bonesIDs = {}, sequences = {}, sequencesIDs = {}, identifier = identifier },
         ModelInfo
     )
     model.registered[identifier] = obj
@@ -533,7 +676,7 @@ end
 
 ---[SHARED] Create model by registered model info
 ---@param identifier string Identifier of the model
----@return Entity?
+---@return ModelEntity?
 function model.create(identifier)
     local mdl = model.registered[identifier]
     return mdl:create()

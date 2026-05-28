@@ -10,9 +10,7 @@ local DefenseProfile = equipment.DefenseProfile
 local model = model
 local hitbox = model.hitbox
 local vertex = model.vertex
-local part = model.part
 local holo = model.holo
-local rig = model.rig
 
 local mdl = model.new("helmet_medium", hitbox {
     vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},

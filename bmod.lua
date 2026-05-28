@@ -9,6 +9,7 @@
 ---@include bmod/base/safeparticle.lua
 ---@include bmod/base/icons.lua
 ---@include bmod/base/model.lua
+---@include bmod/src/commands.lua
 ---@include bmod/src/resource.lua
 ---@include bmod/src/machine.lua
 ---@include bmod/src/equippable.lua
@@ -71,30 +72,19 @@ if SERVER then
     ---@class remote
     remote = require("bmod/base/remote.lua")
     require("bmod/src/gui.lua")
-
-    local ow = owner()
-    hook.add("PlayerSay", "Commands", function(ply, text)
-        if ply == ow and text == "!binv" then
-            net.start("BModInventory")
-            net.send(ply)
-            return ""
-        end
-    end)
 else
     ---@class bgui
     bgui = require("bmod/base/bgui.lua")
 
     ---@class bguiElements
-    local bguiElements = require("bmod/src/gui.lua")
+    bguiElements = require("bmod/src/gui.lua")
 
     -- Initialize GUI elements
     ---@includedir bmod/bgui
     dodir("bmod/bgui", {})
-
-    net.receive("BModInventory", function()
-        bguiElements.inventory()
-    end)
 end
+
+require("bmod/src/commands.lua")
 
 -- Autorun scripts
 ---@includedir bmod/autorun
@@ -123,12 +113,12 @@ if SERVER then
     -- toolbox:setPower(100)
     -- toolbox:spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- timer.simple(2, function()
-    ents.create("helmet_medium"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
-    ents.create("vest_medium"):spawn(chip():getPos() + Vector(0, -5, 12), Angle(), false)
-    ents.create("respirator"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
+    -- ents.create("helmet_heavy"):spawn(chip():getPos() + Vector(0, 5, 12), Angle(), false)
+    -- ents.create("vest_medium"):spawn(chip():getPos() + Vector(0, -5, 12), Angle(), false)
+    -- ents.create("gas_mask"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- ents.create("fumigator"):spawn(chip():getPos() + Vector(0, -5, 12), Angle(), false)
     -- resource.create("power", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
-    -- deposit.create("coal", chip():getPos(), 200, 272)
+    deposit.create("coal", chip():getPos(), 200, 272)
     -- local cor = deposit.startGeneration(20, true)
     -- if !cor then return end
     -- hook.add("Think", "BModDepositGeneration", function()

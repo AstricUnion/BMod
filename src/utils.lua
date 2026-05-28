@@ -35,15 +35,15 @@ else
 
     ---[CLIENT] Display for entities
     ---@param ent Entity Entity
-    ---@param offset Vector? Offset of display
+    ---@param offset Vector Offset of display
     ---@param angle Angle? Angles of display
     ---@param draw string|fun() Text to display or function to draw
     ---@param distance number? Distance to disappear. Default 256
     function BMod.displayEnt(ent, offset, angle, draw, distance)
         local pos = Ply:getPos()
         distance = distance or 256
-        local mPos = ent and ent:localToWorld(offset or Vector())
-        if mPos:getDistance(pos) > distance then return end
+        local mPos = ent and ent:localToWorld(offset)
+        if mPos:getDistance(pos) > distance or render.pixelVisible(mPos, 16) < 0.3 then return end
         local ang = ent:getAngles()
         local m = Matrix(ang, mPos)
         m:rotate(Angle(0, 90, 90) + angle)

@@ -160,6 +160,7 @@ hook.add("PostDrawHUD", "BPaint", function()
         bgui.screenHeight = sh
         bgui.canvas.setSize(bgui.canvas, sw, sh)
     end
+    if next(bgui.ordered) == nil then return end
     local cX, cY = input.getCursorPos()
     if cX ~= bgui.cursorX or cY ~= bgui.cursorY then
         mouseMoved(cX, cY)
