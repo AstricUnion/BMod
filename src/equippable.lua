@@ -387,7 +387,7 @@ if SERVER then
             armor:setDurability(armor:getDurability() - amount / 2)
             ::cont::
         end
-        if protection == 0 then return end
+        if protection <= 0.05 then return end
         target:emitSound("MetalGrate.BulletImpact")
         target:setHealth(target:getHealth() + amount * (1 - protection))
     end)

@@ -364,10 +364,16 @@ if SERVER then
         resource.produce(self.ent:localToWorld(self.OutputOffset or Vector()), self.ent:getAngles(), inputs)
     end
 else
+    ---Cached fonts by size
+    ---@type table<number, string>
+    local fonts = {}
+
     ---[INTERNAL] [CLIENT] Create font for machine
     function BaseMachine:createFont()
         self.FontSize = self.FontSize or 48
-        self.font = render.createFont("Roboto",self.FontSize,500,false,false,false,false,0,false,0)
+        local font = fonts[self.FontSize] or render.createFont("Roboto",self.FontSize,500,false,false,false,false,0,false,0)
+        fonts[self.FontSize] = font
+        self.font = font
     end
 
     ---@class DrawField

@@ -13,8 +13,6 @@
     - [ ] Client config commands
 - [ ] Machines
     - [x] Crafting table
-        - [x] Function to melt ore
-        - [ ] Add more crafts
     - [x] Solid fuel generator
     - [ ] Make GUI for machines
     - [ ] Make interfaces to connect machines
@@ -53,7 +51,7 @@
 - [ ] Holomodels library
     - [x] Base modeling system
     - [x] Client and server support
-    - [ ] Tweens for animations (not related to BMod)
+    - [x] Tweens for animations (not related to BMod)
     - [x] Both sides mesh and custom materials support
 - [ ] Armor system
     - [ ] Armor creating

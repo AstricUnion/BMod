@@ -35,10 +35,16 @@ local function methodsOverride(ent)
     local ent = ent
     -- I can use ent, not self, because this is method only for this entity
     ent.__setNoDrawOld = ent.__setNoDrawOld or ent.setNoDraw
-
     function ent:setNoDraw(state)
         for _, v in ipairs(ent:getChildren()) do
             v:setNoDraw(state)
+        end
+    end
+
+    ent.__setCullModeOld = ent.__setCullModeOld or ent.setCullMode
+    function ent:setCullMode(state)
+        for _, v in ipairs(ent:getChildren()) do
+            v:setCullMode(state)
         end
     end
 
@@ -471,6 +477,7 @@ end
 ---@field mesh string? Mesh for holo
 ---@field meshPart string? Mesh part. You can found this lines in obj file: `o name_of_part`
 ---@field clips Clip[]? Clips of holo
+---@field cullmode number? Cull mode of holo
 
 local emptyFunction = function() end
 
@@ -490,6 +497,7 @@ function model.holo(tbl)
     local meshId = tbl.mesh or tbl[10]
     local meshPart = tbl.meshPart or tbl[11]
     local clips = tbl.clips or tbl[12] or {}
+    local cullmode = tbl.cullmode or tbl[13] or 0
     local funcToMat = emptyFunction
     if matName then
         local function setMaterial(holo, index, funcMatName)
@@ -513,6 +521,7 @@ function model.holo(tbl)
         local holo = hologram.create(pos, ang, mdl, scale)
         if !holo then return end
         holo:suppressEngineLighting(noLight)
+        holo:setCullMode(cullmode)
         if size then holo:setSize(size) end
         funcToMat(holo)
         holo:setColor(color)

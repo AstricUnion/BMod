@@ -15,7 +15,7 @@ local holo = model.holo
 local rig = model.rig
 
 local mdl = model.new("heavy_vest", hitbox {
-    vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
+    vertex {"cube", Vector(0, 0, -2), Angle(0, 0, 0), Vector(8, 8, 10)},
     mass = 10
 })
     :add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "heavy_vest", scale = Vector(0.9, 0.9, 1) } )

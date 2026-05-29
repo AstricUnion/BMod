@@ -29,6 +29,7 @@ local mdl = model.new("solid_fuel_generator", hitbox {
         holo { Vector(60, 0, -11), Angle(0, 0, 0), "models/props_c17/metalladder001.mdl", Vector(1, 1.4, 0.35), material = "models/props_c17/furnituremetal002a" },
         holo { Vector(44, 0, -3), Angle(0, 0, 0), "models/props_lab/partsbin01.mdl", Vector(2, 1.5, 0.7), color = Color(255, 0, 0), material = "models/props_c17/furnituremetal002a" },
         holo { Vector(52, 0, 48), Angle(0, 0, 0), "models/props_wasteland/chimneypipe02b.mdl", Vector(0.15, 0.15, 0.15), material = "models/props_c17/furnituremetal002a" },
+        holo { Vector(48, 5, 5), Angle(0, 0, -90), "models/props_pipes/valvewheel002.mdl", Vector(2, 2, 2), material = "models/props_c17/furnituremetal002a" },
         holo {
             Vector(4, 0, 56), Angle(0, 180, 0), "models/props_c17/FurnitureFireplace001a.mdl", Vector(1.6, 1.6, 1.8),
             material = "models/props_c17/furnituremetal002a", clips = {
@@ -36,10 +37,6 @@ local mdl = model.new("solid_fuel_generator", hitbox {
             }
         },
         holo { Vector(44, 0, 22), Angle(90, 0, 0), "models/props_pipes/pipecluster08d_extender128.mdl", Vector(4.3, 4.3, 0.3), color = Color(255, 255, 0) },
-    })
-    :add("testBone", part {
-        rig ( Vector(48, 5, 5) ),
-        holo { Vector(48, 5, 5), Angle(0, 0, -90), "models/props_pipes/valvewheel002.mdl", Vector(2, 2, 2), material = "models/props_c17/furnituremetal002a" }
     })
 
 ---@class SolidFuelGenerator: BaseMachine
