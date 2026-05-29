@@ -394,11 +394,15 @@ if SERVER then
 else
     function Equippable.hooks.RenderOffscreen(self)
         local ply = self:getEquippedBy()
+        local noDraw = false
         if !isValid(ply) then
-            self.ent:setNoDraw(false)
-            return
+            noDraw = false
+        else
+            noDraw = ply == player() and !ply:shouldDrawLocalPlayer()
         end
-        self.ent:setNoDraw(ply == player() and !ply:shouldDrawLocalPlayer())
+        if self.ent:getNoDraw() ~= noDraw then
+            self.ent:setNoDraw(noDraw)
+        end
     end
 
     ---[CLIENT] Draw equippable at model

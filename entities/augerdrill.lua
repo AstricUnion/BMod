@@ -49,7 +49,6 @@ end
 
 
 ---@class AugerDrill: BaseMachine
----@field toScan Deposit[]
 ---@field nextEffect number Next effect. Relative to curtime
 ---@field nextDecal number Next decal. Relative to curtime
 ---@field effect BEffect
@@ -85,7 +84,7 @@ if SERVER then
     function AugerDrill:turnOn(ply)
         if self:getInput("power") < 1 then return end
         local found = self:findDeposit()
-        if found then
+        if found and found.amount then
             self:install()
             return true
         else
@@ -96,8 +95,7 @@ if SERVER then
     function AugerDrill:turnOff(_) end
 
     ---[SERVER] Work function. To drill deposit
-    function AugerDrill:work()
-        local cur = timer.curtime()
+    function AugerDrill:work(cur)
         local dep = self:getDeposit()
         if !dep then return false end
         local power = self:getInput("power")

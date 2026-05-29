@@ -22,20 +22,19 @@ local ents = ents
 ---@field DisplayOffset Vector Display offset
 ---@field DisplayAngle Angle Display angles
 ---@field WorkCooldown number? Cooldown between works. Default 0
+---@field WorkSound string? Work sound
 ---@field EndlessDeposits boolean Can it mine from endless deposits Default true
 ---@field LimitedDeposits boolean Can it mine from limited deposits. Default true
 ---@field private nextThink number Next think. Relative to curtime
 ---@field private installConstraint Constraint? Is machine installed and constraint to install
 ---@field private font string Font data for fields
 ---@field private toProduce Resources Resources to produce, out of outputs
+---@field private workSound Sound Sound when work
 local BaseMachine = {}
 BaseMachine.Identifier = "base_machine"
 BaseMachine.Name = "Base machine"
 BaseMachine.Model = ""
 BaseMachine.hooks = {}
-
-BaseMachine.EndlessDeposits = true
-BaseMachine.LimitedDeposits = true
 
 BaseMachine.Inputs = {}
 BaseMachine.Outputs = {}
@@ -66,6 +65,9 @@ if SERVER then
     function BaseMachine:turnOffInternal(ply)
         self:turnOff(ply)
         self:setNWVar("turnedOn", false)
+        if self.workSound then
+            self.workSound:stop()
+        end
         self:produce()
         BMod.logDebug("(%s) Turned machine off", tostring(self))
     end
@@ -77,8 +79,21 @@ if SERVER then
         local res = self:turnOn(ply)
         if res then
             self:setNWVar("turnedOn", true)
+            if self.WorkSound then
+                local workSound = sound.create(self.ent, self.WorkSound)
+                workSound:play()
+                self.workSound = workSound
+            end
             BMod.logDebug("(%s) Turned machine on", tostring(self))
         end
+    end
+
+
+    ---[SERVER] On remove. Implements turn off
+    function BaseMachine:onRemove()
+        local ow = self.ent:getOwner()
+        ---@cast ow Player
+        self:turnOffInternal(ow)
     end
 
 
@@ -187,14 +202,13 @@ if SERVER then
 
 
     ---[SERVER] Find deposit under machine to mine
-    ---@return boolean found
+    ---@return Deposit? found
     function BaseMachine:findDeposit()
         local deposits = deposit.findInSphere(self.ent:getPos(), 0)
         if next(deposits) ~= nil then
             self:setNWVar("deposit", deposits[1].id)
-            return true
+            return deposits[1]
         end
-        return false
     end
 
 

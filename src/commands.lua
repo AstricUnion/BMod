@@ -12,13 +12,17 @@ if SERVER then
             local entToCreate = ents.registered[args]
             if !entToCreate then
                 print("No such ent: " .. args)
-                return
+                return ""
             end
             local ent = entToCreate:new()
             local angs = ply:getEyeAngles()
             local shootPos = ply:getShootPos()
             local pos = trace.line(shootPos, shootPos + angs:getForward() * 64, {ply}).HitPos
+            if entToCreate.setCount then
+                ent:setCount(100)
+            end
             ent:spawn(pos, Angle(), false)
+            return ""
         end
     end)
 else

@@ -10,12 +10,35 @@ local resource = resource
 ---@class beff
 local beff = beff
 
+---@class model
+local model = model
+local hitbox = model.hitbox
+local vertex = model.vertex
+local part = model.part
+local rig = model.rig
+local holo = model.holo
+
+local mdl = model.new("liquid_fuel_generator", hitbox {
+    vertex {"cube", Vector(0, 0, 12), Angle(0, 0, 0), Vector(42, 24, 24)},
+    mass = 400
+})
+    :add("base", part {
+        holo { Vector(32, 0, -32), Angle(0, 0, 0), "models/props_mining/diesel_generator.mdl", clips = {
+            { Vector(0, 0, 32), Vector(0, 0, 1) },
+            { Vector(24, 0, 0), Vector(-1, 0, 0) }
+        } },
+        holo { Vector(0, 0, 0), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(6, 2.5, 2), material = "models/props_c17/furnituremetal002a" }
+    })
+
+
 ---@class LiquidFuelGenerator: BaseMachine
 ---@field nextGas number
 local LiquidFuelGenerator = {}
 LiquidFuelGenerator.Identifier = "liquid_fuel_generator"
 LiquidFuelGenerator.Name = "Liquid Fuel Generator"
-LiquidFuelGenerator.Model = "models/props_mining/diesel_generator.mdl"
+LiquidFuelGenerator.Model = function()
+    return mdl:create()
+end-- "models/props_mining/diesel_generator.mdl"
 LiquidFuelGenerator.hooks = {}
 
 ---@type table<string, ResourceInput>
@@ -26,14 +49,15 @@ LiquidFuelGenerator.Inputs.fuel = { affectedByGrade = true, rateField = "LiquidF
 LiquidFuelGenerator.Outputs = {}
 LiquidFuelGenerator.Outputs.power = { affectedByGrade = true, type = "power", maxCount = 100 }
 
-LiquidFuelGenerator.OutputOffset = Vector(0, 30, 10)
+LiquidFuelGenerator.OutputOffset = Vector(0, 24, 10)
 
 LiquidFuelGenerator.WorkCooldown = 1
 LiquidFuelGenerator.FontSize = 24
 
 LiquidFuelGenerator.Display = true
-LiquidFuelGenerator.DisplayOffset = Vector(-65, 12, 66)
+LiquidFuelGenerator.DisplayOffset = Vector(-36, 12, 32)
 LiquidFuelGenerator.DisplayAngle = Angle(0, 180, 0)
+LiquidFuelGenerator.WorkSound = "vehicles/airboat/fan_motor_idle_loop1.wav"
 
 
 if SERVER then
@@ -49,7 +73,7 @@ if SERVER then
         end
         self.effect = beff.create("oilsmoke")
         self.effect:setEntity(self.ent)
-        self.effect:setOrigin(Vector(8, -8, 81))
+        self.effect:setOrigin(Vector(32, -9, 64))
         self.effect:play()
         return true
     end

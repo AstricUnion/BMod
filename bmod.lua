@@ -104,9 +104,9 @@ dodir("bmod/effects", {})
 
 
 if SERVER then
-    -- local ent = ents.create("augerdrill")
+    local ent = ents.create("pumpjack")
     -- ent:setInput("fuel", 100)
-    -- ent:spawn(chip():getPos() + Vector(0, 0, 0), Angle(), true)
+    ent:spawn(chip():getPos() + Vector(0, 0, 16), Angle(), true)
     -- resource.create("copperore", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
     -- local toolbox = ents.create("toolbox")
     -- toolbox:setGas(100)

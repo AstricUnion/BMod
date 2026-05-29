@@ -36,9 +36,15 @@ local function methodsOverride(ent)
     -- I can use ent, not self, because this is method only for this entity
     ent.__setNoDrawOld = ent.__setNoDrawOld or ent.setNoDraw
     function ent:setNoDraw(state)
+        ent.noDraw = state
         for _, v in ipairs(ent:getChildren()) do
             v:setNoDraw(state)
         end
+    end
+
+    ent.__getNoDrawOld = ent.__getNoDrawOld or ent.getNoDraw
+    function ent:getNoDraw()
+        return ent.noDraw
     end
 
     ent.__setCullModeOld = ent.__setCullModeOld or ent.setCullMode
@@ -207,6 +213,31 @@ else
         model.networked = net.readTable()
     end)
 
+    local function getNetworkedModels()
+        for id, modelId in pairs(model.networked) do
+            local ent = entity(id)
+            if !isValid(ent) then goto cont end
+            local mdl = model.registered[modelId]
+            if !mdl then goto cont end
+            mdl:create(ent)
+            methodsOverride(ent)
+            model.networked[id] = nil
+            ::cont::
+        end
+    end
+
+    hook.add("NetworkEntityCreated", "ModelNetworked", function(ent)
+        if !isValid(ent) then return end
+        local entId = ent:entIndex()
+        local modelId = model.networked[entId]
+        if !modelId then return end
+        local mdl = model.registered[modelId]
+        if !mdl then return end
+        mdl:create(ent)
+        methodsOverride(ent)
+        model.networked[entId] = nil
+    end)
+
     hook.add("Think", "CustomMeshLoad", function()
         if next(model.meshToLoad) ~= nil then
             local maxQuota = quotaMax() / 4
@@ -215,6 +246,9 @@ else
             for _=1, math.floor(maxQuota / currentQuota) do
                 meshLoadCoroutine()
             end
+        end
+        if !table.isEmpty(model.networked) then
+            getNetworkedModels()
         end
     end)
 
@@ -251,16 +285,6 @@ else
         model.materials[id] = mat
         return mat
     end
-
-    hook.add("NetworkEntityCreated", "NetworkedModels", function(ent)
-        if !isValid(ent) then return end
-        local modelId = model.networked[ent:entIndex()]
-        if !modelId then return end
-        local mdl = model.registered[modelId]
-        if !mdl then return end
-        mdl:create(ent)
-        methodsOverride(ent)
-    end)
 
     hook.add("RenderOffscreen", "ModelSequences", function()
         local cur = timer.curtime()

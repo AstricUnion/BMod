@@ -28,6 +28,12 @@ local mdl = model.new("solar_panel", hitbox {
         holo { Vector(-16, 0, 3), Angle(0, 0, 0), "models/props_lab/reciever_cart.mdl", Vector(0.6, 0.7, 0.3) },
     })
 
+if CLIENT then
+    bicons.registerModel("solar_panel", function()
+        return mdl:create()
+    end, Vector(-240, 128, 128), Angle(10, -30, 0))
+end
+
 ---@class SolarPanel: BaseMachine
 local SolarPanel = {}
 SolarPanel.Identifier = "solar_panel"
