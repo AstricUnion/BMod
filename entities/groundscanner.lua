@@ -22,6 +22,14 @@ GroundScanner.hooks = {}
 GroundScanner.Inputs = {}
 GroundScanner.Inputs.power = { type = "power", maxCount = 100 }
 
+GroundScanner.Display = true
+GroundScanner.DisplayOffset = Vector(0, 0, 20)
+GroundScanner.DisplayAngle = Angle(0, 0, -60)
+
+if CLIENT then
+    bicons.registerModel("groundscanner", "models/props_silo/launch_button.mdl", Vector(64, -24, 24), Angle(20, 160, 0))
+end
+
 local unitsInMeter = 39.37008
 local foundRadius = 50 * unitsInMeter
 
@@ -109,55 +117,53 @@ if CLIENT then
 
     ---[CLIENT] Draw info about this resource within 3D2D
     ---@param self GroundScanner
-    function GroundScanner.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(0, 0, 20), Angle(0, 0, -60), function()
-            ---@type Deposit[]
-            local scanned = self:getNWVar("scanned", nil)
-            if scanned then
-                render.setColor(Color(0, 0, 0, 200))
-                pushMask(function()
-                    render.drawFilledCircle(0, 0, 256)
-                end)
-                render.enableDepth(false)
-                render.drawRect(-256, -256, 512, 512)
-                render.enableDepth(true)
+    function GroundScanner:drawDisplay()
+        ---@type Deposit[]
+        local scanned = self:getNWVar("scanned", nil)
+        if scanned then
+            render.setColor(Color(0, 0, 0, 200))
+            pushMask(function()
+                render.drawFilledCircle(0, 0, 256)
+            end)
+            render.enableDepth(false)
+            render.drawRect(-256, -256, 512, 512)
+            render.enableDepth(true)
+            render.setColor(Color(0, 255, 0, 150))
+            render.drawLine(-256, 0, 256, 0)
+            render.drawLine(0, 0, 0, 256)
+            render.setFont("Default")
+            for i=1, 4 do
+                local rad = i * 10
+                local navCircRadius = rad * scale * unitsInMeter
                 render.setColor(Color(0, 255, 0, 150))
-                render.drawLine(-256, 0, 256, 0)
-                render.drawLine(0, 0, 0, 256)
-                render.setFont("Default")
-                for i=1, 4 do
-                    local rad = i * 10
-                    local navCircRadius = rad * scale * unitsInMeter
-                    render.setColor(Color(0, 255, 0, 150))
-                    render.drawCircle(0, 0, navCircRadius)
-                    render.setColor(Color(200, 200, 200, 150))
-                    render.drawSimpleText(navCircRadius, 0, rad .. "m", TEXT_ALIGN.RIGHT, TEXT_ALIGN.BOTTOM)
-                end
-                render.setColor(Color())
-                render.drawLine(0, 0, 0, -256)
-                for _, v in ipairs(scanned) do
-                    local pos = v.position * Vector(-scale, scale, 0)
-                    local size = v.size * scale
-                    local icon = bicons.get(v.resource)
-                    local half = size / 2
-                    if icon then
-                        icon(pos.x - half, pos.y - half, size, size)
-                    else
-                        render.drawCircle(0, 0, half)
-                    end
-                    local res = ents.registered[v.resource]
-                    render.drawSimpleText(pos.x, pos.y - half - 10, res and res.Name or v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-                    render.drawSimpleText(
-                        pos.x, pos.y + half + 10,
-                        v.rate and v.rate .. " per second" or v.amount and v.amount .. " units" or "",
-                        TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER
-                    )
-                end
-                popMask()
+                render.drawCircle(0, 0, navCircRadius)
+                render.setColor(Color(200, 200, 200, 150))
+                render.drawSimpleText(navCircRadius, 0, rad .. "m", TEXT_ALIGN.RIGHT, TEXT_ALIGN.BOTTOM)
             end
-            render.setFont("Trebuchet24")
-            render.drawSimpleText(-256, 256, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
-        end)
+            render.setColor(Color())
+            render.drawLine(0, 0, 0, -256)
+            for _, v in ipairs(scanned) do
+                local pos = v.position * Vector(-scale, scale, 0)
+                local size = v.size * scale
+                local icon = bicons.get(v.resource)
+                local half = size / 2
+                if icon then
+                    icon(pos.x - half, pos.y - half, size, size)
+                else
+                    render.drawCircle(0, 0, half)
+                end
+                local res = ents.registered[v.resource]
+                render.drawSimpleText(pos.x, pos.y - half - 10, res and res.Name or v.resource, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                render.drawSimpleText(
+                    pos.x, pos.y + half + 10,
+                    v.rate and v.rate .. " per second" or v.amount and v.amount .. " units" or "",
+                    TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER
+                )
+            end
+            popMask()
+        end
+        render.setFont("Trebuchet24")
+        render.drawSimpleText(-256, 256, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
     end
 end
 

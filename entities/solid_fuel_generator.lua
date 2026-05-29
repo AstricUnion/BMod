@@ -63,6 +63,10 @@ SolidFuelGenerator.OutputOffset = Vector(0, 30, 10)
 SolidFuelGenerator.WorkCooldown = 1
 SolidFuelGenerator.FontSize = 24
 
+SolidFuelGenerator.Display = true
+SolidFuelGenerator.DisplayOffset = Vector(-20, 0, 36)
+SolidFuelGenerator.DisplayAngle = Angle(0, 180, 0)
+
 if SERVER then
     function SolidFuelGenerator:machineInitialize()
         self.nextGas = 0
@@ -118,18 +122,15 @@ if CLIENT then
     local bgui = bgui
 
     ---[CLIENT] Draw info about this drill within 3D2D
-    ---@param self LiquidFuelGenerator
-    function SolidFuelGenerator.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(-20, 0, 36), Angle(0, 180, 0), function()
-            local fields = {}
-            local power = self:getOutput("power")
-            fields[#fields+1] = {"Fuel", self:getInput("fuel"), 1000, false, true}
-            fields[#fields+1] = {"Water", self:getInput("water"), 300, false, true}
-            if self:isTurnedOn() then
-                fields[#fields+1] = {"Progress", (power / 400) * 100, 100, false, true}
-            end
-            self:drawFields(0, 0, fields, false, 16)
-        end)
+    function SolidFuelGenerator:drawDisplay()
+        local fields = {}
+        local power = self:getOutput("power")
+        fields[#fields+1] = {"Fuel", self:getInput("fuel"), 1000, false, true}
+        fields[#fields+1] = {"Water", self:getInput("water"), 300, false, true}
+        if self:isTurnedOn() then
+            fields[#fields+1] = {"Progress", (power / 400) * 100, 100, false, true}
+        end
+        self:drawFields(0, 0, fields, false, 16)
     end
 end
 

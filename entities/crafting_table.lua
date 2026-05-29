@@ -68,6 +68,9 @@ CraftingTable.Inputs.smelting = { maxCount = 50, callback = function (self, res,
     end
 end }
 
+CraftingTable.Display = true
+CraftingTable.DisplayOffset = Vector(10.5, -50, 18)
+
 
 ---Create new crafting table
 if SERVER then
@@ -175,27 +178,18 @@ if CLIENT then
     ---@class bgui
     local bgui = bgui
 
-
-    function CraftingTable:machineInitialize()
-        self.ent.craftOffset = Vector(5, 0, 60)
-    end
-
-    ---[CLIENT] Draw info about this resource within 3D2D
-    ---@param self CraftingTable
-    function CraftingTable.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(10.5, -50, 18), Angle(), function()
-            local fields = {}
-            fields[#fields+1] = {"Fuel", self:getInput("fuel"), 100, false, true, true}
-            local currentUnits, resToSmelt = self:getInput("smelting")
-            if resToSmelt then
-                local res = ents.registered[resToSmelt]
-                if res then
-                    fields[#fields+1] = {"Progress", res.Name, 100, false, false}
-                    fields[#fields+1] = {"Remaining", currentUnits, 50, true, true}
-                end
+    function CraftingTable:drawDisplay()
+        local fields = {}
+        fields[#fields+1] = {"Fuel", self:getInput("fuel"), 100, false, true, true}
+        local currentUnits, resToSmelt = self:getInput("smelting")
+        if resToSmelt then
+            local res = ents.registered[resToSmelt]
+            if res then
+                fields[#fields+1] = {"Progress", res.Name, 100, false, false}
+                fields[#fields+1] = {"Remaining", currentUnits, 50, true, true}
             end
-            self:drawFields(0, 0, fields, false, 8)
-        end)
+        end
+        self:drawFields(0, 0, fields, false, 8)
     end
 
     net.receive("BModCraftingTableOpen", function()

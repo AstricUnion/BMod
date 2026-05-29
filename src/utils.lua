@@ -33,63 +33,59 @@ else
     local Ply = player()
     local font = render.createFont("Roboto",32,500,false,false,false,false,0,false,0)
 
+    local Matrix = Matrix
+    local pushMatrix = render.pushMatrix
+    local popMatrix = render.popMatrix
+    local enableDepth = render.enableDepth
+    local setFont = render.setFont
+    local setColor = render.setColor
+    local defScale = Vector(0.1, -0.1, 1)
+    local defAngles = Angle(0, 90, 90)
+    local defColor = Color()
+
     ---[CLIENT] Display for entities
     ---@param ent Entity Entity
     ---@param offset Vector Offset of display
     ---@param angle Angle? Angles of display
-    ---@param draw string|fun() Text to display or function to draw
-    ---@param distance number? Distance to disappear. Default 256
-    function BMod.displayEnt(ent, offset, angle, draw, distance)
-        local pos = Ply:getPos()
-        distance = distance or 256
-        local mPos = ent and ent:localToWorld(offset)
-        if mPos:getDistance(pos) > distance or render.pixelVisible(mPos, 16) < 0.3 then return end
+    ---@param draw fun() Function to draw
+    function BMod.displayEnt(ent, offset, angle, draw)
+        local pos = Ply.getPos(Ply)
+        local mPos = ent:localToWorld(offset)
+        if mPos:getDistance(pos) > 196 then return end
         local ang = ent:getAngles()
         local m = Matrix(ang, mPos)
-        m:rotate(Angle(0, 90, 90) + angle)
-        m:setScale(Vector(0.1, -0.1, 1))
-        render.pushMatrix(m)
+        m:rotate(defAngles + angle)
+        m:setScale(defScale)
+        pushMatrix(m)
         do
-            render.enableDepth(true)
-            render.setFont(font)
-            render.setColor(Color())
-            if isfunction(draw) then
-                ---@cast draw fun()
-                draw()
-            else
-                ---@cast draw string
-                render.drawSimpleText(0, 0, draw, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-            end
+            enableDepth(true)
+            setFont(font)
+            setColor(defColor)
+            draw()
         end
-        render.popMatrix()
+        popMatrix()
     end
 
     ---[CLIENT] Display in world
     ---@param pos Vector Offset of display
     ---@param angle Angle? Angles of display
-    ---@param draw string|fun() Text to display or function to draw
-    ---@param distance number? Distance to disappear. Default 256
+    ---@param draw fun() Function to draw
+    ---@param distance number? Distance to disappear. Default 196
     function BMod.display(pos, angle, draw, distance)
         local plyPos = Ply:getPos()
-        distance = distance or 256
+        distance = distance or 196
         if pos:getDistance(plyPos) > distance then return end
         local m = Matrix(angle, pos)
-        m:rotate(Angle(0, 90, 90) + angle)
-        m:setScale(Vector(0.1, -0.1, 1))
-        render.pushMatrix(m)
+        m:rotate(defAngles + angle)
+        m:setScale(defScale)
+        pushMatrix(m)
         do
-            render.enableDepth(true)
-            render.setFont(font)
-            render.setColor(Color())
-            if isfunction(draw) then
-                ---@cast draw fun()
-                draw()
-            else
-                ---@cast draw string
-                render.drawSimpleText(0, 0, draw, TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-            end
+            enableDepth(true)
+            setFont(font)
+            setColor(defColor)
+            draw()
         end
-        render.popMatrix()
+        popMatrix()
     end
 
     -- hook.add("DrawHUD", "BModEntityInfo", function()

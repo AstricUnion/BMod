@@ -94,11 +94,16 @@ local function methodsOverride(ent)
             ent.sequenceStart = timer.curtime()
         end
 
+        local function recursiveDraw(holo, noTint)
+            for _, v in ipairs(holo:getChildren()) do
+                v:draw(noTint)
+                recursiveDraw(v, noTint)
+            end
+        end
+
         ent.__drawOld = ent.__drawOld or ent.draw
         function ent:draw(noTint)
-            for _, v in ipairs(ent:getChildren()) do
-                v:draw(noTint)
-            end
+            recursiveDraw(ent, noTint)
         end
 
         ---[CLIENT] Get entity of the bone
@@ -248,6 +253,7 @@ else
     end
 
     hook.add("NetworkEntityCreated", "NetworkedModels", function(ent)
+        if !isValid(ent) then return end
         local modelId = model.networked[ent:entIndex()]
         if !modelId then return end
         local mdl = model.registered[modelId]
@@ -298,7 +304,10 @@ hook.add("EntityRemoved", "ModelRemove", function(ent, fullupdate)
                 recursiveRemove(v)
                 ::cont::
             end
+            model.networked[ent:entIndex()] = nil
         end
+    else
+        model.toNetwork[ent:entIndex()] = nil
     end
 end)
 
@@ -329,10 +338,16 @@ end
 ---@alias VertexType
 ---| '"cube"'
 ---| '"custom"'
+---| '"wedge"'
 local VertexType = {
     ["cube"] = {
         Vector(1, 1, 1), Vector(1, -1, 1), Vector(-1, -1, 1), Vector(-1, 1, 1),
         Vector(1, 1, -1), Vector(1, -1, -1), Vector(-1, -1, -1), Vector(-1, 1, -1)
+    },
+    ["wedge"] = {
+        Vector(1, -1, -1), Vector(1, 1, -1),
+        Vector(-1, 1, -1), Vector(-1, -1, -1),
+        Vector(-1, 1, 1), Vector(-1, -1, 1),
     }
 }
 

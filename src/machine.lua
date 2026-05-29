@@ -18,6 +18,9 @@ local ents = ents
 ---@field Outputs table<string, ResourceOutput>
 ---@field OutputOffset Vector
 ---@field FontSize number? Font size of field
+---@field Display boolean Turn on display for this machine
+---@field DisplayOffset Vector Display offset
+---@field DisplayAngle Angle Display angles
 ---@field WorkCooldown number? Cooldown between works. Default 0
 ---@field EndlessDeposits boolean Can it mine from endless deposits Default true
 ---@field LimitedDeposits boolean Can it mine from limited deposits. Default true
@@ -36,6 +39,9 @@ BaseMachine.LimitedDeposits = true
 
 BaseMachine.Inputs = {}
 BaseMachine.Outputs = {}
+BaseMachine.Display = false
+BaseMachine.DisplayOffset = Vector()
+BaseMachine.DisplayAngle = Angle()
 
 
 if SERVER then
@@ -384,6 +390,16 @@ else
     ---@field percentage boolean? Show percentage
     ---@field oneLine boolean? Draw at one line
 
+    local Color = Color
+    local enableDepth = render.enableDepth
+    local setFont = render.setFont
+    local setColor = render.setColor
+    local drawSimpleTextOutlined = render.drawSimpleTextOutlined
+    local ceil = math.ceil
+    local upper = string.upper
+    local outlineColor = Color(0, 0, 0)
+    local defColor = Color(120, 100, 50):hsvToRGB()
+
     ---[CLIENT] Function to draw field with info
     ---@param x number
     ---@param y number
@@ -396,10 +412,9 @@ else
     ---@return number w Width of info
     ---@return number h Height of info
     function BaseMachine:drawField(x, y, key, value, maxValue, negate, percentage, oneLine)
-        render.setFont(self.font)
-        render.enableDepth(false)
-        local function setColor()
-            local col = Color(120, 100, 50):hsvToRGB()
+        setColor(Color())
+        local function setPercentColor()
+            local col = defColor
             if isnumber(value) then
                 ---@cast value number
                 if maxValue then
@@ -410,24 +425,21 @@ else
                     local colPercent = negate and (1 - percent) or percent
                     col = Color(colPercent * 120, 100, 50):hsvToRGB()
                 end
-                value = math.ceil(value)
+                value = ceil(value)
             end
-            render.setColor(col)
+            setColor(col)
         end
         local w, h = 0, 0
         if !oneLine then
             -- local half = self.FontSize / 2
-            local w1, h1 = render.drawSimpleTextOutlined(x, y + self.FontSize, string.upper(key), 2, Color(0, 0, 0), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
-            setColor()
-            local w2, h2 = render.drawSimpleTextOutlined(x, y + self.FontSize * 2, string.upper(value) .. (percentage and "%" or ""), 2, Color(0, 0, 0), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            local w1, h1 = drawSimpleTextOutlined(x, y + self.FontSize, upper(key), 2, outlineColor, TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            setPercentColor()
+            local w2, h2 = drawSimpleTextOutlined(x, y + self.FontSize * 2, upper(value) .. (percentage and "%" or ""), 2, outlineColor, TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
             w, h = w1 + w2, h1 + h2
         else
-            setColor()
-            render.drawSimpleTextOutlined(x, y, string.upper(key) .. ": " .. string.upper(value) .. (percentage and "%" or ""), 2, Color(0, 0, 0), TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
+            setPercentColor()
+            drawSimpleTextOutlined(x, y, upper(key) .. ": " .. upper(value) .. (percentage and "%" or ""), 2, outlineColor, TEXT_ALIGN.CENTER, TEXT_ALIGN.TOP)
         end
-        render.setFont("Default")
-        render.setColor(Color())
-        render.enableDepth(true)
         return w, h
     end
 
@@ -442,6 +454,8 @@ else
         gap = gap or 0
         local xOffset = 0
         local yOffset = 0
+        setFont(self.font)
+        enableDepth(false)
         for _, v in ipairs(tbl) do
             local key = v.key or v[1]
             local value = v.value or v[2]
@@ -456,7 +470,30 @@ else
                 yOffset = yOffset + h + gap
             end
         end
+        setFont("Default")
+        setColor(defColor)
+        enableDepth(true)
     end
+
+    local Ply = player()
+    local filt = {Ply}
+    hook.add("PostDrawTranslucentRenderables", "BModMachineDrawDisplay", function()
+        local shootPos = Ply.getShootPos(Ply)
+        local angs = Ply.getEyeAngles(Ply)
+        local tr = trace.line(shootPos, shootPos + angs:getForward() * 196, filt, MASK.SOLID)
+        ---@cast tr TraceResult
+        local ent = tr.Entity
+        if !isValid(ent) or !ent.BModMachine then return end
+        local entInfo = ents.inited[ent:entIndex()]
+        if !entInfo.Display then return end
+        ---@cast entInfo BaseMachine
+        BMod.displayEnt(ent, entInfo.DisplayOffset, entInfo.DisplayAngle, function()
+            entInfo:drawDisplay()
+        end)
+    end)
+
+    ---[CLIENT] Function to draw display on entity. You can offset this display with DisplayOffset and DisplayAngle
+    function BaseMachine:drawDisplay() end
 end
 
 ---[SHARED] Initializing machine

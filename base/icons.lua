@@ -7,7 +7,8 @@ if SERVER then return end
 ---@alias drawIcon fun(x: number, y: number, w: number, h: number)
 
 ---@class ModelIcon
----@field model string
+---@field model string|fun()
+---@field holo Hologram?
 ---@field cameraOffset Vector
 ---@field cameraAngle Angle
 
@@ -56,14 +57,17 @@ render.createRenderTarget("BModModelIcons")
 
 ---Register model as icon
 ---@param identifier string Icon identifier
----@param model string Model to render
+---@param model string|fun(): Hologram Model to render
 ---@param cameraOffset Vector Camera offset
 ---@param cameraAngle Angle Camera angle
 function bicons.registerModel(identifier, model, cameraOffset, cameraAngle)
     if bicons.alreadyDraw >= 64 then return end
     local index = #bicons.toDraw+1
+    local holoModel = isfunction(model) and model() or nil
+    if holoModel then holoModel:setNoDraw(true) end
     bicons.toDraw[index] = {
         model = model,
+        holo = holoModel,
         cameraOffset = cameraOffset,
         cameraAngle = cameraAngle,
     }
@@ -87,7 +91,12 @@ hook.add("RenderOffscreen", "BModModelIcons", function()
     for i, v in ipairs(bicons.toDraw) do
         local row = math.ceil(i / 8)
         local column = i - ((row - 1) * 8)
-        bicons.holo:setModel(v.model)
+        local toDraw = bicons.holo
+        if isValid(v.holo) then
+            toDraw = v.holo
+        else
+            bicons.holo:setModel(v.model)
+        end
         ---@type RenderCamData
         local camData = {
             type = "3D",
@@ -99,9 +108,14 @@ hook.add("RenderOffscreen", "BModModelIcons", function()
         }
         render.pushViewMatrix(camData)
             render.setLightingMode(1)
-            bicons.holo:draw()
+            toDraw:draw()
             render.setLightingMode(0)
         render.popViewMatrix()
+        if toDraw ~= bicons.holo then
+            timer.simple(0, function()
+                toDraw:remove()
+            end)
+        end
         bicons.alreadyDraw = bicons.alreadyDraw + 1
     end
     bicons.toDraw = {}

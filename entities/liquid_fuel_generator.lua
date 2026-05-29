@@ -31,6 +31,10 @@ LiquidFuelGenerator.OutputOffset = Vector(0, 30, 10)
 LiquidFuelGenerator.WorkCooldown = 1
 LiquidFuelGenerator.FontSize = 24
 
+LiquidFuelGenerator.Display = true
+LiquidFuelGenerator.DisplayOffset = Vector(-65, 12, 66)
+LiquidFuelGenerator.DisplayAngle = Angle(0, 180, 0)
+
 
 if SERVER then
     function LiquidFuelGenerator:machineInitialize()
@@ -86,15 +90,11 @@ if CLIENT then
     ---@class bgui
     local bgui = bgui
 
-    ---[CLIENT] Draw info about this drill within 3D2D
-    ---@param self LiquidFuelGenerator
-    function LiquidFuelGenerator.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(-65, 12, 66), Angle(0, 180, 0), function()
-            local fields = {}
-            fields[#fields+1] = {"Progress", self:getOutput("power"), 100, false, true}
-            fields[#fields+1] = {"Fuel", self:getInput("fuel"), 100, false, true}
-            self:drawFields(0, 0, fields, false, 16)
-        end)
+    function LiquidFuelGenerator:drawDisplay()
+        local fields = {}
+        fields[#fields+1] = {"Progress", self:getOutput("power"), 100, false, true}
+        fields[#fields+1] = {"Fuel", self:getInput("fuel"), 100, false, true}
+        self:drawFields(0, 0, fields, false, 16)
     end
 end
 

@@ -19,7 +19,7 @@
     - [ ] Try to make Wire outputs (maybe transfer some entities to StarfallEX chip? Or make chip with Wire spawning on button?)
     - [ ] Workbench
     - [ ] Fabricator
-    - [ ] Solar panel
+    - [x] Solar panel
     - [x] Auger drill
     - [x] Ground scanner
     - [x] Liquid fuel generator

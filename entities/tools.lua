@@ -271,7 +271,6 @@ else
     function ToolBox.hooks.PostDrawTranslucentRenderables(self)
         local ply = self:getEquippedBy()
         if !ply or !isValid(ply) then
-            BMod.displayEnt(self.ent, Vector(0, 7, 0), Angle(0, 90, 0), "ToolBox")
             return
         end
         if !self:isInHands(ply) then return end

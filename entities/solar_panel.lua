@@ -19,7 +19,7 @@ local rig = model.rig
 local holo = model.holo
 
 local mdl = model.new("solar_panel", hitbox {
-    vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(26, 46, 20)},
+    vertex {"wedge", Vector(0, 0, 7.5), Angle(0, 0, 0), Vector(30, 46, 15)},
     mass = 100
 })
     :add("base", part {
@@ -48,6 +48,10 @@ SolarPanel.OutputOffset = Vector(0, 30, 10)
 
 SolarPanel.WorkCooldown = 5
 SolarPanel.FontSize = 24
+
+SolarPanel.Display = true
+SolarPanel.DisplayOffset = Vector(-32, 12, 16)
+SolarPanel.DisplayAngle = Angle(0, 180, 0)
 
 
 if SERVER then
@@ -98,7 +102,7 @@ if SERVER then
             for j = 1, 10 do
                 local angs = self.ent:localToWorldAngles(Angle(230 - j*2, 130 + i*16, 0))
                 local dir = angs:getForward()
-                local tr = trace.line(startPos, startPos + dir * 9e9, {self.ent}, MASK_SOLID)
+                local tr = trace.line(startPos, startPos + dir * 9e9, {self.ent}, MASK.SOLID)
                 if (tr.HitSky) then
                     hitAmount = hitAmount + 0.02
                 end
@@ -140,16 +144,12 @@ if CLIENT then
     ---@class bgui
     local bgui = bgui
 
-    ---[CLIENT] Draw info about this drill within 3D2D
-    ---@param self SolarPanel
-    function SolarPanel.hooks.PostDrawTranslucentRenderables(self)
+    function SolarPanel:drawDisplay()
         if !self:isTurnedOn() then return end
-        BMod.displayEnt(self.ent, Vector(-32, 12, 16), Angle(0, 180, 0), function()
-            local fields = {}
-            fields[#fields+1] = {"Progress", self:getOutput("power"), 100, false, true}
-            fields[#fields+1] = {"Efficiency", self:getEfficiency(), 1, false, true}
-            self:drawFields(0, 0, fields, true, 16)
-        end)
+        local fields = {}
+        fields[#fields+1] = {"Progress", self:getOutput("power"), 100, false, true}
+        fields[#fields+1] = {"Efficiency", self:getEfficiency(), 1, false, true}
+        self:drawFields(0, 0, fields, true, 16)
     end
 end
 

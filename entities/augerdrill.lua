@@ -18,6 +18,7 @@ local part = model.part
 local holo = model.holo
 local rig = model.rig
 
+local drillMat = "models/props_canal/canal_bridge_railing_01a"
 local mdl = model.new("augerdrill", hitbox {
     vertex {"cube", Vector(-8, 36, 96), Angle(-60, 0, 0), Vector(35, 118, 5)},
     vertex {"cube", Vector(-8, -36, 96), Angle(60, 0, 0), Vector(35, 118, 5)},
@@ -31,16 +32,20 @@ local mdl = model.new("augerdrill", hitbox {
         holo { Vector(0, 0, 128), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(4.8, 4.8, 4), material = "models/props_c17/metalladder001" },
         holo { Vector(0, 0, 86), Angle(0, 0, 0), "models/holograms/hq_cylinder.mdl", Vector(2.5, 2.5, 3), material = "models/props_c17/metalladder001" },
     })
+    :add("drill", part {
+        rig(),
+        holo { Vector(0, 0, 56), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat },
+        holo { Vector(0, 0, 32), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat  },
+        holo { Vector(0, 0, 8), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat  },
+        holo { Vector(0, 0, -16), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat },
+    })
 
 
-local drillMat = "models/props_canal/canal_bridge_railing_01a"
-local drillMdl = model.new("augerdrilldrill", part {
-    rig(),
-    holo { Vector(0, 0, 56), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat },
-    holo { Vector(0, 0, 32), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat  },
-    holo { Vector(0, 0, 8), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat  },
-    holo { Vector(0, 0, -16), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat },
-})
+if CLIENT then
+    bicons.registerModel("augerdrill", function()
+        return mdl:create()
+    end, Vector(-240, 128, 128), Angle(10, -30, 0))
+end
 
 
 ---@class AugerDrill: BaseMachine
@@ -48,7 +53,6 @@ local drillMdl = model.new("augerdrilldrill", part {
 ---@field nextEffect number Next effect. Relative to curtime
 ---@field nextDecal number Next decal. Relative to curtime
 ---@field effect BEffect
----@field drill Entity
 local AugerDrill = {}
 AugerDrill.Identifier = "augerdrill"
 AugerDrill.Name = "Auger Drill"
@@ -69,14 +73,11 @@ AugerDrill.OutputOffset = Vector(30, 0, 10)
 
 AugerDrill.WorkCooldown = 1
 
+AugerDrill.Display = true
+AugerDrill.DisplayOffset = Vector(30, 0, 148)
+
 if SERVER then
     function AugerDrill:machineInitialize()
-        local drill = drillMdl:create()
-        if !drill then return end
-        drill:setPos(self.ent:getPos())
-        drill:setAngles(self.ent:getAngles())
-        drill:setParent(self.ent)
-        self.drill = drill
         self.nextDecal = 0
         self.nextEffect = 0
     end
@@ -86,16 +87,13 @@ if SERVER then
         local found = self:findDeposit()
         if found then
             self:install()
-            self.drill:setLocalAngularVelocity(Angle(0, -400, 0))
             return true
         else
             BMod.hintMessage(ply, "You should place it on deposit with solid resource. Deposit can be found with GroundScanner")
         end
     end
 
-    function AugerDrill:turnOff(_)
-        self.drill:setLocalAngularVelocity(Angle(0, 0, 0))
-    end
+    function AugerDrill:turnOff(_) end
 
     ---[SERVER] Work function. To drill deposit
     function AugerDrill:work()
@@ -124,22 +122,26 @@ if CLIENT then
     ---@class bgui
     local bgui = bgui
 
-    ---[CLIENT] Draw info about this drill within 3D2D
+    function AugerDrill:drawDisplay()
+        local fields = {}
+        fields[#fields+1] = {"Power", self:getInput("power"), 400, false, true}
+        -- render.drawSimpleText(0, 0, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+        local count, resId = self:getOutput("resource")
+        if resId then
+            local res = ents.registered[resId]
+            fields[#fields+1] = {"Extracting", res.Name}
+            fields[#fields+1] = {"Progress", count, 100, false, true}
+        end
+        self:drawFields(0, 0, fields)
+    end
+
+    ---[CLIENT] Drill animation
     ---@param self AugerDrill
-    function AugerDrill.hooks.PostDrawTranslucentRenderables(self)
-        BMod.displayEnt(self.ent, Vector(30, 0, 148), Angle(0, 0, 0), function()
-            render.setFont("Trebuchet24")
-            local fields = {}
-            fields[#fields+1] = {"Power", self:getInput("power"), 400, false, true}
-            -- render.drawSimpleText(0, 0, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
-            local count, resId = self:getOutput("resource")
-            if resId then
-                local res = ents.registered[resId]
-                fields[#fields+1] = {"Extracting", res.Name}
-                fields[#fields+1] = {"Progress", count, 100, false, true}
-            end
-            self:drawFields(0, 0, fields)
-        end)
+    function AugerDrill.hooks.RenderOffscreen(self)
+        if self:isTurnedOn() then
+            local ent = self.ent:getBoneEntity(self.ent:lookupBone("drill"))
+            ent:setLocalAngles(ent:getLocalAngles() + Angle(0, -5, 0))
+        end
     end
 end
 

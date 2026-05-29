@@ -44,7 +44,7 @@ if SERVER then
         local cur = timer.curtime()
         for ply, turr in pairs(turrets) do
             if !isValid(ply) or (turr.dieTime and turr.dieTime < cur) then
-                turr:remove()
+                if isValid(turr) then turr:remove() end
                 goto cont
             end
             if !isValid(turr) or !turr.toFire then goto cont end
