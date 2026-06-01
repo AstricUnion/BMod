@@ -1,10 +1,57 @@
 ---@class ents
 local ents = ents
 
+---@class Plug: BModEntity
+---@field outputFrom BaseMachine
+---@field inputTo BaseMachine?
+---@field rope Constraint
+local Plug = {}
+Plug.Identifier = "electric_plug"
+Plug.Name = "Plug"
+Plug.Model = "models/props_lab/tpplug.mdl"
+Plug.hooks = {}
+
+if SERVER then
+    function Plug:initialize()
+        self.ent:addCollisionListener(function(colData)
+            if self.inputTo or colData.HitSpeed:getLength() < 500 then return end
+            local ent = colData.HitEntity
+            if !ent.BModMachine or ent == self.ent then return end
+            local entInfo = ents.registered[ent.BModMachine]
+            ---@cast entInfo BaseMachine
+            if !entInfo.Inputs["power"] then return end
+            self.ent:setPos(self.ent:getPos() - self.ent:getForward() * 16)
+            self.ent:setParent(ent)
+            self.ent:setNoDraw(true)
+            self.inputTo = ents.inited[ent:entIndex()]
+        end)
+    end
+
+    ---[SERVER] Set machine to output power
+    ---@param machine BaseMachine
+    function Plug:setOutputFrom(machine)
+        self.outputFrom = machine
+        self.rope = constraint.rope(self.ent:entIndex(), machine.ent, self.ent, 0, 0, Vector(), Vector(12, 0, 0), 512, 10, 100, 2, "cable/cable2")
+    end
+
+    ---@param self Plug
+    ---@param ent Entity
+    function Plug.hooks.EntityRemoved(self, ent)
+        if ent == self.inputTo or !isValid(self.rope) then
+            self.ent:remove()
+        end
+    end
+end
+
+
+ents.register(Plug)
+
+
 ---@class ResourceInput
 ---@field type string? Type of resource. Can be nil, if using rateField
 ---@field rateField string? Rate field. Like SolidFuelInUnit. Can be nil, if using type
 ---@field affectedByGrade boolean? Is delta of this input affected by grade of the machine
+---@field gradePower number? Power of grade. By default is 2
 ---@field maxCount number Max count of this resource
 ---@field callback? fun(self: BaseMachine, res: Resource, wantToTake: number): boolean? Callback of this input. Return true to prevent input
 
@@ -12,6 +59,7 @@ local ents = ents
 ---@field type string? Type of resource to produce. Can be nil, for flex output
 ---@field maxCount number Max count of this resource
 ---@field affectedByGrade boolean? Is delta of this output affected by grade of the machine
+---@field gradePower number? Power of grade. By default is 2
 
 ---@class BaseMachine: BModEntity
 ---@field Inputs table<string, ResourceInput>
@@ -23,8 +71,12 @@ local ents = ents
 ---@field DisplayAngle Angle Display angles
 ---@field WorkCooldown number? Cooldown between works. Default 0
 ---@field WorkSound string? Work sound
----@field EndlessDeposits boolean Can it mine from endless deposits Default true
----@field LimitedDeposits boolean Can it mine from limited deposits. Default true
+---@field InstallOffset Vector Offset to install machine
+---@field Anchorage number Anchorage of this machine (weld force)
+---@field Armor number Armor of this machine. By default is 2
+---@field MaxDurability number Maximum of durability for this machine
+---@field plugs Plug[] Plugs to output resources
+---@field physgunPickedUp Player? Is machine picked up by physgun
 ---@field private nextThink number Next think. Relative to curtime
 ---@field private installConstraint Constraint? Is machine installed and constraint to install
 ---@field private font string Font data for fields
@@ -41,6 +93,19 @@ BaseMachine.Outputs = {}
 BaseMachine.Display = false
 BaseMachine.DisplayOffset = Vector()
 BaseMachine.DisplayAngle = Angle()
+BaseMachine.InstallOffset = Vector()
+BaseMachine.MaxDurability = 1200
+BaseMachine.Armor = 2
+
+
+local function brokenSparks(pos)
+    local eff = effect.create()
+    eff:setMagnitude(5)
+    eff:setScale(2)
+    eff:setRadius(2)
+    eff:setOrigin(pos)
+    eff:play("Sparks")
+end
 
 
 if SERVER then
@@ -63,6 +128,7 @@ if SERVER then
     ---[SERVER] [INTERNAL] Turn machine off internally
     ---@param ply Player?
     function BaseMachine:turnOffInternal(ply)
+        if !self:isTurnedOn() then return end
         self:turnOff(ply)
         self:setNWVar("turnedOn", false)
         if self.workSound then
@@ -76,6 +142,11 @@ if SERVER then
     ---[SERVER] [INTERNAL] Turn machine on internally
     ---@param ply Player?
     function BaseMachine:turnOnInternal(ply)
+        if self:isBroken() and ply then
+            BMod.hintMessage(ply, "Machine is broken. You can repair it with toolbox")
+            return
+        end
+        if self:isTurnedOn() then return end
         local res = self:turnOn(ply)
         if res then
             self:setNWVar("turnedOn", true)
@@ -97,6 +168,24 @@ if SERVER then
     end
 
 
+    ---[SERVER] Physgun pickup to restrict use
+    ---@param self BaseMachine
+    ---@param ply Player
+    ---@param ent Entity
+    function BaseMachine.hooks.PhysgunPickup(self, ply, ent)
+        self.physgunPickedUp = self.ent == ent and ply or nil
+    end
+
+
+    ---[SERVER] Physgun drop to unrestrict use
+    ---@param self BaseMachine
+    ---@param _ Player
+    ---@param ent Entity
+    function BaseMachine.hooks.PhysgunDrop(self, _, ent)
+        self.physgunPickedUp = (self.ent ~= ent and self.physgunPickedUp) or (self.ent == ent and nil)
+    end
+
+
     ---[SERVER] KeyPress hook to get when using machine
     ---@param self BaseMachine
     ---@param ply Player
@@ -106,16 +195,23 @@ if SERVER then
         local tr = ply:getEyeTrace()
         ---@cast tr TraceResult
         if tr.Entity ~= self.ent then return end
-        if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
+        if self.physgunPickedUp or ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
         local isWalking = ply:keyDown(IN_KEY.WALK)
-        self:onUse(ply, isWalking, ply:keyDown(IN_KEY.SPEED))
-        if isWalking then
+        local isSprinting = ply:keyDown(IN_KEY.SPEED)
+        self:onUse(ply, isWalking, isSprinting)
+        if isWalking and !isSprinting then
             local isTurnedOn = self:isTurnedOn()
             if isTurnedOn then
                 self:turnOffInternal(ply)
             else
                 self:turnOnInternal(ply)
             end
+        elseif !isWalking and isSprinting and self.Outputs["power"] then
+            local plug = ents.create("electric_plug")
+            ---@cast plug Plug
+            plug:spawn(tr.HitPos, Angle(), false)
+            plug:setOutputFrom(self)
+            self.plugs[plug.ent:entIndex()] = plug
         end
     end
 
@@ -139,6 +235,7 @@ if SERVER then
                 if makeCallback(v, wantToTake) then goto cont end
                 local actual = res:take(wantToTake)
                 self:setInput(id, count + actual)
+                self.ent:emitSound(resMeta.Sounds.Merge)
                 return
             elseif v.rateField and resMeta[v.rateField] then
                 local inUnit = resMeta[v.rateField]
@@ -148,6 +245,7 @@ if SERVER then
                 if makeCallback(v, wantToTake) then goto cont end
                 local actual = res:take(wantToTake)
                 self:setInput(id, count + actual * inUnit)
+                self.ent:emitSound(resMeta.Sounds.Merge)
                 return
             elseif !v.type and !v.rateField then
                 local count = self:getInput(id)
@@ -155,11 +253,41 @@ if SERVER then
                 if makeCallback(v, wantToTake) then goto cont end
                 local actual = res:take(wantToTake)
                 self:setInput(id, count + actual, resMeta.Identifier)
+                self.ent:emitSound(resMeta.Sounds.Merge)
                 return
             end
             ::cont::
         end
     end
+
+
+    ---[SERVER] Durability mechanics
+    ---@param self BaseMachine
+    ---@param target Entity
+    function BaseMachine.hooks.PostEntityTakeDamage(self, target, _, _, amount, _, pos, force)
+        if target ~= self.ent then return end
+        local hp = self:getDurability() - amount * (1 / self.Armor)
+        if hp <= 0 then
+            self.ent:emitSound("Breakable.Metal")
+            self:onDestroy()
+            self:remove()
+            return
+        elseif !self:isBroken() and hp < self.MaxDurability * (2/3) then
+            self.ent:emitSound("Breakable.Metal")
+            self:onBreak()
+            self:turnOffInternal()
+            brokenSparks(pos)
+        end
+        self:setDurability(hp)
+        self.ent:applyForceOffset(force, pos)
+    end
+
+
+    ---[SERVER] Hook on machine destroy
+    function BaseMachine:onDestroy() end
+
+    ---[SERVER] Hook on machine break
+    function BaseMachine:onBreak() end
 
 
     ---[SERVER] Think function. To make machine work
@@ -182,15 +310,21 @@ if SERVER then
 
 
     ---[SERVER] Install this machine on ground
-    function BaseMachine:install()
+    ---@param onWater boolean? Install machine on water also?
+    ---@return TraceResult? tr Trace to install
+    function BaseMachine:install(onWater)
         if isValid(self.installConstraint) then return end
         local pos = self.ent:getPos()
-        local tr = trace.line(pos, pos - Vector(0, 0, 32768), {self.ent}, MASK.SOLID_BRUSHONLY)
-        self.ent:setPos(tr.HitPos)
+        if onWater then
+            pos = trace.line(pos, pos + Vector(0, 0, 32768), {self.ent}, MASK.SOLID_BRUSHONLY).HitPos
+        end
+        local tr = trace.line(pos, pos - Vector(0, 0, 32768), {self.ent}, MASK.SOLID_BRUSHONLY + (onWater and MASK.WATER or 0))
+        self.ent:setPos(tr.HitPos + self.InstallOffset)
         self.ent:enableMotion(false)
         self.ent:setAngles(self.ent:getAngles():setP(0):setR(0))
         local const = constraint.weld(self.ent, game.getWorld())
         self.installConstraint = const
+        return tr
     end
 
     ---[SERVER] Uninstall this machine
@@ -198,6 +332,7 @@ if SERVER then
         if !isValid(self.installConstraint) then return end
         self.installConstraint:remove()
         self.installConstraint = nil
+        self.ent:enableMotion(true)
     end
 
 
@@ -295,7 +430,7 @@ if SERVER then
         local currentCount = self:getInput(identifier)
         local count = currentCount - delta
         if input.affectedByGrade then
-            delta = (delta * self:getGradeMultiplier())
+            delta = (delta * self:getGradeMultiplier(input.gradePower))
             count = currentCount - delta
         end
         self:setInput(identifier, count, type)
@@ -316,7 +451,7 @@ if SERVER then
         local currentCount = self:getOutput(identifier)
         local count = currentCount + delta
         if output.affectedByGrade then
-            count = currentCount + (delta * self:getGradeMultiplier())
+            count = currentCount + (delta * self:getGradeMultiplier(output.gradePower))
         end
         self:setOutput(identifier, count, type)
     end
@@ -364,6 +499,29 @@ if SERVER then
             end
             self.toProduce = nil
         end
+        local power = outputs["power"]
+        if power then
+            local toOutput = {}
+            for id, v in pairs(self.plugs) do
+                if !isValid(v) then
+                    self.plugs[id] = nil
+                    goto cont
+                end
+                toOutput[#toOutput+1] = {plug = v, count = v.inputTo:getInput("power")}
+                ::cont::
+            end
+            table.sortByMember(toOutput, "count", true)
+            for _, v in ipairs(toOutput) do
+                local inputTo = v.plug.inputTo
+                local current = v.count
+                local max = inputTo.Inputs["power"].maxCount
+                local toConsume = math.min(power, max - current)
+                inputTo:setInput("power", current + toConsume)
+                power = power - toConsume
+                if power <= 0 then break end
+            end
+            outputs["power"] = power
+        end
         resource.produce(self.ent:localToWorld(self.OutputOffset or Vector()), self.ent:getAngles(), outputs)
     end
 
@@ -382,6 +540,12 @@ if SERVER then
             ::cont::
         end
         resource.produce(self.ent:localToWorld(self.OutputOffset or Vector()), self.ent:getAngles(), inputs)
+    end
+
+    ---[SERVER] Set durability of machine
+    ---@param durability number
+    function BaseMachine:setDurability(durability)
+        self.ent:setHealth(math.clamp(durability, 0, self.MaxDurability))
     end
 else
     ---Cached fonts by size
@@ -499,7 +663,8 @@ else
         local ent = tr.Entity
         if !isValid(ent) or !ent.BModMachine then return end
         local entInfo = ents.inited[ent:entIndex()]
-        if !entInfo.Display then return end
+        ---@cast entInfo BaseMachine
+        if !entInfo.Display or entInfo:isBroken() then return end
         ---@cast entInfo BaseMachine
         BMod.displayEnt(ent, entInfo.DisplayOffset, entInfo.DisplayAngle, function()
             entInfo:drawDisplay()
@@ -513,10 +678,46 @@ end
 ---[SHARED] Initializing machine
 function BaseMachine:initialize()
     self.ent.BModMachine = self.Identifier
+    self.plugs = {}
     if CLIENT then self:createFont() end
+    if SERVER then
+        self.ent:setMaxHealth(self.MaxDurability)
+        self.ent:setHealth(self.MaxDurability)
+        ---@param colData CollisionData
+        self.ent:addCollisionListener(function(colData)
+            if !isValid(self) then return end
+
+            if colData.Speed <= 80 then return end
+            self.ent:emitSound("Metal_Box.ImpactSoft")
+
+            if colData.Speed <= 150 then return end
+            self.ent:emitSound("Metal_Box.ImpactHard")
+
+            if colData.Speed <= 500 then return end
+            local phys = self.ent:getPhysicsObject()
+            local ent = colData.HitEntity
+            local world = game.getWorld()
+            local colDir = colData.OurOldVelocity - colData.TheirOldVelocity
+            local multiplier = ((colDir:getLength() / 16) * 0.3048) ^ 2
+            local theirForce
+            local mass = phys:getMass()
+            if ent == world then
+                theirForce = 0.5 * mass * multiplier
+            else
+                theirForce = 0.5 * colData.HitObject:getMass() * multiplier
+                local forceThreshold = phys:getMass() * (self.Anchorage or 1000)
+                if (theirForce >= forceThreshold) then
+                    self:turnOffInternal()
+                    self:uninstall()
+                end
+            end
+            local physDamage = math.floor(theirForce / mass)
+            self.ent:applyDamage(physDamage, ent or world, ent, DAMAGE.CRUSH, colData.HitPos)
+            brokenSparks(colData.HitPos)
+        end)
+    end
     self:machineInitialize()
 end
-
 
 ---[SHARED] Initialize machine hook
 function BaseMachine:machineInitialize() end
@@ -529,7 +730,6 @@ function BaseMachine:machineInitialize() end
 function BaseMachine:getInput(identifier)
     return self:getNWVar("input_" .. identifier, 0), self:getNWVar("input_" .. identifier .. "Type", nil)
 end
-
 
 ---[SHARED] Get output of machine
 ---@param identifier string
@@ -558,11 +758,29 @@ function BaseMachine:getGrade()
 end
 
 ---[SHARED] Get grade multiplier for resources
+---@param power number? Power for grade. By default 2
 ---@return number
-function BaseMachine:getGradeMultiplier()
-    return (1 + ((self:getGrade() - 1) * 0.25)) ^ 2
+function BaseMachine:getGradeMultiplier(power)
+    return (1 + ((self:getGrade() - 1) * 0.25)) ^ (power or 2)
 end
 
+---[SHARED] Get durability of machine
+---@return number durability
+function BaseMachine:getDurability()
+    return self.ent:getHealth()
+end
+
+---[SHARED] Is machine broken
+---@return boolean broken
+function BaseMachine:isBroken()
+    return self:getDurability() < self.MaxDurability * (2/3)
+end
+
+---[SHARED] Is machine destroyed
+---@return boolean destroyed
+function BaseMachine:isDestroyed()
+    return self:getDurability() <= 0
+end
 
 
 ents.register(BaseMachine)

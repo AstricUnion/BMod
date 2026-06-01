@@ -76,16 +76,14 @@ if SERVER then
         ---@param colData CollisionData
         pr:addCollisionListener(function(colData)
             if !isValid(self) then return end
-            local ow = pr:getOwner()
-            if !isValid(ow) or self.pickedUpBy ~= ow then return end
-            if colData.HitSpeed:getLength() < 500 then return end
+            if colData.Speed < 200 then return end
             local ent = colData.HitEntity
 
             local function tryToMerge()
                 if !ent.BModResource then return end
                 local res = ents.inited[ent:entIndex()]
                 ---@cast res Resource
-                if res.Identifier ~= self.Identifier then return end
+                if !res or res.Identifier ~= self.Identifier then return end
                 local count = self:getCount()
                 local resCount = res:getCount()
                 if resCount == maxResource or count == maxResource then return end

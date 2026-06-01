@@ -217,6 +217,10 @@ else
         for id, modelId in pairs(model.networked) do
             local ent = entity(id)
             if !isValid(ent) then goto cont end
+            if ent.modelBones then
+                model.networked[id] = nil
+                return
+            end
             local mdl = model.registered[modelId]
             if !mdl then goto cont end
             mdl:create(ent)
@@ -225,18 +229,6 @@ else
             ::cont::
         end
     end
-
-    hook.add("NetworkEntityCreated", "ModelNetworked", function(ent)
-        if !isValid(ent) then return end
-        local entId = ent:entIndex()
-        local modelId = model.networked[entId]
-        if !modelId then return end
-        local mdl = model.registered[modelId]
-        if !mdl then return end
-        mdl:create(ent)
-        methodsOverride(ent)
-        model.networked[entId] = nil
-    end)
 
     hook.add("Think", "CustomMeshLoad", function()
         if next(model.meshToLoad) ~= nil then
@@ -323,8 +315,8 @@ end
 hook.add("EntityRemoved", "ModelRemove", function(ent, fullupdate)
     if CLIENT then
         if isValid(ent) and ent.modelBones then
-            for _, v in pairs(ent.modelBones) do
-                if !isValid(ent) or v == ent then goto cont end
+            for _, v in ipairs(ent.modelBones) do
+                if !isValid(v) then goto cont end
                 recursiveRemove(v)
                 ::cont::
             end
@@ -351,6 +343,7 @@ function model.rig(pos, ang)
     pos = pos or Vector()
     ang = ang or Angle()
     return function()
+        if !hologram.canSpawn() then return end
         local holo = hologram.create(pos, ang, "models/editor/axis_helper_thick.mdl", rigScale)
         if !holo then return end
         holo:suppressEngineLighting(true)
@@ -359,10 +352,22 @@ function model.rig(pos, ang)
     end
 end
 
+local cylinder = {}
+
+local polygons = 32
+for i=1,polygons do
+    local ang = math.rad((360 / polygons) * i)
+    local x = math.cos(ang)
+    local y = math.sin(ang)
+    cylinder[#cylinder+1] = Vector(x, y, 1)
+    cylinder[#cylinder+1] = Vector(x, y, -1)
+end
+
 ---@alias VertexType
 ---| '"cube"'
 ---| '"custom"'
 ---| '"wedge"'
+---| '"cylinder"'
 local VertexType = {
     ["cube"] = {
         Vector(1, 1, 1), Vector(1, -1, 1), Vector(-1, -1, 1), Vector(-1, 1, 1),
@@ -372,7 +377,8 @@ local VertexType = {
         Vector(1, -1, -1), Vector(1, 1, -1),
         Vector(-1, 1, -1), Vector(-1, -1, -1),
         Vector(-1, 1, 1), Vector(-1, -1, 1),
-    }
+    },
+    ["cylinder"] = cylinder
 }
 
 ---@class VertexParameters
@@ -437,6 +443,7 @@ end
 ---@field mass number?
 ---@field material string?
 ---@field visible boolean?
+---@field buoyancyRatio number?
 
 
 -- TODO: i can set mesh for custom prop. maybe can make less holos
@@ -449,6 +456,7 @@ function model.hitbox(tbl)
     local mass = tbl.mass or (isnumber(tbl[2]) and tbl[2]) or 30
     local mat = tbl.material or (isstring(tbl[3]) and tbl[3]) or ""
     local visible = tbl.visible or (isbool(tbl[4] and tbl[4])) or false
+    local buoyancyRatio = tbl.buoyancyRatio or (isnumber(tbl[5]) and tbl[5]) or 0
     local vertexes = {}
     for i, v in ipairs(tbl) do
         vertexes[i] = v
@@ -458,14 +466,42 @@ function model.hitbox(tbl)
         local phys = pr:getPhysicsObject()
         pr:setFrozen(freeze)
         pr:setNoDraw(!visible)
+        pr.buoyancyRatio = buoyancyRatio
         timer.simple(0, function()
             if !isValid(phys) then return end
             phys:setMass(mass)
             phys:setMaterial(mat)
+            phys:setBuoyancyRatio(buoyancyRatio)
+            phys:enableDrag(true)
         end)
         return pr
     end
 end
+
+if SERVER then
+    local function setBuoyancy(ent)
+        local phys = ent:getPhysicsObject()
+        if !isValid(phys) then return end
+        phys:setBuoyancyRatio(ent.buoyancyRatio)
+    end
+
+    hook.add("OnEntityWaterLevelChanged", "HitboxSetBuoyancyInWater", function(ent, old, new)
+        if new > 0 and ent.buoyancyRatio then
+            setBuoyancy(ent)
+        end
+    end)
+
+    hook.add("PhysgunDrop", "HitboxSetBuoyancyInWater", function(ply, ent)
+        if !ent.buoyancyRatio then return end
+        timer.simple(0, function()
+            if !isValid(ent) then return end
+            if ent:getWaterLevel() > 0 then
+                setBuoyancy(ent)
+            end
+        end)
+    end)
+end
+
 
 
 ---[SHARED] Create new part - sequence of holos, parented to first in sequence
@@ -486,7 +522,7 @@ function model.part(tbl)
             toRemove[#toRemove+1] = holo
             ::cont::
         end
-        if CLIENT then
+        if CLIENT and parent then
             parent.__removeOld = parent.__removeOld or parent.remove
             function parent:remove()
                 self:__removeOld()
@@ -557,6 +593,7 @@ function model.holo(tbl)
         end
     end
     return function()
+        if !hologram.canSpawn() then return end
         local holo = hologram.create(pos, ang, mdl, scale)
         if !holo then return end
         holo:suppressEngineLighting(noLight)
@@ -565,7 +602,7 @@ function model.holo(tbl)
         funcToMat(holo)
         holo:setColor(color)
         for i, v in ipairs(clips) do
-            holo:setClip(i, true, v[1], v[2], holo)
+            holo:setClip(i, true, v[1] * scale, v[2], holo)
         end
         if CLIENT then
             local msh = model.mesh[meshId]
@@ -681,13 +718,10 @@ function ModelInfo:create(origin)
     for i, part in ipairs(self.bones) do
         if !part then goto cont end
         local holo = part.bone()
-        if !holo then
-            throw("Can't create bone " .. part.name)
-            return
-        end
+        if !holo then goto cont end
         bones[i] = holo
         local parent = part.parent
-        local parentHolo = bones[parent] or (!parent and originHolo)
+        local parentHolo = bones[self.bonesIDs[parent]] or (!parent and originHolo)
         if !parentHolo then
             throw(string.format("Parent \"%s\" for \"%s\" not found! Maybe you placed it in incorrect sequence?", parent, part.name))
             return

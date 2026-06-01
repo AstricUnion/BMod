@@ -26,6 +26,9 @@ GroundScanner.Display = true
 GroundScanner.DisplayOffset = Vector(0, 0, 20)
 GroundScanner.DisplayAngle = Angle(0, 0, -60)
 
+GroundScanner.Armor = 3
+GroundScanner.MaxDurability = 300
+
 if CLIENT then
     bicons.registerModel("groundscanner", "models/props_silo/launch_button.mdl", Vector(64, -24, 24), Angle(20, 160, 0))
 end

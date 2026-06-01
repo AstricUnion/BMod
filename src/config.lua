@@ -202,7 +202,19 @@ bmodConfig.crafts = {
             local ent = ents.create("groundscanner")
             ent:spawn(pos + Vector(0, 0, 25), ang, false)
         end
-    }
+    },
+
+    ["solarpanel"] = {
+        name = "Solar Panel", icon = "solar_panel", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 10, copper = 50, silver = 100, glass = 200 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("solar_panel")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
 }
 
 

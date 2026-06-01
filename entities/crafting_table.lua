@@ -71,6 +71,9 @@ end }
 CraftingTable.Display = true
 CraftingTable.DisplayOffset = Vector(10.5, -50, 18)
 
+CraftingTable.Armor = 1
+CraftingTable.MaxDurability = 240
+
 
 ---Create new crafting table
 if SERVER then
@@ -141,8 +144,7 @@ if SERVER then
     end
 
     ---[SERVER] Smelting logic
-    function CraftingTable:work()
-        local cur = timer.curtime()
+    function CraftingTable:work(cur)
         local offsetPos = self.ent:localToWorld(self.OutputOffset)
         local currentUnits, resToSmelt = self:getInput("smelting")
         if !resToSmelt then return false end

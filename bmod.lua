@@ -18,6 +18,7 @@
 ---@include bmod/src/config.lua
 ---@include bmod/src/gui.lua
 
+
 -- Just to not remove all in one press
 if SERVER then
     prop.setPropUndo(true)
@@ -28,6 +29,7 @@ end
 ---@field displayDeposits boolean
 BMod = {}
 BMod.debug = true
+BMod.displayDeposits = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
 require("bmod/base/safeparticle.lua")
@@ -104,9 +106,9 @@ dodir("bmod/effects", {})
 
 
 if SERVER then
-    local ent = ents.create("pumpjack")
+    -- local ent = ents.create("oil_rig")
     -- ent:setInput("fuel", 100)
-    ent:spawn(chip():getPos() + Vector(0, 0, 16), Angle(), true)
+    -- ent:spawn(chip():getPos() + Vector(0, 0, 16), Angle(), true)
     -- resource.create("copperore", chip():getPos() + Vector(0, 0, 12), Angle(), 100, true)
     -- local toolbox = ents.create("toolbox")
     -- toolbox:setGas(100)
@@ -118,13 +120,16 @@ if SERVER then
     -- ents.create("gas_mask"):spawn(chip():getPos() + Vector(0, 0, 12), Angle(), false)
     -- ents.create("fumigator"):spawn(chip():getPos() + Vector(0, -5, 12), Angle(), false)
     -- resource.create("power", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
-    deposit.create("coal", chip():getPos(), 200, 272)
-    -- local cor = deposit.startGeneration(20, true)
+    -- deposit.create("oil", chip():getPos(), 400, 13)
+    -- deposit.create("oil", chip():getPos() + Vector, 400, 13)
+    -- local cor = deposit.startGeneration(300, true)
     -- if !cor then return end
     -- hook.add("Think", "BModDepositGeneration", function()
-    --     if quotaAverage() > quotaMax() / 4 then return end
-    --     if cor() == true then
-    --         hook.remove("Think", "BModDepositGeneration")
+    --     while quotaAverage() < quotaMax() / 2 do
+    --         if cor() == true then
+    --             hook.remove("Think", "BModDepositGeneration")
+    --             return
+    --         end
     --     end
     -- end)
 end

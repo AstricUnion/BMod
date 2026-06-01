@@ -18,26 +18,27 @@ local part = model.part
 local rig = model.rig
 local holo = model.holo
 
-local mdl = model.new("solid_fuel_generator", hitbox {
-    vertex {"cube", Vector(28, 0, 12), Angle(0, 0, 0), Vector(42, 24, 24)},
-    vertex {"cube", Vector(0, 0, 41), Angle(0, 0, 0), Vector(14, 24, 4)},
-    mass = 400,
-    visible = false
+local mdl = model.new("solid_fuel_generator", part {
+    hitbox {
+        vertex {"cube", Vector(28, 0, 12), Angle(0, 0, 0), Vector(42, 24, 24)},
+        vertex {"cube", Vector(0, 0, 41), Angle(0, 0, 0), Vector(14, 24, 4)},
+        mass = 400,
+        material = "Metal",
+        visible = false
+    },
+    holo { Vector(52, 0, 22), Angle(0, 0, 0), "models/xqm/cylinderx2huge.mdl", Vector(0.6, 0.8, 0.8), material = "models/props_c17/furnituremetal002a" },
+    holo { Vector(60, 0, -11), Angle(0, 0, 0), "models/props_c17/metalladder001.mdl", Vector(1, 1.4, 0.35), material = "models/props_c17/furnituremetal002a" },
+    holo { Vector(44, 0, -3), Angle(0, 0, 0), "models/props_lab/partsbin01.mdl", Vector(2, 1.5, 0.7), color = Color(255, 0, 0), material = "models/props_c17/furnituremetal002a" },
+    holo { Vector(52, 0, 48), Angle(0, 0, 0), "models/props_wasteland/chimneypipe02b.mdl", Vector(0.15, 0.15, 0.15), material = "models/props_c17/furnituremetal002a" },
+    holo { Vector(48, 5, 5), Angle(0, 0, -90), "models/props_pipes/valvewheel002.mdl", Vector(2, 2, 2), material = "models/props_c17/furnituremetal002a" },
+    holo {
+        Vector(4, 0, 56), Angle(0, 180, 0), "models/props_c17/FurnitureFireplace001a.mdl", Vector(1.6, 1.6, 1.8),
+        material = "models/props_c17/furnituremetal002a", clips = {
+            { Vector(0, 0, -5.7), Vector(0, 0, -1) }
+        }
+    },
+    holo { Vector(44, 0, 22), Angle(90, 0, 0), "models/props_pipes/pipecluster08d_extender128.mdl", Vector(4.3, 4.3, 0.3), color = Color(255, 255, 0) },
 })
-    :add("base", part {
-        holo { Vector(52, 0, 22), Angle(0, 0, 0), "models/xqm/cylinderx2huge.mdl", Vector(0.6, 0.8, 0.8), material = "models/props_c17/furnituremetal002a" },
-        holo { Vector(60, 0, -11), Angle(0, 0, 0), "models/props_c17/metalladder001.mdl", Vector(1, 1.4, 0.35), material = "models/props_c17/furnituremetal002a" },
-        holo { Vector(44, 0, -3), Angle(0, 0, 0), "models/props_lab/partsbin01.mdl", Vector(2, 1.5, 0.7), color = Color(255, 0, 0), material = "models/props_c17/furnituremetal002a" },
-        holo { Vector(52, 0, 48), Angle(0, 0, 0), "models/props_wasteland/chimneypipe02b.mdl", Vector(0.15, 0.15, 0.15), material = "models/props_c17/furnituremetal002a" },
-        holo { Vector(48, 5, 5), Angle(0, 0, -90), "models/props_pipes/valvewheel002.mdl", Vector(2, 2, 2), material = "models/props_c17/furnituremetal002a" },
-        holo {
-            Vector(4, 0, 56), Angle(0, 180, 0), "models/props_c17/FurnitureFireplace001a.mdl", Vector(1.6, 1.6, 1.8),
-            material = "models/props_c17/furnituremetal002a", clips = {
-                { Vector(0, 0, -10), Vector(0, 0, -1) }
-            }
-        },
-        holo { Vector(44, 0, 22), Angle(90, 0, 0), "models/props_pipes/pipecluster08d_extender128.mdl", Vector(4.3, 4.3, 0.3), color = Color(255, 255, 0) },
-    })
 
 ---@class SolidFuelGenerator: BaseMachine
 ---@field nextGas number
@@ -60,12 +61,15 @@ SolidFuelGenerator.Outputs.power = { affectedByGrade = true, type = "power", max
 
 SolidFuelGenerator.OutputOffset = Vector(0, 30, 10)
 
+SolidFuelGenerator.WorkSound = "ambient/fire/fire_small_loop1.wav"
 SolidFuelGenerator.WorkCooldown = 1
 SolidFuelGenerator.FontSize = 24
 
 SolidFuelGenerator.Display = true
 SolidFuelGenerator.DisplayOffset = Vector(-20, 0, 36)
 SolidFuelGenerator.DisplayAngle = Angle(0, 180, 0)
+
+SolidFuelGenerator.MaxDurability = 600
 
 if SERVER then
     function SolidFuelGenerator:machineInitialize()

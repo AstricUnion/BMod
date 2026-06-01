@@ -15,6 +15,7 @@
     - [x] Crafting table
     - [x] Solid fuel generator
     - [ ] Make GUI for machines
+    - [ ] Durability for machines
     - [ ] Make interfaces to connect machines
     - [ ] Try to make Wire outputs (maybe transfer some entities to StarfallEX chip? Or make chip with Wire spawning on button?)
     - [ ] Workbench
@@ -24,8 +25,9 @@
     - [x] Ground scanner
     - [x] Liquid fuel generator
     - [ ] Oil rig
-    - [ ] Oil refinery
-    - [ ] Pumpjack
+    - [x] Oil refinery
+    - [x] Pumpjack
+    - [x] Smelting furnace
     - [ ] Turret
     - [ ] Sprinkler
     - [ ] Powerbank
@@ -53,6 +55,7 @@
     - [x] Client and server support
     - [x] Tweens for animations (not related to BMod)
     - [x] Both sides mesh and custom materials support
+    - [ ] Subcolors and submaterials
 - [ ] Armor system
     - [ ] Armor creating
     - [x] Visual armor system 
@@ -62,8 +65,10 @@
 - [ ] Misc
     - [ ] Road flare
     - [ ] Food
-    - [ ] Resource and item crates
+    - [x] Resource crate
+    - [ ] Item crate
     - [ ] Medkit
+    - [x] Fumigator
 - [ ] Make wiki about libraries
 - [x] (BETA) Build system (make your BMod build with modules in one file)
 - [ ] GitHub releases

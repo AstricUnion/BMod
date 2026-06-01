@@ -24,14 +24,14 @@ local mdl = model.new("solar_panel", hitbox {
 })
     :add("base", part {
         holo { Vector(0, 0, 8), Angle(90, 0, 0), "models/props_rooftop/scaffolding01a.mdl", Vector(0.4, 0.4, 0.4) },
-        holo { Vector(1, 0, 9), Angle(30, 0, 0), "models/hunter/plates/plate16x24.mdl", Vector(0.07, 0.09, 0.2), color = Color(100, 100, 255), material = "models/XQM/boxfull_diffuse" },
+        holo { Vector(1, 0, 9), Angle(30, 0, 0), "models/hunter/plates/plate16x24.mdl", Vector(0.07, 0.09, 0.2), color = Color(100, 100, 255), material = "phoenix_storms/window" },
         holo { Vector(-16, 0, 3), Angle(0, 0, 0), "models/props_lab/reciever_cart.mdl", Vector(0.6, 0.7, 0.3) },
     })
 
 if CLIENT then
     bicons.registerModel("solar_panel", function()
         return mdl:create()
-    end, Vector(-240, 128, 128), Angle(10, -30, 0))
+    end, Vector(86, 64, 16), Angle(5, -150, 0))
 end
 
 ---@class SolarPanel: BaseMachine
@@ -58,6 +58,9 @@ SolarPanel.FontSize = 24
 SolarPanel.Display = true
 SolarPanel.DisplayOffset = Vector(-32, 12, 16)
 SolarPanel.DisplayAngle = Angle(0, 180, 0)
+
+SolarPanel.Armor = 1
+SolarPanel.MaxDurability = 225
 
 
 if SERVER then

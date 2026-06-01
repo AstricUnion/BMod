@@ -59,6 +59,8 @@ LiquidFuelGenerator.DisplayOffset = Vector(-36, 12, 32)
 LiquidFuelGenerator.DisplayAngle = Angle(0, 180, 0)
 LiquidFuelGenerator.WorkSound = "vehicles/airboat/fan_motor_idle_loop1.wav"
 
+LiquidFuelGenerator.MaxDurability = 600
+
 
 if SERVER then
     function LiquidFuelGenerator:machineInitialize()

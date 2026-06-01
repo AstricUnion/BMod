@@ -150,7 +150,7 @@ end
 ---@param msg string String to format
 ---@param ... any Arguments to format
 function BMod.log(msg, ...)
-    printConsole(Color(90, 150, 220), "[BMod] ", Color(255, 255, 255), string.format(msg, ...))
+    pcall(printConsole, Color(90, 150, 220), "[BMod] ", Color(255, 255, 255), string.format(msg, ...))
 end
 
 ---[SHARED] Log debug BMod message in console
@@ -158,5 +158,5 @@ end
 ---@param ... any Arguments to format
 function BMod.logDebug(msg, ...)
     if !BMod.debug then return end
-    printConsole(Color(220, 220, 90), "[BMod Debug] ", Color(255, 255, 255), string.format(msg, ...))
+    pcall(printConsole, Color(220, 220, 90), "[BMod Debug] ", Color(255, 255, 255), string.format(msg, ...))
 end

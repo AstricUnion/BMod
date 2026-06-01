@@ -243,6 +243,10 @@ Equippable.hooks = {}
 ---[SHARED] Initialize equippable
 function Equippable:initialize()
     self.ent.BModEquippable = self.Identifier
+    if SERVER then
+        self.ent:setMaxHealth(self.MaxDurability)
+        self.ent:setHealth(self.MaxDurability)
+    end
 end
 
 ---[SHARED] Get attach position and angles
@@ -334,7 +338,7 @@ if SERVER then
     ---@param durability number
     function Equippable:setDurability(durability)
         if durability <= 0 then self:remove() return end
-        self:setNWVar("durability", math.clamp(durability, 0, self.MaxDurability))
+        self.ent:setHealth(math.clamp(durability, 0, self.MaxDurability))
     end
 
     ---[SERVER] Set defense of equippable for damage
@@ -393,6 +397,7 @@ if SERVER then
     end)
 else
     function Equippable.hooks.RenderOffscreen(self)
+        if !self.ent.modelBones then return end
         local ply = self:getEquippedBy()
         local noDraw = false
         if !isValid(ply) then
@@ -437,7 +442,7 @@ end
 ---[SHARED] Get durability of equippable
 ---@return number durability
 function Equippable:getDurability()
-    return self:getNWVar("durability", self.MaxDurability)
+    return self.ent:getHealth()
 end
 
 

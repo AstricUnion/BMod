@@ -54,7 +54,9 @@ end
 
 
 if SERVER then
+    local isGenerating = false
     hook.add("ClientInitialized", "BModSyncDeposits", function(ply)
+        if isGenerating then return end
         net.start("BModSyncDeposits")
             net.writeTable(deposit.inited)
         net.send(ply)
@@ -104,6 +106,7 @@ if SERVER then
     ---@return function? generate Generate coroutine handler
     function deposit.startGeneration(count, multiThread)
         BMod.log("Started generating " .. count .. " deposits")
+        isGenerating = true
         local depositsLeft = count
         local navAreas = table.copy(globalNavAreas)
         local frequenced = table.copy(deposit.info)
@@ -169,6 +172,7 @@ if SERVER then
                 depositsLeft = depositsLeft - 1
                 ::cont::
             end
+            isGenerating = false
             BMod.log("Deposits generated")
             net.start("BModSyncDeposits")
                 net.writeTable(deposit.inited)
@@ -212,9 +216,11 @@ end
 ---@return Deposit[]
 function deposit.findInSphere(pos, radius)
     local result = {}
+    local count = 0
     for _, v in ipairs(deposit.inited) do
         if pos:getDistance(v.position) < radius + v.size then
             result[#result+1] = v
+            count = count + 1
         end
     end
     return result

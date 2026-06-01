@@ -19,19 +19,19 @@ local holo = model.holo
 local rig = model.rig
 
 local drillMat = "models/props_canal/canal_bridge_railing_01a"
-local mdl = model.new("augerdrill", hitbox {
-    vertex {"cube", Vector(-8, 36, 96), Angle(-60, 0, 0), Vector(35, 118, 5)},
-    vertex {"cube", Vector(-8, -36, 96), Angle(60, 0, 0), Vector(35, 118, 5)},
-    vertex {"cube", Vector(0, 0, 128), Angle(0, 0, 0), Vector(30, 30, 24)},
-    mass = 2000,
-    visible = false
+local mdl = model.new("augerdrill", part{
+    hitbox {
+        vertex {"cube", Vector(-8, 36, 96), Angle(-60, 0, 0), Vector(35, 118, 5)},
+        vertex {"cube", Vector(-8, -36, 96), Angle(60, 0, 0), Vector(35, 118, 5)},
+        vertex {"cube", Vector(0, 0, 128), Angle(0, 0, 0), Vector(30, 30, 24)},
+        mass = 2000,
+        visible = false
+    },
+    holo { Vector(-8, -36, 96), Angle(30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
+    holo { Vector(-8, 36, 96), Angle(-30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
+    holo { Vector(0, 0, 128), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(4.8, 4.8, 4), material = "models/props_c17/metalladder001" },
+    holo { Vector(0, 0, 86), Angle(0, 0, 0), "models/holograms/hq_cylinder.mdl", Vector(2.5, 2.5, 3), material = "models/props_c17/metalladder001" },
 })
-    :add("base", part {
-        holo { Vector(-8, -36, 96), Angle(30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
-        holo { Vector(-8, 36, 96), Angle(-30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
-        holo { Vector(0, 0, 128), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(4.8, 4.8, 4), material = "models/props_c17/metalladder001" },
-        holo { Vector(0, 0, 86), Angle(0, 0, 0), "models/holograms/hq_cylinder.mdl", Vector(2.5, 2.5, 3), material = "models/props_c17/metalladder001" },
-    })
     :add("drill", part {
         rig(),
         holo { Vector(0, 0, 56), Angle(90, 0, 0), "models/xqm/CoasterTrack/special_full_corkscrew_right_1.mdl", Vector(0.01, 0.18, 0.18), material = drillMat },
@@ -70,10 +70,15 @@ AugerDrill.Outputs.resource = { affectedByGrade = true, maxCount = 100 }
 
 AugerDrill.OutputOffset = Vector(30, 0, 10)
 
+AugerDrill.WorkSound = "ambient/machines/big_truck.wav"
 AugerDrill.WorkCooldown = 1
 
 AugerDrill.Display = true
 AugerDrill.DisplayOffset = Vector(30, 0, 148)
+
+AugerDrill.Anchorage = 500
+AugerDrill.Armor = 3
+AugerDrill.MaxDurability = 1200
 
 if SERVER then
     function AugerDrill:machineInitialize()
@@ -84,7 +89,7 @@ if SERVER then
     function AugerDrill:turnOn(ply)
         if self:getInput("power") < 1 then return end
         local found = self:findDeposit()
-        if found and found.amount then
+        if found and found.amount and found.resource ~= "oil" then
             self:install()
             return true
         else
@@ -137,8 +142,12 @@ if CLIENT then
     ---@param self AugerDrill
     function AugerDrill.hooks.RenderOffscreen(self)
         if self:isTurnedOn() then
-            local ent = self.ent:getBoneEntity(self.ent:lookupBone("drill"))
-            ent:setLocalAngles(ent:getLocalAngles() + Angle(0, -5, 0))
+            if !self.ent.getBoneEntity then return end
+            local lookup = self.ent:lookupBone("drill")
+            if !lookup then return end
+            local ent = self.ent:getBoneEntity(lookup)
+            if !isValid(ent) then return end
+            ent:setLocalAngles(ent:getLocalAngles() + Angle(0, -300, 0) * game.serverFrameTime())
         end
     end
 end
