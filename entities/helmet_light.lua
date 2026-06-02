@@ -13,10 +13,10 @@ local vertex = model.vertex
 local holo = model.holo
 
 local mdl = model.new("helmet_light", hitbox {
-    vertex {"cube", Vector(0, 0, 10), Angle(0, 0, 0), Vector(6, 6, 10)},
+    vertex {"cube", Vector(0, 0, 6), Angle(0, 0, 0), Vector(5, 5, 5)},
     mass = 10
 })
-    :add("base", holo { ang = Angle(90, 0, 0), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "helmet_light"} )
+    :add("base", holo { ang = Angle(90, 0, 0), scale = Vector(1.07, 1, 1.1), model = "models/holograms/cube.mdl", mesh = "armor", meshPart = "helmet_light"} )
 
 ---@class HelmetLight: Equippable
 local HelmetLight = {}
@@ -26,7 +26,7 @@ HelmetLight.Model = function()
     return mdl:create()
 end
 HelmetLight.BoneToEquip = "ValveBiped.Bip01_Head1"
-HelmetLight.EquipOffset = Vector(-2, -0.5, 0)
+HelmetLight.EquipOffset = Vector(-2, -1, 0)
 HelmetLight.EquipAngle = Vector(0, -90, -90)
 HelmetLight.EquipSlots = {[EquipSlot.head] = 0.6}
 HelmetLight.DefenseProfile = DefenseProfile.Basic

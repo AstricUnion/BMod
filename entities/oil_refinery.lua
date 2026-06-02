@@ -26,7 +26,7 @@ local mdl = model.new("oil_refinery", part {
         visible = false
     },
     holo { Vector(0, 0, 32), Angle(0, 0, 0), "models/props_c17/substation_transformer01a.mdl", Vector(0.4, 0.6, 0.6) },
-    holo { Vector(0, -100, 110), Angle(0, -90, 0), "models/props_wasteland/coolingtank02.mdl", Vector(0.6, 0.6, 0.6) },
+    holo { Vector(0, -100, 110), Angle(0, -90, 0), "models/props_wasteland/coolingtank02.mdl", Vector(0.6, 0.6, 0.6), subcolor = 1 },
     holo { Vector(-12, 0, 80), Angle(0, 90, 0), "models/props_wasteland/horizontalcoolingtank04.mdl", Vector(0.4, 0.3, 0.3) },
     holo { Vector(10, -28, 36), Angle(0, 0, 0), "models/props_c17/tv_monitor01.mdl", Vector(1.6, 1.6, 1.8) },
     holo { Vector(19, -28, 36), Angle(90, 0, 0), "models/holograms/plane.mdl", Vector(2, 2.5, 2), color = Color(20, 20, 30), noLight = true },

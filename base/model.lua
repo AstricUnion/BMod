@@ -4,7 +4,7 @@
 
 ---@class ToNetwork
 ---@field modelId string Identifier of model
----@field originId number Entity index of origin of model to parent (from server)
+---@field params table[] Parameters to set (functions to call)
 
 ---Class to manipulate hologram models with custom meshes and hitboxes
 ---@class model
@@ -12,8 +12,8 @@
 ---@field inited table<number, ModelEntity>
 ---@field mesh table<string, CMesh> Hashmap with mesh to get
 ---@field meshToLoad CMesh[] List with mesh to load
----@field toNetwork table<number, string>
----@field networked table<number, string>
+---@field toNetwork table<number, ToNetwork>
+---@field networked table<number, ToNetwork>
 ---@field materials table<string, Material>
 local model = {}
 model.registered = {}
@@ -37,7 +37,7 @@ local function methodsOverride(ent)
     ent.__setNoDrawOld = ent.__setNoDrawOld or ent.setNoDraw
     function ent:setNoDraw(state)
         ent.noDraw = state
-        for _, v in ipairs(ent:getChildren()) do
+        for _, v in pairs(ent:getChildren()) do
             v:setNoDraw(state)
         end
     end
@@ -49,7 +49,7 @@ local function methodsOverride(ent)
 
     ent.__setCullModeOld = ent.__setCullModeOld or ent.setCullMode
     function ent:setCullMode(state)
-        for _, v in ipairs(ent:getChildren()) do
+        for _, v in pairs(ent:getChildren()) do
             v:setCullMode(state)
         end
     end
@@ -77,21 +77,43 @@ local function methodsOverride(ent)
         return ent.sequence or 0
     end
 
-    if SERVER then
-        ent.__setSequenceOld = ent.__setSequenceOld or ent.setSequence
-        ---[SHARED] Returns current entity sequence
-        ---@param id number Sequence ID
-        function ent:setSequence(id)
-            net.start("ModelSetSequence")
-                net.writeUInt(id, 8)
+    local function recursiveFun(origin, fun, ...)
+        for _, v in pairs(origin:getChildren()) do
+            if isfunction(fun) then
+                fun(v, ...)
+            else
+                if v[fun] then v[fun](v, ...) end
+            end
+            recursiveFun(v, fun, ...)
+        end
+    end
+
+    local entId = ent:entIndex()
+    local networking = false
+    local function sendFunction(func, ...)
+        if !SERVER or !ent.modelBones then return end
+        local args = {...}
+        local toNetwork = model.toNetwork[entId]
+        if !toNetwork then return end
+        toNetwork.params[#toNetwork.params+1] = {func, args}
+        if networking then return end
+        networking = true
+        timer.simple(0, function()
+            if !isValid(ent) then return end
+            net.start("ModelCallFunctions")
+                net.writeTable(toNetwork.params)
                 net.writeEntity(ent)
             net.send(find.allPlayers())
-        end
-    else
-        ent.__setSequenceOld = ent.__setSequenceOld or ent.setSequence
-        ---[SHARED] Returns current entity sequence
-        ---@param id number Sequence ID
-        function ent:setSequence(id)
+            networking = false
+        end)
+    end
+
+    ent.__setSequenceOld = ent.__setSequenceOld or ent.setSequence
+    ---[SHARED] Set sequence for this entity
+    ---@param id number Sequence ID
+    function ent:setSequence(id)
+        sendFunction("setSequence", id)
+        if CLIENT then
             local seq = ent.modelInfo.sequences[id]
             if !seq then return end
             ent.sequence = id
@@ -99,17 +121,53 @@ local function methodsOverride(ent)
             if seq.duration <= 0 then return end
             ent.sequenceStart = timer.curtime()
         end
+    end
 
-        local function recursiveDraw(holo, noTint)
-            for _, v in ipairs(holo:getChildren()) do
-                v:draw(noTint)
-                recursiveDraw(v, noTint)
+    ent.__setSubMaterialOld = ent.__setSubMaterialOld or ent.setSubMaterial
+    ---[SHARED] Set submaterial for this model
+    ---@param index number Submaterial index. 0 is default for all
+    ---@param mat string Material to set
+    function ent:setSubMaterial(index, mat)
+        sendFunction("setSubMaterial", index, mat)
+        recursiveFun(ent, index ~= -1 and function(holo)
+            if holo.modelSubmaterial == index then
+                holo:setSubMaterial(0, mat)
             end
-        end
+        end)
+    end
 
+    ent.__setMaterialOld = ent.__setMaterialOld or ent.setMaterial
+    ---[SHARED] Set main material for this model
+    ---@param mat string Material to set
+    function ent:setMaterial(mat)
+        sendFunction("setMaterial", mat)
+        recursiveFun(ent, "setSubMaterial", 0, mat)
+    end
+
+    ---[SHARED] Set subcolor for this model
+    ---@param index number Color index. 0 is default for all
+    ---@param col Color Color to set
+    function ent:setSubColor(index, col)
+        sendFunction("setSubColor", index, col)
+        recursiveFun(ent, function(holo)
+            if holo.modelSubcolor == index then
+                holo:setColor(col)
+            end
+        end)
+    end
+
+    ent.__setColorOld = ent.__setColorOld or ent.setColor
+    ---[SHARED] Set color for this model
+    ---@param col Color Color to set
+    function ent:setColor(col)
+        sendFunction("setColor", col)
+        recursiveFun(ent, "setColor", col)
+    end
+
+    if CLIENT then
         ent.__drawOld = ent.__drawOld or ent.draw
         function ent:draw(noTint)
-            recursiveDraw(ent, noTint)
+            recursiveFun(ent, "draw", noTint)
         end
 
         ---[CLIENT] Get entity of the bone
@@ -124,20 +182,28 @@ local function methodsOverride(ent)
 end
 
 if SERVER then
+    local networking = false
+
     ---[SERVER] Sync holograms to clients
     ---@param ply Player? Player to send. False to prevent send (to clear toNetwork)
     function model.sync(ply)
         local newToNetwork = {}
-        for id, modelId in pairs(model.toNetwork) do
+        for id, toNetworkInfo in pairs(model.toNetwork) do
             local origin = entity(id)
             if !isValid(origin) then goto cont end
-            newToNetwork[id] = modelId
+            newToNetwork[id] = toNetworkInfo
             ::cont::
         end
         model.toNetwork = newToNetwork
-        net.start("NetworkModels")
-            net.writeTable(model.toNetwork)
-        net.send(ply or find.allPlayers())
+        if networking then return end
+        networking = true
+        timer.simple(0, function()
+            if ply and !isValid(ply) then return end
+            net.start("NetworkModels")
+                net.writeTable(model.toNetwork)
+            net.send(ply or find.allPlayers())
+            networking = false
+        end)
     end
 
     hook.add("ClientInitialized", "InitializeModels", function(ply)
@@ -214,17 +280,20 @@ else
     end)
 
     local function getNetworkedModels()
-        for id, modelId in pairs(model.networked) do
+        for id, toNetworkInfo in pairs(model.networked) do
             local ent = entity(id)
             if !isValid(ent) then goto cont end
             if ent.modelBones then
                 model.networked[id] = nil
                 return
             end
-            local mdl = model.registered[modelId]
+            local mdl = model.registered[toNetworkInfo.modelId]
             if !mdl then goto cont end
             mdl:create(ent)
             methodsOverride(ent)
+            for _, funcTable in ipairs(toNetworkInfo.params) do
+                ent[funcTable[1]](ent, unpack(funcTable[2]))
+            end
             model.networked[id] = nil
             ::cont::
         end
@@ -296,17 +365,20 @@ else
         end
     end)
 
-    net.receive("ModelSetSequence", function()
-        local id = net.readUInt(8)
+    net.receive("ModelCallFunctions", function()
+        local funcs = net.readTable()
         net.readEntity(function(ent)
-            ent:setSequence(id)
+            if !model.inited[ent:entIndex()] then return end
+            for _, funcTable in ipairs(funcs) do
+                ent[funcTable[1]](ent, unpack(funcTable[2]))
+            end
         end)
     end)
 end
 
 local function recursiveRemove(ent)
     if !isValid(ent) then return end
-    for _, v in ipairs(ent:getChildren()) do
+    for _, v in pairs(ent:getChildren()) do
         recursiveRemove(v)
     end
     ent:remove()
@@ -472,7 +544,6 @@ function model.hitbox(tbl)
             phys:setMass(mass)
             phys:setMaterial(mat)
             phys:setBuoyancyRatio(buoyancyRatio)
-            phys:enableDrag(true)
         end)
         return pr
     end
@@ -545,7 +616,8 @@ end
 ---@field model string? Model of this holo
 ---@field scale Vector? Scale of this holo
 ---@field size Vector? Hologram size. Scale multiplies start size of holo, when size sets... size :D
----@field submaterial number? Submaterial append holo to
+---@field submaterial number? Submaterial append holo to. By default 0 (WIP, not working)
+---@field subcolor number? Subcolor append holo to. By default 0. (WIP, not working)
 ---@field material string|table? Material to set. Can be identifier for custom material, or material file, or table of submaterials
 ---@field color Color? Color of holo
 ---@field noLight boolean? Suppress engine lighting for holo
@@ -563,16 +635,17 @@ function model.holo(tbl)
     local pos = tbl.pos or tbl[1] or Vector()
     local ang = tbl.ang or tbl[2] or Angle()
     local mdl = tbl.model or tbl[3] or "models/holograms/cube.mdl"
-    local scale = tbl.scale or tbl[4]
+    local scale = tbl.scale or tbl[4] or Vector(1, 1, 1)
     local size = tbl.size or tbl[5]
     local submat = tbl.submaterial or tbl[6] or 0
-    local matName = tbl.material or tbl[7]
-    local color = tbl.color or tbl[8] or Color(255, 255, 255, 255)
-    local noLight = tbl.noLight or tbl[9] or false
-    local meshId = tbl.mesh or tbl[10]
-    local meshPart = tbl.meshPart or tbl[11]
-    local clips = tbl.clips or tbl[12] or {}
-    local cullmode = tbl.cullmode or tbl[13] or 0
+    local subcol = tbl.subcolor or tbl[7] or 0
+    local matName = tbl.material or tbl[8]
+    local color = tbl.color or tbl[9] or Color(255, 255, 255, 255)
+    local noLight = tbl.noLight or tbl[10] or false
+    local meshId = tbl.mesh or tbl[11]
+    local meshPart = tbl.meshPart or tbl[12]
+    local clips = tbl.clips or tbl[13] or {}
+    local cullmode = tbl.cullmode or tbl[14] or 0
     local funcToMat = emptyFunction
     if matName then
         local function setMaterial(holo, index, funcMatName)
@@ -602,12 +675,14 @@ function model.holo(tbl)
         funcToMat(holo)
         holo:setColor(color)
         for i, v in ipairs(clips) do
-            holo:setClip(i, true, v[1] * scale, v[2], holo)
+            holo:setClip(i, true, size and v[1] + size or v[1] * scale, v[2], holo)
         end
         if CLIENT then
             local msh = model.mesh[meshId]
             if msh then msh:setTo(holo, meshPart) end
         end
+        holo.modelSubcolor = subcol
+        holo.modelSubmaterial = submaterial
         return holo
     end
 end
@@ -703,7 +778,10 @@ function ModelInfo:create(origin)
     end
     local id = originHolo:entIndex()
     if SERVER then
-        model.toNetwork[id] = self.identifier
+        model.toNetwork[id] = {
+            modelId = self.identifier,
+            params = {}
+        }
         model.sync()
         originHolo = methodsOverride(originHolo)
         originHolo.identifier = self.identifier

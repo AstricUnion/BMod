@@ -14,6 +14,7 @@ Fumigator.WorkCooldown = 0.2
 if SERVER then
     function Fumigator:machineInitialize()
         self.containedGas = 100
+        self.ent:setUnbreakable(true)
     end
 
     function Fumigator:turnOn() return true end

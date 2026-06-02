@@ -9,6 +9,32 @@ local deposit = deposit
 
 ---@class resource
 local resource = resource
+-- 
+
+---@class model
+local model = model
+local hitbox = model.hitbox
+local vertex = model.vertex
+local part = model.part
+local holo = model.holo
+local rig = model.rig
+
+local mdl = model.new("groundscanner", part{
+    hitbox {
+        vertex {"cube", Vector(0, 0, 16), Angle(0, 0, 0), Vector(24, 42, 16)},
+        mass = 25,
+        visible = false
+    },
+    holo { Vector(0, 0, 18), Angle(-90, 0, 0), "models/props_c17/substation_transformer01b.mdl", Vector(0.5, 0.5, 0.5), clips = {{Vector(0, 0, 0), Vector(-1, 0, 0)}} },
+    holo { Vector(0, 0, 18), Angle(-90, 0, 0), "models/props_c17/substation_transformer01b.mdl", Vector(0.5, 0.5, 0.5), clips = {{Vector(0, 0, 0), Vector(1, 0, 0)}}, subcolor = 1 },
+    holo { Vector(0, 0, 24), Angle(0, 0, 0), "models/props_wasteland/horizontalcoolingtank04.mdl", Vector(0.15, 0.15, 0.15) },
+})
+
+if CLIENT then
+    bicons.registerModel("groundscanner", function()
+        return mdl:create()
+    end, Vector(86, 48, 64), Angle(30, -150, 0))
+end
 
 ---@class GroundScanner: BaseMachine
 ---@field toScan Deposit[]
@@ -16,29 +42,27 @@ local resource = resource
 local GroundScanner = {}
 GroundScanner.Identifier = "groundscanner"
 GroundScanner.Name = "Ground Scanner"
-GroundScanner.Model = "models/props_silo/launch_button.mdl"
+GroundScanner.Model = function()
+    return mdl:create()
+end
 GroundScanner.hooks = {}
 ---@type table<string, ResourceInput>
 GroundScanner.Inputs = {}
 GroundScanner.Inputs.power = { type = "power", maxCount = 100 }
 
 GroundScanner.Display = true
-GroundScanner.DisplayOffset = Vector(0, 0, 20)
-GroundScanner.DisplayAngle = Angle(0, 0, -60)
+GroundScanner.DisplayOffset = Vector(16, 0, 36)
+GroundScanner.DisplayAngle = Angle(0, 0, -45)
 
 GroundScanner.Armor = 3
 GroundScanner.MaxDurability = 300
-
-if CLIENT then
-    bicons.registerModel("groundscanner", "models/props_silo/launch_button.mdl", Vector(64, -24, 24), Angle(20, 160, 0))
-end
+GroundScanner.FontSize = 24
 
 local unitsInMeter = 39.37008
 local foundRadius = 50 * unitsInMeter
 
 if SERVER then
     function GroundScanner:machineInitialize()
-        self.ent:setMass(25)
         self.nextThink = 0
     end
 
@@ -123,14 +147,13 @@ if CLIENT then
     function GroundScanner:drawDisplay()
         ---@type Deposit[]
         local scanned = self:getNWVar("scanned", nil)
+        render.enableDepth(false)
         if scanned then
             render.setColor(Color(0, 0, 0, 200))
             pushMask(function()
                 render.drawFilledCircle(0, 0, 256)
             end)
-            render.enableDepth(false)
             render.drawRect(-256, -256, 512, 512)
-            render.enableDepth(true)
             render.setColor(Color(0, 255, 0, 150))
             render.drawLine(-256, 0, 256, 0)
             render.drawLine(0, 0, 0, 256)
@@ -166,7 +189,8 @@ if CLIENT then
             popMask()
         end
         render.setFont("Trebuchet24")
-        render.drawSimpleText(-256, 256, string.format("Power: %s", math.round(self:getInput("power"))), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
+        self:drawFields(-200, 186, {{"Power", self:getInput("power"), 100, false, true}})
+        render.enableDepth(true)
     end
 end
 

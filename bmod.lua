@@ -29,7 +29,7 @@ end
 ---@field displayDeposits boolean
 BMod = {}
 BMod.debug = true
-BMod.displayDeposits = true
+-- BMod.displayDeposits = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
 require("bmod/base/safeparticle.lua")
@@ -122,14 +122,14 @@ if SERVER then
     -- resource.create("power", chip():getPos() + Vector(0, -50, 24), Angle(), 100, false)
     -- deposit.create("oil", chip():getPos(), 400, 13)
     -- deposit.create("oil", chip():getPos() + Vector, 400, 13)
-    -- local cor = deposit.startGeneration(300, true)
-    -- if !cor then return end
-    -- hook.add("Think", "BModDepositGeneration", function()
-    --     while quotaAverage() < quotaMax() / 2 do
-    --         if cor() == true then
-    --             hook.remove("Think", "BModDepositGeneration")
-    --             return
-    --         end
-    --     end
-    -- end)
+    local cor = deposit.startGeneration(300, true)
+    if !cor then return end
+    hook.add("Think", "BModDepositGeneration", function()
+        while quotaAverage() < quotaMax() / 4 do
+            if cor() == true then
+                hook.remove("Think", "BModDepositGeneration")
+                return
+            end
+        end
+    end)
 end

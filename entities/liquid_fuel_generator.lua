@@ -18,17 +18,17 @@ local part = model.part
 local rig = model.rig
 local holo = model.holo
 
-local mdl = model.new("liquid_fuel_generator", hitbox {
-    vertex {"cube", Vector(0, 0, 12), Angle(0, 0, 0), Vector(42, 24, 24)},
-    mass = 400
+local mdl = model.new("liquid_fuel_generator", part {
+    hitbox {
+        vertex {"cube", Vector(0, 0, 12), Angle(0, 0, 0), Vector(42, 24, 24)},
+        mass = 400
+    },
+    holo { Vector(32, 0, -32), Angle(0, 0, 0), "models/props_mining/diesel_generator.mdl", clips = {
+        { Vector(0, 0, 32), Vector(0, 0, 1) },
+        { Vector(24, 0, 0), Vector(-1, 0, 0) }
+    }, subcolor = 1 },
+    holo { Vector(8, 0, 0), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(5.5, 3, 2), material = "models/props_c17/furnituremetal002a" }
 })
-    :add("base", part {
-        holo { Vector(32, 0, -32), Angle(0, 0, 0), "models/props_mining/diesel_generator.mdl", clips = {
-            { Vector(0, 0, 32), Vector(0, 0, 1) },
-            { Vector(24, 0, 0), Vector(-1, 0, 0) }
-        } },
-        holo { Vector(0, 0, 0), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(6, 2.5, 2), material = "models/props_c17/furnituremetal002a" }
-    })
 
 
 ---@class LiquidFuelGenerator: BaseMachine

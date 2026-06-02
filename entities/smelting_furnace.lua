@@ -33,8 +33,9 @@ local mdl = model.new("smelting_furnace", part {
         vertex {"cylinder", Vector(-16, 8, 36), nil, Vector(16, 16, 36)},
         mass = 750,
     },
-    holo { Vector(16, 0, 0), Angle(0, 0, 0), "models/props_forest/furnace01.mdl", Vector(1.2, 1.2, 1.2) },
-    holo { Vector(-16, 8, 0), Angle(0, 15, 0), "models/props_citizen_tech/firetrap_propanecanister01b.mdl", Vector(1, 1, 1) },
+    holo { Vector(16, 0, 0), Angle(0, 0, 0), "models/props_forest/furnace01.mdl", Vector(1.2, 1.2, 1.2), color = Color(150, 150, 150) },
+    holo { Vector(-16, 8, 0), Angle(0, 15, 0), "models/props_citizen_tech/firetrap_propanecanister01b.mdl", Vector(1, 1, 1), subcolor = 1 },
+    holo { Vector(36, 0, 35), Angle(90, 0, 0), "models/holograms/plane.mdl", Vector(0.8, 4, 1), material = "models/props_pipes/pipemetal001a", subcolor = 1 },
 })
     :add("light", holo { Vector(26, 0, 72), Angle(90, 0, 0), "models/holograms/plane.mdl", Vector(1, 3.5, 0.8), noLight = true, color = Color(0, 0, 0) })
 

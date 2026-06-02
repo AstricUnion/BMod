@@ -19,6 +19,7 @@ local holo = model.holo
 local rig = model.rig
 
 local metalMat = "models/props_c17/furnituremetal002a"
+local colorMat = "models/props_pipes/pipemetal001a"
 
 local mdl = model.new("pumpjack", part {
     hitbox {
@@ -35,19 +36,19 @@ local mdl = model.new("pumpjack", part {
 })
     :add("weight", part {
         rig(Vector(-8, 0, 38)),
-        holo { Vector(-8, 28, 38), Angle(0, 90, 90), "models/props_debris/wood_board06a.mdl", Vector(2, 1, 1), material = metalMat },
-        holo { Vector(32, 28, 38), Angle(180, 180, 90), "models/props_lab/walllight001a.mdl", Vector(2, 1.8, 0.5), material = metalMat },
-        holo { Vector(-8, -28, 38), Angle(0, 90, 90), "models/props_debris/wood_board06a.mdl", Vector(2, 1, 1), material = metalMat },
-        holo { Vector(32, -28, 38), Angle(180, 180, 90), "models/props_lab/walllight001a.mdl", Vector(2, 1.8, 0.5), material = metalMat },
+        holo { Vector(-8, 28, 38), Angle(0, 90, 90), "models/props_debris/wood_board06a.mdl", Vector(1, 1, 1), material = metalMat },
+        holo { Vector(32, 28, 38), Angle(180, 180, 90), "models/props_lab/walllight001a.mdl", Vector(2, 1.8, 0.5), material = colorMat, subcolor = 1 },
+        holo { Vector(-8, -28, 38), Angle(0, 90, 90), "models/props_debris/wood_board06a.mdl", Vector(1, 1, 1), material = metalMat },
+        holo { Vector(32, -28, 38), Angle(180, 180, 90), "models/props_lab/walllight001a.mdl", Vector(2, 1.8, 0.5), material = colorMat, subcolor = 1 },
     })
     :add("horsehead", part {
         rig(Vector(42, 0, 118)),
         holo { Vector(48, 0, 118), Angle(0, 0, 0), "models/props_junk/iBeam01a.mdl", Vector(0.8, 1, 1.5), material = metalMat },
-        holo { Vector(148, 0, 118), Angle(0, 0, 90), "models/props_lab/walllight001a.mdl", Vector(4, 4, 2), material = metalMat },
+        holo { Vector(148, 0, 118), Angle(0, 0, 90), "models/props_lab/walllight001a.mdl", Vector(4, 4, 2), material = colorMat, subcolor = 1 },
     })
     :add("weight", "pitman", part {
         rig(Vector(-26, 0, 0)),
-        holo { Vector(-24, 0, 56), Angle(180, 0, 0), "models/props_wasteland/light_spotlight02_base.mdl", Vector(3, 5, 12) }
+        holo { Vector(-24, 0, 56), Angle(180, 0, 0), "models/props_wasteland/light_spotlight02_base.mdl", Vector(3, 5, 12), subcolor = 1 }
     })
 
 

@@ -75,6 +75,7 @@ ents.register(Plug)
 ---@field Anchorage number Anchorage of this machine (weld force)
 ---@field Armor number Armor of this machine. By default is 2
 ---@field MaxDurability number Maximum of durability for this machine
+---@field RepairResource table<string, number> Resources, that can repair this machine and how many durability it gives
 ---@field plugs Plug[] Plugs to output resources
 ---@field physgunPickedUp Player? Is machine picked up by physgun
 ---@field private nextThink number Next think. Relative to curtime
@@ -95,10 +96,14 @@ BaseMachine.DisplayOffset = Vector()
 BaseMachine.DisplayAngle = Angle()
 BaseMachine.InstallOffset = Vector()
 BaseMachine.MaxDurability = 1200
+BaseMachine.RepairResource = {
+    ["basicparts"] = 3
+}
 BaseMachine.Armor = 2
 
 
 local function brokenSparks(pos)
+    if !effect.canCreate() then return end
     local eff = effect.create()
     eff:setMagnitude(5)
     eff:setScale(2)
@@ -143,7 +148,7 @@ if SERVER then
     ---@param ply Player?
     function BaseMachine:turnOnInternal(ply)
         if self:isBroken() and ply then
-            BMod.hintMessage(ply, "Machine is broken. You can repair it with toolbox")
+            BMod.hintMessage(ply, "Machine is broken. You can repair it with basic parts")
             return
         end
         if self:isTurnedOn() then return end
@@ -222,12 +227,12 @@ if SERVER then
     ---@param ent Entity
     function BaseMachine.hooks.BModResourceInteracted(self, res, ent)
         if ent ~= self.ent then return end
+        local resMeta = getmetatable(res)
         local function makeCallback(input, want)
             local result = false
             if input.callback then result = input.callback(self, res, want) end
             return result
         end
-        local resMeta = getmetatable(res)
         for id, v in pairs(self.Inputs) do
             if v.type and resMeta.Identifier == v.type then
                 local count = self:getInput(id)
@@ -257,6 +262,19 @@ if SERVER then
                 return
             end
             ::cont::
+        end
+        local repairAmount = self.RepairResource[resMeta.Identifier]
+        if repairAmount then
+            local durability = self:getDurability()
+            local missing = self.MaxDurability - durability
+            local accepted = res:take(missing / 3)
+            if accepted <= 0 then return end
+            self:setDurability(math.min(durability + (accepted * 3), self.MaxDurability))
+            self.ent:emitSound(resMeta.Sounds.Merge)
+            if !self:isBroken() then
+                self.ent:emitSound("buttons/lever7.wav")
+                self:onRepair()
+            end
         end
     end
 
@@ -288,6 +306,9 @@ if SERVER then
 
     ---[SERVER] Hook on machine break
     function BaseMachine:onBreak() end
+
+    ---[SERVER] Hook on machine repair
+    function BaseMachine:onRepair() end
 
 
     ---[SERVER] Think function. To make machine work
@@ -696,6 +717,7 @@ function BaseMachine:initialize()
             if colData.Speed <= 500 then return end
             local phys = self.ent:getPhysicsObject()
             local ent = colData.HitEntity
+            if ent.BModResource then return end
             local world = game.getWorld()
             local colDir = colData.OurOldVelocity - colData.TheirOldVelocity
             local multiplier = ((colDir:getLength() / 16) * 0.3048) ^ 2

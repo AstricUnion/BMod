@@ -28,7 +28,7 @@ local mdl = model.new("solid_fuel_generator", part {
     },
     holo { Vector(52, 0, 22), Angle(0, 0, 0), "models/xqm/cylinderx2huge.mdl", Vector(0.6, 0.8, 0.8), material = "models/props_c17/furnituremetal002a" },
     holo { Vector(60, 0, -11), Angle(0, 0, 0), "models/props_c17/metalladder001.mdl", Vector(1, 1.4, 0.35), material = "models/props_c17/furnituremetal002a" },
-    holo { Vector(44, 0, -3), Angle(0, 0, 0), "models/props_lab/partsbin01.mdl", Vector(2, 1.5, 0.7), color = Color(255, 0, 0), material = "models/props_c17/furnituremetal002a" },
+    holo { Vector(44, 0, -3), Angle(0, 0, 0), "models/props_lab/partsbin01.mdl", Vector(2, 1.5, 0.7), material = "models/props_pipes/pipemetal001a", subcolor = 1 },
     holo { Vector(52, 0, 48), Angle(0, 0, 0), "models/props_wasteland/chimneypipe02b.mdl", Vector(0.15, 0.15, 0.15), material = "models/props_c17/furnituremetal002a" },
     holo { Vector(48, 5, 5), Angle(0, 0, -90), "models/props_pipes/valvewheel002.mdl", Vector(2, 2, 2), material = "models/props_c17/furnituremetal002a" },
     holo {

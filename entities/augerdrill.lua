@@ -27,8 +27,8 @@ local mdl = model.new("augerdrill", part{
         mass = 2000,
         visible = false
     },
-    holo { Vector(-8, -36, 96), Angle(30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
-    holo { Vector(-8, 36, 96), Angle(-30, 90, 0), "models/props_c17/handrail04_short.mdl", Vector(6, 2, 6) },
+    holo { Vector(-8, -36, 96), Angle(30, 90, 0), "models/props_c17/handrail04_short.mdl", subcolor = 1, Vector(6, 2, 6) },
+    holo { Vector(-8, 36, 96), Angle(-30, 90, 0), "models/props_c17/handrail04_short.mdl", subcolor = 1, Vector(6, 2, 6) },
     holo { Vector(0, 0, 128), Angle(0, 0, 0), "models/holograms/cube.mdl", Vector(4.8, 4.8, 4), material = "models/props_c17/metalladder001" },
     holo { Vector(0, 0, 86), Angle(0, 0, 0), "models/holograms/hq_cylinder.mdl", Vector(2.5, 2.5, 3), material = "models/props_c17/metalladder001" },
 })

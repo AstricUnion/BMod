@@ -396,6 +396,7 @@ if SERVER then
         target:setHealth(target:getHealth() + amount * (1 - protection))
     end)
 else
+    local Ply = player()
     function Equippable.hooks.RenderOffscreen(self)
         if !self.ent.modelBones then return end
         local ply = self:getEquippedBy()
@@ -403,7 +404,7 @@ else
         if !isValid(ply) then
             noDraw = false
         else
-            noDraw = ply == player() and !ply:shouldDrawLocalPlayer()
+            noDraw = ply == Ply and !ply:shouldDrawLocalPlayer()
         end
         if self.ent:getNoDraw() ~= noDraw then
             self.ent:setNoDraw(noDraw)
@@ -425,6 +426,24 @@ else
         self.toDraw:setPos(pos)
         self.toDraw:setAngles(ang)
         self.toDraw:draw()
+    end
+
+    render.createRenderTarget("vignette")
+
+    ---[CLIENT] Draw view of equippable. This is a render target, so you should draw in 1024x1024
+    function Equippable:drawView() end
+
+    ---@param self Equippable
+    function Equippable.hooks.DrawHUD(self)
+        if !self.drawView or self.drawView == Equippable.drawView then return end
+        local ply = self:getEquippedBy()
+        if Ply ~= ply or Ply:shouldDrawLocalPlayer() then return end
+        render.selectRenderTarget("vignette")
+            self:drawView()
+        render.selectRenderTarget()
+        render.setRenderTargetTexture("vignette")
+        render.drawTexturedRect(0, 0, bgui.screenWidth, bgui.screenHeight)
+        render.setMaterial()
     end
 
     function Equippable:onRemove()

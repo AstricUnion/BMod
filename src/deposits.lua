@@ -36,6 +36,19 @@ deposit.inited = {}
 deposit.frequence = 0
 -- deposit.id = "mainDeposit"
 
+---@enum DSPECIF
+deposit.DSPECIF = {
+    HEAT = 1,
+    GAS = 2,
+    LIQUID = 4,
+    SOLID = 8,
+    LIGHT = 16,
+    MEDIUM = 32,
+    HARD = 64
+}
+
+
+
 ---[SHARED] Add new deposit to generation
 ---@param resource string Identifier of this deposit
 ---@param size number Average size for deposit
@@ -54,7 +67,6 @@ end
 
 
 if SERVER then
-    local isGenerating = false
     hook.add("ClientInitialized", "BModSyncDeposits", function(ply)
         if isGenerating then return end
         net.start("BModSyncDeposits")
@@ -105,6 +117,7 @@ if SERVER then
     ---@param multiThread boolean? Return corouine
     ---@return function? generate Generate coroutine handler
     function deposit.startGeneration(count, multiThread)
+        count = math.floor(math.min(count, #globalNavAreas / 10))
         BMod.log("Started generating " .. count .. " deposits")
         isGenerating = true
         local depositsLeft = count
@@ -127,53 +140,60 @@ if SERVER then
         end
 
         local function generate()
+            local attempts = 100
             while depositsLeft > 0 do
-                -- For coroutine
-                if multiThread then coroutine.yield() end
-                -- If empty, then we can't place any deposit
-                if table.isEmpty(navAreas) then return true end
-                local navarea = table.random(navAreas)
-                if !navarea then goto cont end
-                local point = navarea:getRandomPoint()
-                -- We can spawn this only on allowed materials
-                -- TODO: make resources deposit with custom allowed materials
-                local tr = trace.line(point, point + Vector(0, 0, -1), nil, MASK_SOLID)
-                ---@cast tr TraceResult
-                table.removeByValue(navAreas, navarea)
-                if !allowedMat[tr.MatType] then goto cont end
-                local isWater = bit.band(trace.pointContents(point + Vector(0, 0, 1)), CONTENTS.WATER) == CONTENTS.WATER and true or false
-                local depositInfo = selectDeposit(isWater)
-                if !depositInfo then goto cont end
-                -- Generating values for deposit
-                local size = math.round(depositInfo.size * math.rand(0.5, 1.5))
-                local amount = depositInfo.amount and math.round(depositInfo.amount * math.rand(0.5, 1.5))
-                local rate = depositInfo.rate and math.round(depositInfo.rate * math.rand(0.5, 1.5), 1)
-                local deposits = deposit.findInSphere(point, size)
-                if next(deposits) ~= nil then goto cont end
-                local areas = navmesh.find(point, size, 50000, 50000)
-                for _, v in ipairs(areas) do
-                    ---@cast v NavArea
-                    table.removeByValue(navAreas, v)
+                do
+                    -- For coroutine
+                    if multiThread then coroutine.yield() end
+                    -- If empty, then we can't place any deposit
+                    if table.isEmpty(navAreas) then break end
+                    local navarea = table.random(navAreas)
+                    if !navarea then goto cont1 end
+                    local point = navarea:getRandomPoint()
+                    -- We can spawn this only on allowed materials
+                    -- TODO: make resources deposit with custom allowed materials
+                    local tr = trace.line(point, point + Vector(0, 0, -1), nil, MASK_SOLID)
+                    ---@cast tr TraceResult
+                    table.removeByValue(navAreas, navarea)
+                    if !allowedMat[tr.MatType] then goto cont end
+                    local isWater = bit.band(trace.pointContents(point + Vector(0, 0, 1)), CONTENTS.WATER) == CONTENTS.WATER and true or false
+                    local depositInfo = selectDeposit(isWater)
+                    if !depositInfo then goto cont end
+                    -- Generating values for deposit
+                    local size = math.round(depositInfo.size * math.rand(0.5, 1.5))
+                    local amount = depositInfo.amount and math.round(depositInfo.amount * math.rand(0.5, 1.5))
+                    local rate = depositInfo.rate and math.round(depositInfo.rate * math.rand(0.5, 1.5), 1)
+                    local deposits = deposit.findInSphere(point, size)
+                    if next(deposits) ~= nil then goto cont end
+                    local areas = navmesh.find(point, size, 50000, 50000)
+                    for _, v in ipairs(areas) do
+                        ---@cast v NavArea
+                        table.removeByValue(navAreas, v)
+                    end
+                    local id = #deposit.inited+1
+                    deposit.inited[id] = {
+                        id = id,
+                        resource = depositInfo.resource,
+                        position = point,
+                        size = size * 2,
+                        rate = rate,
+                        amount = amount,
+                        underwater = isWater
+                    }
+                    BMod.logDebug(string.format(
+                        "Generated deposit[%s] with resource %s, size: %s, rate or amount: %s, position: %s, underwater: %s",
+                        id, depositInfo.resource, size * 2, rate or amount, tostring(point), isWater
+                    ))
+                    depositsLeft = depositsLeft - 1
+                    attempts = 101
                 end
-                local id = #deposit.inited+1
-                deposit.inited[id] = {
-                    id = id,
-                    resource = depositInfo.resource,
-                    position = point,
-                    size = size * 2,
-                    rate = rate,
-                    amount = amount,
-                    underwater = isWater
-                }
-                BMod.logDebug(string.format(
-                    "Generated deposit[%s] with resource %s, size: %s, rate or amount: %s, position: %s, underwater: %s",
-                    id, depositInfo.resource, size * 2, rate or amount, tostring(point), isWater
-                ))
-                depositsLeft = depositsLeft - 1
                 ::cont::
+                attempts = attempts - 1
+                if attempts <= 0 then break end
+                ::cont1::
             end
             isGenerating = false
-            BMod.log("Deposits generated")
+            BMod.log("Deposits generated: %s", count - depositsLeft)
             net.start("BModSyncDeposits")
                 net.writeTable(deposit.inited)
             net.send(find.allPlayers())
