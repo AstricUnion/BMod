@@ -69,10 +69,11 @@ end
 ents.register(Bucket)
 
 
----@class ToolBox: BModEntity
+---@class ToolBox: BWeapon
 ---@field craftMenu CraftMenu
 ---@field salvagingProp Entity
 ---@field salvagingProgress number
+---@field nextUpgrade number Relative to curtime
 local ToolBox = {}
 ToolBox.Identifier = "toolbox"
 ToolBox.Name = "ToolBox"
@@ -80,29 +81,18 @@ ToolBox.Model = "models/props_c17/suitcase001a.mdl"
 ToolBox.hooks = {}
 
 if SERVER then
-    function ToolBox:initialize()
+    function ToolBox:weaponInitialize()
         constraint.keepupright(self.ent, Angle(), 0, 5000)
         self.ent:setColor(Color(255, 100, 100))
         self:setNWVar("gas", 0)
         self:setNWVar("power", 0)
         self:setNWVar("craft", nil)
         self:setNWVar("equippedBy", nil)
+        self.nextUpgrade = 0
     end
 
     ---[SERVER] Open craft menu on click
-    function ToolBox.hooks.KeyPress(self, ply, key)
-        local sprinting = ply:keyDown(IN_KEY.SPEED)
-        local walking = ply:keyDown(IN_KEY.WALK)
-        local equippedBy = self:getEquippedBy()
-        if equippedBy == nil and walking and key == IN_KEY.USE then
-            local tr = ply:getEyeTrace()
-            ---@cast tr TraceResult
-            if tr.Entity ~= self.ent then return end
-            if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
-            self:equip(ply)
-            return
-        end
-        if equippedBy ~= ply or !self:isInHands(equippedBy) then return end
+    function ToolBox:inputHandler(ply, key, walking, sprinting)
         local craftId = self:getNWVar("craft")
         local craft = cfg.crafts[craftId]
         if sprinting and key == IN_KEY.RELOAD then
@@ -141,22 +131,36 @@ if SERVER then
             local angs = ply:getEyeAngles()
             local tr = trace.line(shootPos, shootPos + angs:getForward() * 256, {ply})
             BMod.makeCraft(ply, tr.HitPos, angs:setP(0), craft)
+        elseif key == IN_KEY.ATTACK then
+            local tr = ply:getEyeTrace()
+            ---@cast tr TraceResult
+            local ent = tr.Entity
+            if !ent.BModMachine then return end
+            if ply:getShootPos():getDistance(tr.HitPos) > 96 then return end
+            local machine = ents.inited[ent:entIndex()]
+            if !machine then return end
+            ---@cast machine BaseMachine
+            local costs = machine:getUpgradeCosts()
+            local grade = machine:getGrade()
+            if costs[grade + 1] == nil then
+                BMod.hintMessage(ply, "This machine already fully upgraded")
+                return
+            end
         end
     end
 
 
-    ---@param self ToolBox
-    function ToolBox.hooks.Think(self)
+    function ToolBox:think()
+        local ply = self:getOwner()
+        local shootPos = ply:getShootPos()
+        local eyeAngs = ply:getEyeAngles()
+        local tr = trace.line(shootPos, shootPos + eyeAngs:getForward() * 196, {ply})
+        local ent = tr.Entity
+        if !isValid(ent) then return end
+
         local function salvage()
-            local ply = self:getEquippedBy()
-            if !ply or !isValid(ply) then return end
-            if !self:isInHands(ply) then return end
             if !ply:keyDown(IN_KEY.ATTACK2) then return end
-            local shootPos = ply:getShootPos()
-            local eyeAngs = ply:getEyeAngles()
-            local tr = trace.line(shootPos, shootPos + eyeAngs:getForward() * 256, {ply})
-            local ent = tr.Entity
-            if isValid(ent) and ent:getMass() > 10000 then
+            if ent:getMass() > 10000 then
                 BMod.errorMessage(ply, "Object too large")
                 return
             end
@@ -170,19 +174,11 @@ if SERVER then
                 local angs = ent:getAngles()
                 if percent >= 1 then
                     ent:remove()
-                    local height = 0
-                    local time = 1 / prop.spawnRate()
-                    for id, count in pairs(res) do
-                        -- because prop limit. I don't use it in crafting table, because table makes less props
-                        timer.simple(height * time, function()
-                            resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, false)
-                        end)
-                        height = height + 1
-                    end
+                    resource.produce(pos, angs, res)
                     return
                 end
                 percent = percent + 250 / ent:getMass() * game.getTickInterval()
-                if game.getTickCount() % 15 == 0 then
+                if game.getTickCount() % 10 == 0 then
                     self:setNWVar("salvagingProgress", percent)
                 end
                 return true
@@ -192,44 +188,15 @@ if SERVER then
             self:setNWVar("salvagingProp", nil)
             self:setNWVar("salvagingProgress", 0)
         end
-    end
-
-
-    ---@param self ToolBox
-    ---@param ply Player
-    function ToolBox.hooks.PlayerDeath(self, ply, _, _)
-        if self:getEquippedBy() == ply then
-            self:drop()
+        if ent.BModMachine and ply:keyDown(IN_KEY.ATTACK) then
+            local cur = timer.curtime()
+            if self.nextUpgrade > cur then return end
+            local machine = ents.inited[ent:entIndex()]
+            if !machine then return end
+            ---@cast machine BaseMachine
+            machine:tryToUpgrade(ply)
+            self.nextUpgrade = cur + 1
         end
-    end
-
-    ---[SERVER] Equip this toolbox
-    ---@param ply Player
-    function ToolBox:equip(ply)
-        if self:getEquippedBy() or ply.EquippedToolbox then return end
-        self.ent:enableMotion(false)
-        self.ent:setNoDraw(true)
-        self.ent:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
-        prop.createSent(ply:getPos(), Angle(), "weapon_fists", true)
-        ply.EquippedToolbox = self
-        self:setNWVar("equippedBy", ply)
-        self.ent:emitSound("items/ammo_pickup.wav")
-    end
-
-    ---[SERVER] Drop toolbox
-    function ToolBox:drop()
-        local ply = self:getEquippedBy()
-        if !ply or !isValid(ply) then return end
-        local pos = ply:getShootPos()
-        local angs = ply:getEyeAngles()
-        local tr = trace.line(pos, pos + angs:getForward() * 64, {ply})
-        self.ent:setPos(tr.HitPos)
-        self.ent:enableMotion(true)
-        self.ent:setNoDraw(false)
-        self.ent:setCollisionGroup(COLLISION_GROUP.NONE)
-        ply.EquippedToolbox = nil
-        self:setNWVar("equippedBy", nil)
-        self.ent:emitSound("AI_BaseNPC.BodyDrop_Heavy")
     end
 
     ---[SERVER] Set gas for toolbox
@@ -256,7 +223,7 @@ if SERVER then
         local craftId = net.readString()
         local craft = cfg.crafts[craftId]
         if !craft then return end
-        local ply = toolbox:getEquippedBy()
+        local ply = toolbox:getOwner()
         if !ply then return end
         local res = resource.getResourcesFast(ply)
         local errorMes = resource.canByResources(res, craft.requires)
@@ -269,7 +236,7 @@ if SERVER then
 else
     ---@param self ToolBox
     function ToolBox.hooks.PostDrawTranslucentRenderables(self)
-        local ply = self:getEquippedBy()
+        local ply = self:getOwner()
         if !ply or !isValid(ply) then
             return
         end
@@ -284,10 +251,8 @@ else
         end
     end
 
-    ---@param self ToolBox
-    function ToolBox.hooks.DrawHUD(self)
-        local ply = self:getEquippedBy()
-        if !ply or !self:isInHands(ply) then return end
+    function ToolBox:drawHUD()
+        local ow = self:getOwner()
         local sw, sh = bgui.screenWidth, bgui.screenHeight
         render.setFont("Trebuchet18")
         -- Salvage progress
@@ -302,15 +267,31 @@ else
         end
         render.drawSimpleText(sw * 0.2, sh * 0.5, string.format("Power: %s", self:getPower()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
         render.drawSimpleText(sw * 0.2, sh * 0.5 + 18, string.format("Gas: %s", self:getGas()), TEXT_ALIGN.LEFT, TEXT_ALIGN.CENTER)
-        local pos = ply:getShootPos()
-        local tr = trace.line(pos, pos + ply:getForward() * 96, {ply})
+        local pos = ow:getShootPos()
+        local tr = trace.line(pos, pos + ow:getForward() * 96, {ow})
         if tr.Hit and tr.Entity and tr.Entity.BModMachine then
-            local entInfo = ents.registered[tr.Entity.BModMachine]
             local ent = ents.inited[tr.Entity:entIndex()]
             ---@cast ent BaseMachine
-            render.drawSimpleText(sw * 0.8, sh * 0.5, string.format("Machine: %s", entInfo.Name), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+            render.drawSimpleText(sw * 0.8, sh * 0.5, string.format("Machine: %s", ent.Name), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
             render.drawSimpleText(sw * 0.8, sh * 0.5 + 18, string.format("Grade: %s", ent:getGrade()), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
-            render.drawSimpleText(sw * 0.8, sh * 0.5 + 36, string.format("Durability: %s", 1200), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+            render.drawSimpleText(sw * 0.8, sh * 0.5 + 36, string.format("Durability: %s/%s", ent:getDurability(), ent.MaxDurability), TEXT_ALIGN.RIGHT, TEXT_ALIGN.CENTER)
+
+            local upgradeResources = ent:getUpgradeResources()
+            local cost = ent:getUpgradeCosts()
+            local grade = ent:getGrade() + 1
+            if !cost[grade] then return end
+            render.drawSimpleText(sw * 0.5, sh * 0.3, "Upgrade progress", TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+            for i, info in ipairs(cost[grade]) do
+                local res = info[1]
+                local required = info[2]
+                if required == 0 then
+                    goto cont
+                end
+                local resName = (ents.registered[res] or {Name = res}).Name
+                local current = upgradeResources[res] or 0
+                render.drawSimpleText(sw * 0.5, sh * 0.3 + (i * 24), string.format("%s: %s/%s", resName, current, required), TEXT_ALIGN.CENTER, TEXT_ALIGN.CENTER)
+                ::cont::
+            end
         end
         local function textLine(text, lineId)
             render.drawSimpleText(sw * 0.5, sh * 0.9 - lineId * 18, text, TEXT_ALIGN.CENTER, TEXT_ALIGN.BOTTOM)
@@ -331,13 +312,6 @@ else
     end
 
     function ToolBox:networkVariablesUpdate(oldVars, vars)
-        local function equip()
-            local ply = vars.equippedBy
-            if oldVars.equippedBy == ply or player() ~= ply then return end
-            ---@cast ply Player
-            input.selectWeapon(ply:getWeapon("weapon_fists"))
-        end
-
         local function craft()
             if vars.craft == oldVars.craft then return end
             if isValid(self.craftMenu) then
@@ -346,7 +320,6 @@ else
             end
         end
 
-        equip()
         craft()
     end
 
@@ -375,13 +348,6 @@ else
     end)
 end
 
----[SHARED] Is toolbox in player hands
----@param ply Player
-function ToolBox:isInHands(ply)
-    local activeWeapon = ply and isValid(ply) and ply:getActiveWeapon()
-    return activeWeapon and isValid(activeWeapon) and activeWeapon:getClass() == "weapon_fists"
-end
-
 ---[SHARED] Get gas
 ---@return number gas
 function ToolBox:getGas()
@@ -394,12 +360,6 @@ function ToolBox:getPower()
     return self:getNWVar("power", 0)
 end
 
----[SHARED] Is toolbox equipped and who equipped it
----@return Player? owner
-function ToolBox:getEquippedBy()
-    return self:getNWVar("equippedBy", nil)
-end
-
 ---[SHARED] Get salvage info
 ---@return Entity? salvaging
 ---@return number percent Percent of salvage
@@ -408,5 +368,5 @@ function ToolBox:getSalvage()
 end
 
 
-ents.register(ToolBox)
+ents.register(ToolBox, "base_weapon")
 

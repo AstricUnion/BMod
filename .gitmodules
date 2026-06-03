@@ -1,0 +1,9 @@
+[submodule "base/base/bmodentity"]
+	path = base/base/bmodentity
+	url = git@github.com:AstricUnion/BModEntity
+[submodule "base/bmodentity"]
+	path = base/bmodentity
+	url = git@github.com:AstricUnion/BModEntity
+[submodule "base/model"]
+	path = base/model
+	url = git@github.com:AstricUnion/BModel

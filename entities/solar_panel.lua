@@ -18,15 +18,15 @@ local part = model.part
 local rig = model.rig
 local holo = model.holo
 
-local mdl = model.new("solar_panel", hitbox {
-    vertex {"wedge", Vector(0, 0, 7.5), Angle(0, 0, 0), Vector(30, 46, 15)},
-    mass = 100
+local mdl = model.new("solar_panel", part {
+    hitbox {
+        vertex {"wedge", Vector(0, 0, 7.5), Angle(0, 0, 0), Vector(30, 46, 15)},
+        mass = 100
+    },
+    holo { Vector(0, 0, 8), Angle(90, 0, 0), "models/props_rooftop/scaffolding01a.mdl", Vector(0.4, 0.4, 0.4), subcolor = 1 },
+    holo { Vector(1, 0, 9), Angle(30, 0, 0), "models/hunter/plates/plate16x24.mdl", Vector(0.07, 0.09, 0.2), material = "phoenix_storms/window" },
+    holo { Vector(-16, 0, -6), Angle(0, 0, 0), "models/props_wasteland/gaspump001a.mdl", Vector(0.6, 0.7, 0.3), submaterial = 1 },
 })
-    :add("base", part {
-        holo { Vector(0, 0, 8), Angle(90, 0, 0), "models/props_rooftop/scaffolding01a.mdl", Vector(0.4, 0.4, 0.4), subcolor = 1 },
-        holo { Vector(1, 0, 9), Angle(30, 0, 0), "models/hunter/plates/plate16x24.mdl", Vector(0.07, 0.09, 0.2), material = "phoenix_storms/window" },
-        holo { Vector(-16, 0, 3), Angle(0, 0, 0), "models/props_lab/reciever_cart.mdl", Vector(0.6, 0.7, 0.3) },
-    })
 
 if CLIENT then
     bicons.registerModel("solar_panel", function()

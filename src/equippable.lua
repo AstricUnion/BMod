@@ -222,7 +222,6 @@ else
 end
 
 ---@class Equippable: BModEntity
----@field EquippedModel string|fun(): Hologram
 ---@field BoneToEquip string Bone to equip this equippable
 ---@field EquipOffset Vector? Offset for equipped entity
 ---@field EquipAngle Angle? Angle offset for equipped entity
@@ -246,6 +245,8 @@ function Equippable:initialize()
     if SERVER then
         self.ent:setMaxHealth(self.MaxDurability)
         self.ent:setHealth(self.MaxDurability)
+        local plyColor = self.ent:getOwner():getPlayerColor()
+        self.ent:setSubColor(1, Color(plyColor[1] * 255, plyColor[2] * 255, plyColor[3] * 255))
     end
 end
 
@@ -301,7 +302,7 @@ if SERVER then
         self.ent:setAngles(ang)
         self.ent:setParent(self.equippedPoint)
         self.ent:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
-        self.ent:emitSound("items/ammo_pickup.wav")
+        self.ent:emitSound("npc/combine_soldier/zipline_clothing2.wav")
         self:setNWVar("equippedBy", ply)
     end
 

@@ -32,12 +32,12 @@ local mdl = model.new("oil_rig", part {
     holo { Vector(0, 0, 42), Angle(0, 90, 0), "models/holograms/hq_stube_thick.mdl", Vector(18, 18, 0.5), material = "models/props/generated_prop/metalgrate014a" },
     holo { Vector(0, 0, 42), Angle(0, 90, 0), "models/holograms/hq_stube_thick.mdl", Vector(9, 9, 0.5), material = "models/props/generated_prop/metalgrate014a" },
     holo { Vector(0, 0, 270), Angle(0, 0, 0), "models/props_wasteland/powertower01.mdl", Vector(0.2, 0.2, 0.3), clips = {{Vector(0, 0, -360), Vector(0, 0, -1)}} },
-    holo { Vector(0, 0, 168), Angle(0, 0, 0), "models/mechanics/robotics/stand.mdl", Vector(0.4, 0.4, 0.25), material = {[1] = "phoenix_storms/roadside", [2] = "phoenix_storms/roadside"} },
+    holo { Vector(0, 0, 168), Angle(0, 0, 0), "models/mechanics/robotics/stand.mdl", Vector(0.4, 0.4, 0.25), material = {[1] = "phoenix_storms/roadside", [2] = "phoenix_storms/roadside"}, submaterial = 1 },
     holo { Vector(42, 0, 67), Angle(0, 0, 0), "models/props_silo/consolepanelloadingbay.mdl", Vector(1, 1, 1), subcolor = 1 },
     holo { Vector(36, 0, 96), Angle(0, 0, 0), "models/props/cs_office/tv_plasma.mdl", Vector(0.8, 0.8, 0.8) },
     holo { Vector(-108, -81, 10), Angle(90, 0, 0), "models/props_c17/canister_propane01a.mdl", Vector(1.8, 1.8, 3.5), subcolor = 1, clips = {{Vector(0, 0, 59.64), Vector(0, 0, -1)}} },
     holo { Vector(-108, 81, 10), Angle(90, 0, 0), "models/props_c17/canister_propane01a.mdl", Vector(1.8, 1.8, 3.5), subcolor = 1, clips = {{Vector(0, 0, 59.64), Vector(0, 0, -1)}} },
-    holo { Vector(0, 0, 174), Angle(0, 0, 0), "models/props_rooftop/roof_vent002.mdl", Vector(0.8, 0.8, 0.5) },
+    holo { Vector(0, 0, 174), Angle(0, 0, 0), "models/props_rooftop/roof_vent002.mdl", Vector(0.8, 0.8, 0.5), submaterial = 1 },
 })
 
 

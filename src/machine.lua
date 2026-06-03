@@ -1,6 +1,10 @@
 ---@class ents
 local ents = ents
 
+---@class bmodConfig
+local cfg = bmodConfig
+
+
 ---@class Plug: BModEntity
 ---@field outputFrom BaseMachine
 ---@field inputTo BaseMachine?
@@ -14,7 +18,7 @@ Plug.hooks = {}
 if SERVER then
     function Plug:initialize()
         self.ent:addCollisionListener(function(colData)
-            if self.inputTo or colData.HitSpeed:getLength() < 500 then return end
+            if self.inputTo then return end
             local ent = colData.HitEntity
             if !ent.BModMachine or ent == self.ent then return end
             local entInfo = ents.registered[ent.BModMachine]
@@ -75,14 +79,19 @@ ents.register(Plug)
 ---@field Anchorage number Anchorage of this machine (weld force)
 ---@field Armor number Armor of this machine. By default is 2
 ---@field MaxDurability number Maximum of durability for this machine
----@field RepairResource table<string, number> Resources, that can repair this machine and how many durability it gives
+---@field RepairResource Resources Resources, that can repair this machine and how many durability it gives
+---@field GradeMultiplier number Grade multiplier
+---@field GradeMaterials string[] Grade materials
+---@field UpgradeRate number Rate of upgrade
 ---@field plugs Plug[] Plugs to output resources
 ---@field physgunPickedUp Player? Is machine picked up by physgun
+---@field upgradeResources Resources Resources, that's loaded for upgrade
 ---@field private nextThink number Next think. Relative to curtime
 ---@field private installConstraint Constraint? Is machine installed and constraint to install
 ---@field private font string Font data for fields
 ---@field private toProduce Resources Resources to produce, out of outputs
 ---@field private workSound Sound Sound when work
+---@field private upgradeCosts table[] Upgrade costs, calculates once
 local BaseMachine = {}
 BaseMachine.Identifier = "base_machine"
 BaseMachine.Name = "Base machine"
@@ -97,9 +106,18 @@ BaseMachine.DisplayAngle = Angle()
 BaseMachine.InstallOffset = Vector()
 BaseMachine.MaxDurability = 1200
 BaseMachine.RepairResource = {
-    ["basicparts"] = 3
+    basicparts = 3
 }
+BaseMachine.GradeMultiplier = 0.25
+BaseMachine.UpgradeRate = 2
 BaseMachine.Armor = 2
+BaseMachine.GradeMaterials = {
+    "phoenix_storms/metalset_1-2",
+    "models/props_pipes/pipesystem01a_skin2",
+    "phoenix_storms/Pro_gear_side",
+    "phoenix_storms/Fender_wood",
+    "phoenix_storms/bluemetal"
+}
 
 
 local function brokenSparks(pos)
@@ -480,6 +498,7 @@ if SERVER then
     ---[SERVER] Set grade of machine
     ---@param grade number
     function BaseMachine:setGrade(grade)
+        self.ent:setSubMaterial(1, self.GradeMaterials[grade])
         self:setNWVar("grade", math.clamp(grade, 1, 5))
     end
 
@@ -567,6 +586,49 @@ if SERVER then
     ---@param durability number
     function BaseMachine:setDurability(durability)
         self.ent:setHealth(math.clamp(durability, 0, self.MaxDurability))
+    end
+
+    ---[SERVER] Try to progress upgrade of this machine
+    ---@param ply Player Player upgrading machine
+    ---@return boolean isUpgraded Is upgraded to new grade
+    function BaseMachine:tryToUpgrade(ply)
+        if self:isBroken() then
+            BMod.hintMessage(ply, "Machine is broken. Repair it before upgrade")
+            return false
+        end
+        if self:isTurnedOn() then
+            BMod.hintMessage(ply, "Machine is turned on. Turn it off before upgrade")
+            return false
+        end
+        local grade = self:getGrade() + 1
+        local cost = self:getUpgradeCosts()[grade]
+        if !cost then return false end
+        local current = self:getUpgradeResources()
+        local function tryToUpgrade()
+            for _, info in ipairs(cost) do
+                local res = info[1]
+                local required = info[2]
+                local totalLoaded = current[res] or 0
+                local missing = required - totalLoaded
+                if missing > 0 then
+                    local toLoad = math.min(self.UpgradeRate, missing)
+                    local errorMessage = resource.takeResources(ply, {[res] = toLoad})
+                    if errorMessage then
+                        BMod.errorMessage(ply, errorMessage)
+                        return false
+                    end
+                    current[res] = math.max(totalLoaded + toLoad)
+                    return false
+                end
+            end
+            self:setGrade(grade)
+            self.ent:emitSound("buttons/weapon_confirm.wav")
+            current = {}
+            return true
+        end
+        local isUpgraded = tryToUpgrade()
+        self:setNWVar("upgradeResources", current)
+        return isUpgraded
     end
 else
     ---Cached fonts by size
@@ -700,10 +762,14 @@ end
 function BaseMachine:initialize()
     self.ent.BModMachine = self.Identifier
     self.plugs = {}
+    self:getUpgradeCosts()
     if CLIENT then self:createFont() end
     if SERVER then
+        local plyColor = self.ent:getOwner():getPlayerColor()
+        self.ent:setSubColor(1, Color(plyColor[1] * 255, plyColor[2] * 255, plyColor[3] * 255))
         self.ent:setMaxHealth(self.MaxDurability)
         self.ent:setHealth(self.MaxDurability)
+        self:setGrade(1)
         ---@param colData CollisionData
         self.ent:addCollisionListener(function(colData)
             if !isValid(self) then return end
@@ -783,13 +849,19 @@ end
 ---@param power number? Power for grade. By default 2
 ---@return number
 function BaseMachine:getGradeMultiplier(power)
-    return (1 + ((self:getGrade() - 1) * 0.25)) ^ (power or 2)
+    return (1 + ((self:getGrade() - 1) * self.GradeMultiplier)) ^ (power or 2)
 end
 
 ---[SHARED] Get durability of machine
 ---@return number durability
 function BaseMachine:getDurability()
     return self.ent:getHealth()
+end
+
+---[SHARED] Get current loaded upgrade resources
+---@return Resources upgradeResources
+function BaseMachine:getUpgradeResources()
+    return self:getNWVar("upgradeResources", {})
 end
 
 ---[SHARED] Is machine broken
@@ -802,6 +874,41 @@ end
 ---@return boolean destroyed
 function BaseMachine:isDestroyed()
     return self:getDurability() <= 0
+end
+
+---[SHARED] Get upgrade costs
+function BaseMachine:getUpgradeCosts()
+    if self.upgradeCosts then return self.upgradeCosts end
+    local craft = cfg.crafts[self.Identifier]
+    local cost = craft and craft.requires or {}
+    local basic, prec, adv = cost.basicparts or 0, cost.precisionparts or 0, cost.advancedparts or 0
+    if basic + prec + adv == 0 then
+        self.upgradeCosts = {cost}
+        return {cost}
+    end
+    local results = {
+        cost,
+        {
+            {"basicparts", math.round(basic * 0.3)},
+            {"precisionparts", math.round(prec * 0.9)},
+            {"advancedparts", math.round(adv * 0.1)},
+        },
+        {
+            {"basicparts", math.round(basic * 0.1)},
+            {"precisionparts", math.round(prec * 0.7 + basic * 0.3)},
+            {"advancedparts", math.round(adv * 0.2)},
+        },
+        {
+            {"precisionparts", math.round(prec * 0.7 + basic * 0.5)},
+            {"advancedparts", math.round(adv * 0.2 + basic * 0.1)},
+        },
+        {
+            {"precisionparts", math.round(prec * 0.5 + basic * 0.5)},
+            {"advancedparts", math.round(adv * 0.5 + basic * 0.4 + prec * 0.4)},
+        }
+    }
+    self.upgradeCosts = results
+    return results
 end
 
 

@@ -41,7 +41,7 @@ resource.props = {}
 ---@field SmeltResource Resources Resources on smelting
 ---@field Icon string? Icon identifier to bicons. Default will take identifier
 -- Private fields
----@field pickedUpBy Player [SERVER] Player, that's picked up this resource
+---@field stack boolean [SERVER] Stack this resource on spawn or not
 local Resource = {}
 Resource.Identifier = "base_resource"
 Resource.Name = "Base"
@@ -76,7 +76,6 @@ if SERVER then
         ---@param colData CollisionData
         pr:addCollisionListener(function(colData)
             if !isValid(self) then return end
-            if colData.Speed < 200 then return end
             local ent = colData.HitEntity
 
             local function tryToMerge()
@@ -129,7 +128,6 @@ if SERVER then
     function Resource.hooks.OnPlayerPhysicsPickup(self, ply, ent)
         local sprinting = ply:keyDown(IN_KEY.SPEED)
         if self.ent ~= ent then return end
-        self.pickedUpBy = ply
         local count = self:getCount()
         if sprinting and count > 1 then
             local newCount = math.ceil(count / 2)
@@ -151,7 +149,6 @@ if SERVER then
     ---@param ent Entity
     function Resource.hooks.OnPlayerPhysicsDrop(self, _, ent)
         if self.ent ~= ent then return end
-        self.pickedUpBy = nil
     end
 end
 
@@ -379,6 +376,7 @@ if SERVER then
             ---@cast newRes Resource
             newRes:setCount(currentCount)
             newRes:spawn(pos + Vector(x, 0, 0), ang, freeze)
+            newRes.stack = !dontStack
             totalCreated = totalCreated + currentCount
             x = x + 32
             resources[#resources+1] = newRes
@@ -396,7 +394,7 @@ if SERVER then
         local time = 1 / prop.spawnRate()
         for id, count in pairs(resources) do
             timer.simple(height * time * math.ceil(count / 100), function()
-                resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, true)
+                resource.create(id, pos + Vector(0, 0, height * 12), angs, count, false, false)
             end)
             height = height + 1
         end

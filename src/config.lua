@@ -204,7 +204,7 @@ bmodConfig.crafts = {
         end
     },
 
-    ["solarpanel"] = {
+    ["solar_panel"] = {
         name = "Solar Panel", icon = "solar_panel", scale = 2, description = "",
         methods = { "toolbox" },
         requires = { basicparts = 10, copper = 50, silver = 100, glass = 200 },
@@ -215,6 +215,71 @@ bmodConfig.crafts = {
         end
     },
 
+    ["oil_rig"] = {
+        name = "Oil rig", icon = "oil_rig", scale = 5, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 150, steel = 500, rubber = 100, precisionparts = 75 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("oil_rig")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
+    ["oil_refinery"] = {
+        name = "Oil refinery", icon = "oil_refinery", scale = 5, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 200, ceramic = 200, rubber = 100, steel = 300 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("oil_refinery")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
+    ["liquid_fuel_generator"] = {
+        name = "Liquid Fuel Generator", icon = "liquid_fuel_generator", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { precisionparts = 20, oil = 20, rubber = 100, basicparts = 200, steel = 200 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("liquid_fuel_generator")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
+    ["solid_fuel_generator"] = {
+        name = "Solid Fuel Generator", icon = "solid_fuel_generator", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 150, copper = 50, rubber = 100, steel = 250 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("solid_fuel_generator")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
+    ["smelting_furnace"] = {
+        name = "Smelting Furnace", icon = "smelting_furnace", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 200, ceramic = 200, precisionparts = 25, steel = 200 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("smelting_furnace")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
+
+    ["pumpjack"] = {
+        name = "Pumpjack", icon = "pumpjack", scale = 2, description = "",
+        methods = { "toolbox" },
+        requires = { basicparts = 200, ceramic = 200, precisionparts = 25, steel = 200 },
+        category = "Machines",
+        result = function(pos, ang)
+            local ent = ents.create("pumpjack")
+            ent:spawn(pos + Vector(0, 0, 25), ang, false)
+        end
+    },
 }
 
 

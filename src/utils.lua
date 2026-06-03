@@ -17,7 +17,7 @@ if SERVER then
     end
 
     net._oldSend = net._oldSend or net.send
-    local tickStart = game.getTickCount
+    local tickStart = game.getTickCount()
 
     ---[SERVER] Send message to client optimized
     ---@param target table|Player|nil

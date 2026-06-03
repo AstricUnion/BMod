@@ -1,6 +1,6 @@
 ---@name BMod - JMod, but implemented in Starfall
 ---@author AstricUnion
----@include bmod/base/entity.lua
+---@include bmod/base/bmodentity/entity.lua
 ---@include bmod/base/bgui.lua
 ---@include bmod/base/effects.lua
 ---@include bmod/base/gas.lua
@@ -8,11 +8,12 @@
 ---@include bmod/base/remote.lua
 ---@include bmod/base/safeparticle.lua
 ---@include bmod/base/icons.lua
----@include bmod/base/model.lua
+---@include bmod/base/model/model.lua
 ---@include bmod/src/commands.lua
 ---@include bmod/src/resource.lua
 ---@include bmod/src/machine.lua
 ---@include bmod/src/equippable.lua
+---@include bmod/src/weapon.lua
 ---@include bmod/src/utils.lua
 ---@include bmod/src/deposits.lua
 ---@include bmod/src/config.lua
@@ -35,7 +36,7 @@ BMod.debug = true
 require("bmod/base/safeparticle.lua")
 
 ---@class ents
-ents = require("bmod/base/entity.lua")
+ents = require("bmod/base/bmodentity/entity.lua")
 
 ---@class gas
 gas = require("bmod/base/gas.lua")
@@ -47,7 +48,7 @@ butils = require("bmod/base/utils.lua")
 bicons = require("bmod/base/icons.lua")
 
 ---@class model
-model = require("bmod/base/model.lua")
+model = require("bmod/base/model/model.lua")
 
 require("bmod/src/utils.lua")
 
@@ -61,6 +62,8 @@ bmodConfig = require("bmod/src/config.lua")
 resource = require("bmod/src/resource.lua")
 
 require("bmod/src/machine.lua")
+
+require("bmod/src/weapon.lua")
 
 ---@class equipment
 equipment = require("bmod/src/equippable.lua")

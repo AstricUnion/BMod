@@ -77,8 +77,8 @@ if SERVER then
     end
 
     function SolidFuelGenerator:turnOn(ply)
-        if self:getInput("fuel") <= 0 then
-            BMod.hintMessage(ply, "There's no fuel in the machine")
+        if self:getInput("fuel") <= 0 or self:getInput("water") <= 0 then
+            BMod.hintMessage(ply, "There's no resources in the machine")
             return
         end
         self.effect = beff.create("oilsmoke")
@@ -96,7 +96,7 @@ if SERVER then
     ---[SERVER] Work function. To make power
     function SolidFuelGenerator:work(cur)
         local fuel = self:getInput("fuel")
-        if fuel <= 0 then return false end
+        if fuel <= 0 or self:getInput("water") <= 0 then return false end
         local grade = self:getGrade()
         local speedMultiplier = 4
         local actually = self:consumeInput("fuel", speedMultiplier)

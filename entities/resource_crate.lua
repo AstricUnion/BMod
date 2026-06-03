@@ -64,6 +64,27 @@ if SERVER then
         end
     end
 
+    ---[SERVER] Get resource from crate
+    ---@param self ResourceCrate
+    ---@param ent Entity
+    function ResourceCrate.hooks.OnEntityCreated(self, ent)
+        local type = self:getResourceType()
+        if !ent.BModResource or (type and type ~= ent.BModResource) then return end
+        if ent:getPos():getDistance(self.ent:getPos()) > 256 then return end
+        local res = ents.inited[ent:entIndex()]
+        ---@cast res Resource
+        if !res or !res.stack then return end
+        if !type then
+            self:setResourceType(res.Identifier)
+            self:setResourceCount(res:getCount())
+            res:remove()
+        elseif type == res.Identifier then
+            local canPut = 2000 - self:getResourceCount()
+            local actual = res:take(canPut)
+            self:setResourceCount(self:getResourceCount() + actual)
+        end
+    end
+
     ---[SERVER] Set resource type of this crate
     ---@param type string? Type of resource or nil, to clear
     function ResourceCrate:setResourceType(type)
