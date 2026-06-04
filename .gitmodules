@@ -4,3 +4,6 @@
 [submodule "base/model"]
 	path = base/model
 	url = git@github.com:AstricUnion/BModel
+[submodule "base/tween"]
+	path = base/tween
+	url = git@github.com:AstricUnion/Tween
