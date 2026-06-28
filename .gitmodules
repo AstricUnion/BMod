@@ -7,3 +7,6 @@
 [submodule "base/tween"]
 	path = base/tween
 	url = git@github.com:AstricUnion/Tween
+[submodule "base/beffect"]
+	path = base/beffect
+	url = git@github.com:AstricUnion/BEffects

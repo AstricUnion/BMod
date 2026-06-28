@@ -766,7 +766,9 @@ function BaseMachine:initialize()
     if CLIENT then self:createFont() end
     if SERVER then
         local plyColor = self.ent:getOwner():getPlayerColor()
-        self.ent:setSubColor(1, Color(plyColor[1] * 255, plyColor[2] * 255, plyColor[3] * 255))
+        if self.ent.setSubColor then
+            self.ent:setSubColor(1, Color(plyColor[1] * 255, plyColor[2] * 255, plyColor[3] * 255))
+        end
         self.ent:setMaxHealth(self.MaxDurability)
         self.ent:setHealth(self.MaxDurability)
         self:setGrade(1)

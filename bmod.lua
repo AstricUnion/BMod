@@ -2,11 +2,11 @@
 ---@author AstricUnion
 ---@include bmod/base/bmodentity/entity.lua
 ---@include bmod/base/bgui.lua
----@include bmod/base/effects.lua
+---@include bmod/base/beffect/effects.lua
 ---@include bmod/base/gas.lua
 ---@include bmod/base/utils.lua
 ---@include bmod/base/remote.lua
----@include bmod/base/safeparticle.lua
+---@include bmod/base/beffect/safeparticle.lua
 ---@include bmod/base/icons.lua
 ---@include bmod/base/model/model.lua
 ---@include bmod/src/commands.lua
@@ -33,7 +33,7 @@ BMod.debug = true
 -- BMod.displayDeposits = true
 
 -- Firstly, we should include our libraries. It will be shared in all files
-require("bmod/base/safeparticle.lua")
+require("bmod/base/beffect/safeparticle.lua")
 
 ---@class ents
 ents = require("bmod/base/bmodentity/entity.lua")
@@ -70,7 +70,7 @@ equipment = require("bmod/src/equippable.lua")
 
 
 ---@class beff
-beff = require("bmod/base/effects.lua")
+beff = require("bmod/base/beffect/effects.lua")
 
 
 if SERVER then
